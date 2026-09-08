@@ -75,6 +75,16 @@ describe("routes", () => {
     expect(res.status).toBe(400);
   });
 
+  it("POST /api/jobs {kind:transcribe} with no course -> 400", async () => {
+    const res = await raw("/api/jobs", {
+      method: "POST",
+      headers: { "content-type": "application/json", host },
+      body: JSON.stringify({ kind: "transcribe" }),
+    });
+    expect(res.status).toBe(400);
+    expect(JSON.parse(res.body)).toEqual({ error: "course required" });
+  });
+
   it("unknown path -> 404 (api) ", async () => {
     expect((await fetch(`${base}/api/nope`)).status).toBe(404);
   });

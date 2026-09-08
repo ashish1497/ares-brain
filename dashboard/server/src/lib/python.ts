@@ -39,3 +39,45 @@ export function runPython(
   });
   return { done, kill: () => child.kill("SIGTERM") };
 }
+
+export function runPythonJSON(
+  args: string[],
+  timeoutMs = 15000,
+): Promise<{ ok: true; data: unknown } | { ok: false; error: string }> {
+  const py = venvPython();
+  if (!existsSync(py)) return Promise.resolve({ ok: false, error: "python sidecar not set up" });
+  return new Promise((resolve) => {
+    const child = spawn(py, ["lms_scrape.py", ...args], {
+      cwd: join(repoRoot(), "scraper"),
+      env: { ...process.env, ARES_BRAIN_HOME: repoRoot() },
+    });
+    let out = "";
+    let err = "";
+    const t = setTimeout(() => {
+      child.kill("SIGTERM");
+      resolve({ ok: false, error: "timeout" });
+    }, timeoutMs);
+    child.stdout.on("data", (d) => (out += d));
+    child.stderr.on("data", (d) => (err += d));
+    child.on("error", (e) => {
+      clearTimeout(t);
+      resolve({ ok: false, error: String(e) });
+    });
+    child.on("close", (code) => {
+      clearTimeout(t);
+      const line = out
+        .trim()
+        .split("\n")
+        .reverse()
+        .find((l) => l.trim().startsWith("{"));
+      if (code === 0 && line) {
+        try {
+          return resolve({ ok: true, data: JSON.parse(line) });
+        } catch {
+          /* fall */
+        }
+      }
+      resolve({ ok: false, error: err.slice(-500) || `exit ${code}` });
+    });
+  });
+}

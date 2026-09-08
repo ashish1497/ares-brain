@@ -6,6 +6,7 @@ import { match } from "./lib/router.js";
 import { readCourses } from "./lib/courses.js";
 import { receiveUpload, courseSlugOk } from "./lib/upload.js";
 import { repoRoot } from "./lib/repo.js";
+import { runPythonJSON } from "./lib/python.js";
 import {
   startJob,
   currentJob,
@@ -17,7 +18,7 @@ import {
   type JobKind,
 } from "./lib/jobs.js";
 
-const KINDS: JobKind[] = ["sync", "ingest", "transcribe-url", "transcribe-inbox"];
+const KINDS: JobKind[] = ["sync", "ingest", "transcribe", "transcribe-url", "transcribe-inbox"];
 const WEB_DIST = join(repoRoot(), "dashboard", "web", "dist");
 const MIME: Record<string, string> = {
   ".html": "text/html",
@@ -91,6 +92,11 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   if (match("GET", "/api/state", method, url))
     return json(res, 200, { job: currentJob(), lastRuns: lastRunMap() });
 
+  if (match("GET", "/api/overview", method, url)) {
+    const r = await runPythonJSON(["overview", "--json"]);
+    return r.ok ? json(res, 200, r.data) : json(res, 503, { error: r.error });
+  }
+
   if (match("POST", "/api/jobs", method, url)) {
     const bad = guardOrigin(req);
     if (bad) return json(res, 403, { error: bad });
@@ -101,7 +107,10 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       return json(res, 400, { error: "bad json" });
     }
     if (!KINDS.includes(b?.kind)) return json(res, 400, { error: "unknown kind" });
-    if ((b.kind === "transcribe-url" || b.kind === "transcribe-inbox") && !b.course)
+    if (
+      (b.kind === "transcribe" || b.kind === "transcribe-url" || b.kind === "transcribe-inbox") &&
+      !b.course
+    )
       return json(res, 400, { error: "course required" });
     if (b.kind === "transcribe-url" && !b.url) return json(res, 400, { error: "url required" });
     if (b.course && !courseAllowed(b.course)) return json(res, 400, { error: "unknown course" });

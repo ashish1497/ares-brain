@@ -4,7 +4,7 @@ import { runPython } from "./python.js";
 
 export class BusyError extends Error {}
 
-export type JobKind = "sync" | "ingest" | "transcribe-url" | "transcribe-inbox";
+export type JobKind = "sync" | "ingest" | "transcribe" | "transcribe-url" | "transcribe-inbox";
 
 export interface Job {
   id: string;
@@ -36,6 +36,8 @@ function argv(o: StartOpts): string[] {
       return ["all"];
     case "ingest":
       return o.course ? ["ingest", "--course", o.course] : ["ingest"];
+    case "transcribe":
+      return ["transcribe", "--course", o.course!, "--json"];
     case "transcribe-inbox":
       return ["transcribe", "--course", o.course!, "--inbox", "--json"];
     case "transcribe-url":

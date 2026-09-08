@@ -66,6 +66,12 @@ describe("jobs", () => {
     ]);
   });
 
+  it("transcribe argv", () => {
+    fakeRun();
+    startJob({ kind: "transcribe", course: "c1" });
+    expect((runPython as any).mock.calls[0][0]).toEqual(["transcribe", "--course", "c1", "--json"]);
+  });
+
   it("ingest --course argv", () => {
     fakeRun();
     startJob({ kind: "ingest", course: "c1" });
