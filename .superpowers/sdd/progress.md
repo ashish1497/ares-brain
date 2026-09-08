@@ -55,3 +55,4 @@ E whole-branch review (opus): "With fixes" — no Critical, 3 Important + minors
 T1 python transcribe-url+--inbox  T2 dashboard/server  T3 dashboard/web  T4 glue+CI  T5 live run.
 T1: NOT started.
 T1: complete (3e3369b, review Approved). Minors deferred: _write_url_transcript omits course: key (harmless, ingest overrides); test_cli_transcribe_url_dispatch mocks transcribe_url so arg-threading untested; whisper_raises test does not pin error string.
+T2: complete (b20e1d6 + fixes a21cdf5). Review Needs-work -> 3 Important fixed (upload path-traversal, SSE leak/crash, Host/Origin guard) + minors. server vitest 25.
