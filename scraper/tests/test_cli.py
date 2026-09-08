@@ -364,3 +364,15 @@ def test_cli_daily_brief(home, monkeypatch):
     import lms_scrape
     r = lms_scrape.run(["daily-brief", "--json"])
     assert "classesToday" in r and "assignmentsDue" in r
+
+
+def test_cli_overview(home):
+    from pathlib import Path
+    import shutil, importlib, paths, brain, daily_brief, overview
+    src = Path(__file__).parent / "fixtures" / "scrubbed" / "overview_corpus"
+    shutil.rmtree(home / "courses", ignore_errors=True)
+    shutil.copytree(src, home / "courses")
+    for m in (paths, brain, daily_brief, overview): importlib.reload(m)
+    import lms_scrape
+    r = lms_scrape.run(["overview", "--json"])
+    assert "kpis" in r and "attendance" in r

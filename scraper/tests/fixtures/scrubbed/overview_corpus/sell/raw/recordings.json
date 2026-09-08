@@ -1,0 +1,6 @@
+[
+  { "id": "rec-1", "title": "Sell Session 1", "videoUrl": "https://youtu.be/s1", "recordedOn": "2026-08-18" },
+  { "id": "rec-2", "title": "Sell Session 2", "videoUrl": "https://youtu.be/s2", "recordedOn": "2026-08-25" },
+  { "id": "rec-3", "title": "Sell Session 3", "videoUrl": "https://youtu.be/s3", "recordedOn": "2026-09-01" },
+  { "id": "rec-4", "title": "Sell Session 4", "videoUrl": "https://youtu.be/s4", "recordedOn": "2026-09-08" }
+]

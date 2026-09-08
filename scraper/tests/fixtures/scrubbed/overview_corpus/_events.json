@@ -1,0 +1,72 @@
+{
+  "window": { "from": "x", "to": "y" },
+  "events": [
+    {
+      "id": "s-comm-past",
+      "eventType": "session",
+      "title": "Comm S3",
+      "courseSlug": "comm",
+      "startAt": "2026-09-08T04:00:00.000Z",
+      "endAt": "2026-09-08T05:30:00.000Z",
+      "courseName": "Power of Communication",
+      "room": "Delta"
+    },
+    {
+      "id": "s-comm-1",
+      "eventType": "session",
+      "title": "Comm Session 4",
+      "courseSlug": "comm",
+      "startAt": "2026-09-12T04:00:00.000Z",
+      "endAt": "2026-09-12T05:30:00.000Z",
+      "courseName": "Power of Communication",
+      "room": "Delta",
+      "instructorName": "Chirantan"
+    },
+    {
+      "id": "s-comm-2",
+      "eventType": "session",
+      "title": "Comm Session 5",
+      "courseSlug": "comm",
+      "startAt": "2026-09-17T04:00:00.000Z",
+      "endAt": "2026-09-17T05:30:00.000Z",
+      "courseName": "Power of Communication",
+      "room": "Delta"
+    },
+    {
+      "id": "s-comm-3",
+      "eventType": "session",
+      "title": "Comm Session 6",
+      "courseSlug": "comm",
+      "startAt": "2026-10-06T04:00:00.000Z",
+      "endAt": "2026-10-06T05:30:00.000Z",
+      "courseName": "Power of Communication",
+      "room": "Delta"
+    },
+    {
+      "id": "s-sell-1",
+      "eventType": "session",
+      "title": "Sell S2",
+      "courseSlug": "sell",
+      "startAt": "2026-09-15T04:00:00.000Z",
+      "endAt": "2026-09-15T05:30:00.000Z",
+      "courseName": "The Art of Selling",
+      "room": "Delta"
+    },
+    {
+      "id": "ex-mid",
+      "eventType": "exam",
+      "title": "Mid Term Exams",
+      "courseName": "Program",
+      "startAt": "2026-09-19T04:00:00.000Z",
+      "endAt": "2026-09-19T07:00:00.000Z"
+    },
+    {
+      "id": "ex-end",
+      "eventType": "exam",
+      "title": "End Term Exams",
+      "courseName": "Program",
+      "startAt": "2026-10-15T04:00:00.000Z",
+      "endAt": "2026-10-15T07:00:00.000Z"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "raw": [
+    {
+      "courseId": "c-comm",
+      "courseName": "Power of Communication",
+      "attended": 6,
+      "total": 8,
+      "percentage": 75.0,
+      "avgCp": 7.5
+    },
+    {
+      "courseId": "c-sell",
+      "courseName": "The Art of Selling",
+      "attended": 1,
+      "total": 4,
+      "percentage": 25.0,
+      "avgCp": 6.0
+    }
+  ]
+}

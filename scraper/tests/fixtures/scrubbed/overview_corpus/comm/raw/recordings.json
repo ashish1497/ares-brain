@@ -1,0 +1,20 @@
+[
+  {
+    "id": "rec-a",
+    "title": "Session 1",
+    "videoUrl": "https://youtu.be/a",
+    "recordedOn": "2026-08-17"
+  },
+  {
+    "id": "rec-b",
+    "title": "Session 2",
+    "videoUrl": "https://youtu.be/b",
+    "recordedOn": "2026-08-24"
+  },
+  {
+    "id": "rec-c",
+    "title": "Session 3",
+    "videoUrl": "https://youtu.be/c",
+    "recordedOn": "2026-08-31"
+  }
+]
