@@ -53,6 +53,7 @@ export interface OverviewMaterial {
 }
 
 export interface OverviewDueSoon {
+  id: string | null;
   title: string;
   course: string;
   dueAt: string;

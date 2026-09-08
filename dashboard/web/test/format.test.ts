@@ -1,4 +1,4 @@
-import { countdown, fmtDate, fmtTime, relTime } from "../src/lib/format";
+import { countdown, fmtDate, fmtScrapeAge, fmtTime, relTime } from "../src/lib/format";
 
 test("fmtTime formats an ISO datetime as local 24h HH:MM", () => {
   expect(fmtTime("2026-09-08T09:30:00")).toBe("09:30");
@@ -84,4 +84,12 @@ test("countdown reports a past ISO instant as 'overdue'", () => {
   } finally {
     vi.useRealTimers();
   }
+});
+
+test("fmtScrapeAge renders minutes for a sub-hour age and never prints 0h", () => {
+  expect(fmtScrapeAge(0.3)).toBe("18m ago");
+});
+
+test("fmtScrapeAge renders hours for a multi-hour age", () => {
+  expect(fmtScrapeAge(9)).toBe("9h ago");
 });

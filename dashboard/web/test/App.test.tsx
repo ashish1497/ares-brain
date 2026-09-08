@@ -1,7 +1,12 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import * as api from "../src/api";
 import { App } from "../src/App";
-import { overview } from "./factories";
+import { overview, todayClass } from "./factories";
+
+/** Today tab now renders real content, not a placeholder — give it one class so its
+ * `SectionHeader` heading ("Today") reliably renders instead of the EmptyToday panel. */
+const overviewWithToday = () =>
+  overview({ today: { classes: [todayClass()], dueTodayOrTomorrow: [], changed: [] } });
 
 vi.mock("../src/api", async (orig) => ({
   ...(await orig<typeof import("../src/api")>()),
@@ -38,8 +43,8 @@ test("Retry re-runs the fetch and renders the shell on success", async () => {
   expect(screen.queryByText("couldn't load overview")).not.toBeInTheDocument();
 });
 
-test("the default route (#today) renders the Today placeholder", async () => {
-  vi.mocked(api.getOverview).mockResolvedValue(overview());
+test("the default route (#today) renders the Today tab", async () => {
+  vi.mocked(api.getOverview).mockResolvedValue(overviewWithToday());
 
   render(<App />);
 
@@ -47,7 +52,7 @@ test("the default route (#today) renders the Today placeholder", async () => {
 });
 
 test("an unknown hash falls back to the Today body instead of rendering blank", async () => {
-  vi.mocked(api.getOverview).mockResolvedValue(overview());
+  vi.mocked(api.getOverview).mockResolvedValue(overviewWithToday());
   window.location.hash = "#foo";
 
   render(<App />);
@@ -56,7 +61,7 @@ test("an unknown hash falls back to the Today body instead of rendering blank", 
 });
 
 test("switching the hash renders another tab", async () => {
-  vi.mocked(api.getOverview).mockResolvedValue(overview());
+  vi.mocked(api.getOverview).mockResolvedValue(overviewWithToday());
 
   render(<App />);
   await screen.findByRole("heading", { name: "Today" });

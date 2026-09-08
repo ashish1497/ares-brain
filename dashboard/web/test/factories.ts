@@ -4,6 +4,8 @@ import type {
   OverviewAttendance,
   OverviewBrain,
   OverviewChanged,
+  OverviewClass,
+  OverviewDueSoon,
   OverviewExam,
   OverviewGaps,
   OverviewKpis,
@@ -38,7 +40,38 @@ export const weekItem = (over: Partial<OverviewWeekItem> = {}): OverviewWeekItem
 export const changed = (over: Partial<OverviewChanged> = {}): OverviewChanged => ({
   courseName: "Course",
   courseSlug: "course",
-  counts: { announcements: 1 },
+  counts: { announcement: 1 },
+  ...over,
+});
+
+export const todayClass = (over: Partial<OverviewClass> = {}): OverviewClass => ({
+  start: "2026-09-09T09:30:00",
+  end: "2026-09-09T11:00:00",
+  course: "Course",
+  courseSlug: "course",
+  room: "Room 1",
+  instructor: "Prof X",
+  meetingLink: null,
+  prereadPaths: [],
+  ...over,
+});
+
+export const dueSoon = (over: Partial<OverviewDueSoon> = {}): OverviewDueSoon => ({
+  id: "a1",
+  title: "Assignment",
+  course: "Course",
+  dueAt: "2026-09-09T20:00:00",
+  hoursAway: 10,
+  submitted: false,
+  isClub: false,
+  submissionType: "file",
+  instructionsText: "",
+  isGroup: false,
+  cutoffAt: null,
+  allowLate: false,
+  materials: [],
+  sessionRef: null,
+  prereadPaths: [],
   ...over,
 });
 

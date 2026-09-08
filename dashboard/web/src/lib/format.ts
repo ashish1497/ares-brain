@@ -46,6 +46,15 @@ export function relTime(iso: string): string {
   return past ? `${label} ago` : `in ${label}`;
 }
 
+/** `scrapeAgeHours` (fractional — e.g. `0.3`) → `"18m ago"` / `"9h ago"`. Never prints `0h`. */
+export function fmtScrapeAge(hours: number): string {
+  if (hours < 1) {
+    const mins = Math.max(1, Math.round(hours * 60));
+    return `${mins}m ago`;
+  }
+  return `${Math.round(hours)}h ago`;
+}
+
 /** ISO datetime → "2d 4h" countdown, or "overdue" once it has passed. */
 export function countdown(iso: string): string {
   const d = new Date(iso);
