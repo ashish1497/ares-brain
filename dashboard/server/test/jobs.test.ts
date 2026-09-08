@@ -39,6 +39,12 @@ describe("jobs", () => {
     expect(() => startJob({ kind: "ingest" })).toThrow(BusyError);
   });
 
+  it("calendar-sync argv", () => {
+    fakeRun();
+    startJob({ kind: "calendar-sync" });
+    expect((runPython as any).mock.calls[0][0]).toEqual(["calendar-sync"]);
+  });
+
   it("transcribe-url argv", () => {
     fakeRun();
     startJob({ kind: "transcribe-url", course: "c1", url: "u", title: "t" });

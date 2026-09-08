@@ -34,15 +34,15 @@ fixed regardless (§8). They fold into the data task.
 
 4px base unit. The only spacing values used:
 
-| token | px | use |
-| --- | --- | --- |
-| `1` | 4 | icon↔label, tightest |
-| `2` | 8 | label↔value, chip internals |
-| `3` | 12 | inline metadata group gap, list row padding-y |
-| `4` | 16 | card padding (mobile), control height rhythm |
-| `6` | 24 | card padding (desktop), gap between sections/cards |
-| `8` | 32 | page top/bottom padding |
-| `12` | 48 | major vertical breaks inside a tab |
+| token | px  | use                                                |
+| ----- | --- | -------------------------------------------------- |
+| `1`   | 4   | icon↔label, tightest                               |
+| `2`   | 8   | label↔value, chip internals                        |
+| `3`   | 12  | inline metadata group gap, list row padding-y      |
+| `4`   | 16  | card padding (mobile), control height rhythm       |
+| `6`   | 24  | card padding (desktop), gap between sections/cards |
+| `8`   | 32  | page top/bottom padding                            |
+| `12`  | 48  | major vertical breaks inside a tab                 |
 
 - Page: `mx-auto max-w-[1400px] px-4 md:px-8`.
 - Summary bar: `h-14`, `px-4 md:px-8`, chips `gap-3`.
@@ -84,31 +84,31 @@ black on every bright fill (`cta`/`ok`/`soon`/`bad`) ≥ 4.5:1; `edge` on `paper
 
 ### 4.1 Meadow (default)
 
-| token | light | dark |
-| --- | --- | --- |
-| edge | `#0f8a5f` | `#16b981` |
-| paper | `#eafff4` | `#141a17` |
-| card | `#ffffff` | `#1f2723` |
-| ink | `#0e2119` | `#eafff4` |
-| cta | `#ffd23f` | `#ffd23f` |
+| token  | light     | dark      |
+| ------ | --------- | --------- |
+| edge   | `#0f8a5f` | `#16b981` |
+| paper  | `#eafff4` | `#141a17` |
+| card   | `#ffffff` | `#1f2723` |
+| ink    | `#0e2119` | `#eafff4` |
+| cta    | `#ffd23f` | `#ffd23f` |
 | accent | `#e8590c` | `#ff8a4c` |
-| ok | `#2f9e44` | `#51cf66` |
-| soon | `#f08c00` | `#ffc078` |
-| bad | `#e03131` | `#ff6b6b` |
+| ok     | `#2f9e44` | `#51cf66` |
+| soon   | `#f08c00` | `#ffc078` |
+| bad    | `#e03131` | `#ff6b6b` |
 
 ### 4.2 Ultraviolet
 
-| token | light | dark |
-| --- | --- | --- |
-| edge | `#5b21b6` | `#a78bfa` |
-| paper | `#faf3e0` | `#17121f` |
-| card | `#fffdf7` | `#211a2e` |
-| ink | `#241436` | `#f3ecff` |
-| cta | `#ffd23f` | `#ffd23f` |
+| token  | light     | dark      |
+| ------ | --------- | --------- |
+| edge   | `#5b21b6` | `#a78bfa` |
+| paper  | `#faf3e0` | `#17121f` |
+| card   | `#fffdf7` | `#211a2e` |
+| ink    | `#241436` | `#f3ecff` |
+| cta    | `#ffd23f` | `#ffd23f` |
 | accent | `#7c3aed` | `#c4b5fd` |
-| ok | `#2f9e44` | `#51cf66` |
-| soon | `#f08c00` | `#ffc078` |
-| bad | `#e03131` | `#ff6b6b` |
+| ok     | `#2f9e44` | `#51cf66` |
+| soon   | `#f08c00` | `#ffc078` |
+| bad    | `#e03131` | `#ff6b6b` |
 
 ### 4.3 CSS structure (Tailwind v4)
 
@@ -118,18 +118,30 @@ bug in the current build):
 
 ```css
 @import "tailwindcss";
-@theme { /* Meadow light — defines --color-* + the utilities */ }
+@theme {
+  /* Meadow light — defines --color-* + the utilities */
+}
 
 /* appearance: system → follow the OS unless the user forced light */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-appearance="light"]) { /* Meadow dark */ }
-  :root:not([data-appearance="light"])[data-theme="violet"] { /* UV dark */ }
+  :root:not([data-appearance="light"]) {
+    /* Meadow dark */
+  }
+  :root:not([data-appearance="light"])[data-theme="violet"] {
+    /* UV dark */
+  }
 }
 /* explicit appearance wins both ways */
-:root[data-appearance="dark"] { /* Meadow dark */ }
-:root[data-appearance="dark"][data-theme="violet"] { /* UV dark */ }
+:root[data-appearance="dark"] {
+  /* Meadow dark */
+}
+:root[data-appearance="dark"][data-theme="violet"] {
+  /* UV dark */
+}
 :root[data-appearance="light"][data-theme="violet"],
-:root:not([data-appearance="dark"])[data-theme="violet"] { /* UV light */ }
+:root:not([data-appearance="dark"])[data-theme="violet"] {
+  /* UV light */
+}
 ```
 
 `--color-rule` and the muted-ink mix are derived once from `--color-edge` /
@@ -147,7 +159,7 @@ Sticky, `z-20`, `border-b-[3px] border-edge`, `bg-paper`.
   when: `dueThisWeek >= 3`, `nextExamInDays !== null && <= 7`,
   `attendanceNow < attendanceMin`, `brainReady < chatUnlockAt`.
 - Right: `updated 9h ago` (muted) + **⟲ Re-sync** (`cta` button — runs `sync`)
-  + a **gear** button opening Settings.
+  - a **gear** button opening Settings.
 - While a job runs: the Re-sync button shows `syncing…` + disables; the job-log
   strip (bottom-right, unchanged behaviour) shows the stream.
 - Keyboard: `r` triggers Re-sync when no input is focused.
@@ -189,7 +201,7 @@ and job refreshes must not change the hash.
 
 - **Left — class timeline** (`ClassTimeline.tsx`): a vertical rail. Each class:
   `09:30–11:00` (time, `font-bold`), course, then a muted line `room ·
-  instructor` → use a 1px vertical rule between room and instructor, not `·`.
+instructor` → use a 1px vertical rule between room and instructor, not `·`.
   A state marker on the rail dot: `now` (filled `ok`), `in 2h` (hollow), `done`
   (filled muted). Pre-read → a small `accent` chip `pre-read` linking to
   `#` (course brief copy-command in a tooltip). Empty → "no classes today".
@@ -199,7 +211,7 @@ and job refreshes must not change the hash.
   Assignments tab). Submitted → struck + `ok` check, sorted last.
 - **Right, bottom — Since last scrape** (`ChangedFeed.tsx`): `today.changed`
   with **course names** (see §7), one row per course: `4 announcements ·
-  1 material` → render counts as pills, not `·` text. Muted header
+1 material` → render counts as pills, not `·` text. Muted header
   `since <relative scrape age>`.
 - Both-empty → one calm panel: "Nothing needs you today. Next class <time>."
 
@@ -227,7 +239,7 @@ the tab body.
 - Title (h1), course, badge row: `weight` or `ungraded` · `group`/`solo` ·
   `submissionType` · status — pills, `edge` border.
 - **Deadline** panel: `due <date> <time>`; if `cutoffAt` differs, `hard cutoff
-  <…>`; `late allowed` / `no late submissions`; a live countdown (`bad` under
+<…>`; `late allowed` / `no late submissions`; a live countdown (`bad` under
   24h).
 - **What's being asked** panel: `instructionsText` (§7) rendered as paragraphs.
   If empty → "No instructions were scraped — check the LMS."
@@ -241,7 +253,7 @@ the tab body.
 - **Checklist** panel (`AssignmentChecklist.tsx`): steps persisted to
   `localStorage["ares.checklist." + id]` as `{text, done}[]`. Add (input +
   enter), toggle, delete. A `status` segmented control `not started | started |
-  submitted` also persisted locally (`ares.localstatus.<id>`) — advisory only,
+submitted` also persisted locally (`ares.localstatus.<id>`) — advisory only,
   shown as a note that it is local and not sent to the LMS.
 
 ### 6.3 Attendance (`AttendanceTab.tsx`)
@@ -250,7 +262,7 @@ the tab body.
   a muted `assumes ≥ 75% (ARES_BRAIN_ATTENDANCE_MIN)`.
 - Full-width table, columns: `Course` · `Now` · `Held` · `Left` ·
   `Best case (mid / end)` · `Floor` · `State`. Header row `border-b-[3px]
-  border-edge`; body `divide-y divide-rule`. Row background =
+border-edge`; body `divide-y divide-rule`. Row background =
   state tint (8%). `State` cell = pill (`on track` `ok` / `watch` `soon` /
   `at risk` `bad`); the `note` renders as a muted second line in the `State`
   cell on watch/risk only. Sortable by `Now` and by risk (default risk desc).
@@ -281,12 +293,12 @@ Three panels, each hidden when empty; if all empty → "Nothing outstanding."
   (job `transcribe`, `{course: courseSlug}`). A disclosure shows the session
   list (`title` · `recordedOn`).
 - **Missing books**: per book `title` — `author`, muted `mentioned in
-  <courseName>`, and a PDF drop target that calls `upload(mentionedIn[0],
-  "book", files)` and reports `written` / `rejected`. Correct hint text:
+<courseName>`, and a PDF drop target that calls `upload(mentionedIn[0],
+"book", files)` and reports `written` / `rejected`. Correct hint text:
   `drop a PDF here, or put it in courses/<slug>/inbox/books/` (§8 follow-up).
   Keyed by `title`, not index.
 - **Stale**: `scrape is N days old` + **Re-sync**; `attendance data is behind
-  the calendar` (muted note).
+the calendar` (muted note).
 
 ## 7. Data model changes (`overview.py`)
 
@@ -308,7 +320,7 @@ Additive to `2026-09-08-outcome-dashboard-design.md` §3/§4.
     Must not import beyond the isolation allowlist — reuse a `daily_brief`
     helper or read the outline file directly.
 - `today.changed` → `today.changed: { courseName, courseSlug, counts:
-  {<kind>: n} }[]` (a list with names resolved), replacing the slug-keyed map.
+{<kind>: n} }[]` (a list with names resolved), replacing the slug-keyed map.
   Update `daily_brief`/`overview` producers and the `Overview` type + tests.
 - The `assignments[]` full detail is read from
   `courses/<slug>/raw/assignments.json` (list of records with `id`, `title`,
@@ -328,14 +340,14 @@ All in `scraper/overview.py`; each gets a test that would fail today.
 2. **`build_overview` raises on `_attendance.json` `{"raw": null}`.** The
    `cp_vals` comprehension iterates `att_list` without the `isinstance(list)`
    guard the row loop has. Hoist `att_list = att_list if isinstance(att_list,
-   list) else []` once. Test the `{"raw": null}` and `{"raw": 5}` cases →
+list) else []` once. Test the `{"raw": null}` and `{"raw": 5}` cases →
    `build_overview` still returns a full dict.
 3. **Grade picture / risk are wrong on real data.**
    - `done` must be able to be `False`, not only `True`/`None` (the
      `... or None` collapses it). Emit `False` for components the parser treats
      as assignment-backed.
-   - Component↔submission matching (`_name_match`) never matches a *category*
-     ("Weekly Assignments") against an *instance* ("Session 3 Nykaa Workbook").
+   - Component↔submission matching (`_name_match`) never matches a _category_
+     ("Weekly Assignments") against an _instance_ ("Session 3 Nykaa Workbook").
      Broaden: token-overlap or a keyword map (`workbook`, `assignment`, `case`,
      `quiz`, `reflection`, `pitch`, `presentation`, `viva`), so a category with
      a matching keyword counts its instances toward `done`.
@@ -376,7 +388,7 @@ All in `scraper/overview.py`; each gets a test that would fail today.
 - `dashboard/server/test/overview.test.ts` asserts nothing meaningful in CI
   (always the 503 branch). Add a `runPythonJSON` unit test with a stubbed spawn:
   last-`{`-line parse, non-zero exit → `{ok:false}`, timeout → `{ok:false,
-  error:"timeout"}`.
+error:"timeout"}`.
 - Keep `guardOrigin`'s **Host** check on `GET /api/overview` too (cheap, and
   this endpoint now returns the full academic record + spawns a subprocess);
   add a single in-flight dedupe so repeated GETs share one Python run.

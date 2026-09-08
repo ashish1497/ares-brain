@@ -7,9 +7,16 @@ let base: string;
 beforeAll(async () => {
   server = createServer();
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
-  base = `http://127.0.0.1:${(server.address() as any).port}`;
+  const port = (server.address() as any).port;
+  base = `http://127.0.0.1:${port}`;
+  // guardOrigin now runs on GET /api/overview — teach it our ephemeral port so a
+  // same-origin fetch is accepted.
+  process.env.ARES_BRAIN_DASHBOARD_PORT = String(port);
 });
-afterAll(() => new Promise<void>((r) => server.close(() => r())));
+afterAll(() => {
+  delete process.env.ARES_BRAIN_DASHBOARD_PORT;
+  return new Promise<void>((r) => server.close(() => r()));
+});
 
 describe("GET /api/overview", () => {
   it("returns 200 + the overview shape (real sidecar against the test home)", async () => {

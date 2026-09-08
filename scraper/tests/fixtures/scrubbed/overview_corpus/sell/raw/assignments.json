@@ -1,0 +1,27 @@
+[
+  {
+    "id": "a-sell-visit",
+    "courseName": "The Art of Selling",
+    "title": "Session 2 Client Visit",
+    "instructions": "<p>Shadow a rep on a client call.</p><ol><li>Note the discovery questions</li><li>Write a one-page recap</li></ol><p>Due&nbsp;the <strong>29th</strong></p>",
+    "dueAt": "2026-09-06T06:00:00.000Z",
+    "cutoffDate": "2026-09-08T06:00:00.000Z",
+    "submissionType": "file",
+    "isGroup": true,
+    "allowLate": true,
+    "materials": [{ "title": "Call shadowing guide", "kind": "file" }],
+    "mySubmissionStatus": null
+  },
+  {
+    "id": "a-sell-nykaa",
+    "courseName": "The Art of Selling",
+    "title": "Session 3 Nykaa Workbook",
+    "instructions": "<p>Complete the Nykaa pricing workbook.</p>",
+    "dueAt": "2026-08-30T06:00:00.000Z",
+    "submissionType": "file",
+    "isGroup": false,
+    "allowLate": false,
+    "materials": [],
+    "mySubmissionStatus": "submitted"
+  }
+]

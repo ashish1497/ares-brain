@@ -1,4 +1,4 @@
-import json, subprocess, sys
+import json, subprocess, sys, time
 from datetime import datetime, timezone
 from pathlib import Path
 import pytest
@@ -23,7 +23,8 @@ def corpus(home, monkeypatch):
 
 
 def test_parse_assessment_multivalue():
-    body = ("| Classroom Participation | | 10% from Mesa | |\n"
+    body = ("3. Assessment and Evaluation\n"
+            "| Classroom Participation | | 10% from Mesa | |\n"
             "| Power of Communication | | Pitch 1: 30%\nPitch 2: 30% | |\n"
             "| Personal Branding | | 20% | |\n")
     got = {c["name"]: c["weightPct"] for c in overview.parse_assessment(body)}
@@ -141,6 +142,13 @@ def test_build_overview_shape(corpus):
               "assignments", "gradePicture", "exams", "attendance", "attendanceMin",
               "brain", "gaps"):
         assert k in o
+    assert isinstance(o["today"]["changed"], list)
+    for a in o["assignments"]:
+        for k in ("instructionsText", "isGroup", "cutoffAt", "allowLate",
+                  "materials", "sessionRef", "prereadPaths"):
+            assert k in a
+    for e in o["exams"]:
+        assert isinstance(e["testprepCommands"], list) and e["testprepCommands"]
     json.dumps(o)  # fully serialisable
 
 
@@ -259,3 +267,162 @@ def test_overview_import_isolation():
     r = subprocess.run([sys.executable, "-c", code],
                        cwd=Path(__file__).parent.parent, capture_output=True, text=True)
     assert r.returncode == 0, r.stdout + r.stderr
+
+
+# --- Part A: review fixes ---------------------------------------------------
+
+def test_parse_assessment_no_header_returns_empty():
+    # a table with weights but no "Assessment and Evaluation" header must not be
+    # scanned as if it were the assessment block
+    assert overview.parse_assessment("| Attendance |  | 90% |\n") == []
+
+
+def test_exam_countdown_is_local_not_utc(corpus, monkeypatch):
+    monkeypatch.setenv("TZ", "Asia/Kolkata")
+    time.tzset()
+    try:
+        # 2026-09-09 20:00 UTC == 2026-09-10 01:30 IST; exam ex-mid is 2026-09-19
+        now = datetime(2026, 9, 9, 20, 0, tzinfo=timezone.utc)
+        ov = overview.build_overview(now=now)
+        ex = next((e for e in ov["exams"] if e["date"] == "2026-09-19"), None)
+        assert ex is not None
+        assert ex["inDays"] == 9      # 19 - 10 local — the UTC subtraction gave 10
+    finally:
+        monkeypatch.setenv("TZ", "UTC")
+        time.tzset()
+
+
+def test_attendance_raw_null_tolerated(corpus):
+    (corpus / "courses" / "_attendance.json").write_text('{"raw": null}')
+    ov = overview.build_overview(now=NOW)
+    assert isinstance(ov, dict) and "kpis" in ov and "attendance" in ov
+    assert ov["attendance"] == []
+
+
+def test_attendance_raw_nonlist_tolerated(corpus):
+    (corpus / "courses" / "_attendance.json").write_text('{"raw": 5}')
+    ov = overview.build_overview(now=NOW)
+    assert "kpis" in ov and ov["attendance"] == []
+
+
+def test_name_match_handles_trailing_paren():
+    # identical strings ending in ")" must match (the old \b bug returned False)
+    assert overview._name_match("Personal Branding (Component 1)",
+                                "Personal Branding (Component 1)")
+
+
+def test_grade_done_true_for_category_with_submitted_instance(corpus):
+    ov = overview.build_overview(now=NOW)
+    gp = next(g for g in ov["gradePicture"] if g["courseSlug"] == "sell")
+    wk = next(c for c in gp["components"]
+              if "Weekly" in c["name"] or "workbook" in c["name"].lower())
+    assert wk["done"] is True                      # "Session 3 Nykaa Workbook" submitted
+    assert any(c["done"] is False for c in gp["components"])   # "Final Project", unmatched
+    part = next(c for c in gp["components"] if "Participation" in c["name"])
+    assert part["done"] is None                    # participation stays tri-state None
+
+
+def test_overdue_assignment_risk_not_green(corpus):
+    ov = overview.build_overview(now=NOW)
+    a = next(a for a in ov["assignments"] if a["title"] == "Session 2 Client Visit")
+    assert a["weightPct"] is None                  # no component resolves
+    assert a["risk"] >= 0.5                        # ~96h overdue — never green
+
+
+def test_testprep_command_interpolated(corpus):
+    ev = json.loads((corpus / "courses" / "_events.json").read_text())
+    ev["events"].append({
+        "id": "ex-comm", "eventType": "exam", "title": "Comm Quiz",
+        "courseSlug": "comm", "courseName": "Power of Communication",
+        "startAt": "2026-09-25T04:00:00.000Z", "endAt": "2026-09-25T05:00:00.000Z"})
+    (corpus / "courses" / "_events.json").write_text(json.dumps(ev))
+    ov = overview.build_overview(now=NOW)
+    ce = next(e for e in ov["exams"] if e["name"] == "Comm Quiz")
+    assert ce["testprepCommand"] == '/mesa:ares-brain-testprep "Power of Communication"'
+    assert "<course>" not in ce["testprepCommand"]
+    assert ce["testprepCommands"] == [
+        {"course": "Power of Communication",
+         "command": '/mesa:ares-brain-testprep "Power of Communication"'}]
+
+
+def test_testprep_commands_all_exam_one_per_course(corpus):
+    ov = overview.build_overview(now=NOW)
+    mid = next(e for e in ov["exams"] if e["name"] == "Mid Term Exams")
+    assert {c["course"] for c in mid["testprepCommands"]} == {
+        "Power of Communication", "The Art of Selling"}
+
+
+def test_testprep_exists_all_requires_every_course(corpus):
+    for slug in ("comm", "sell"):
+        d = corpus / "courses" / slug / "study"
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "testprep-x.md").write_text("# tp")
+    ov = overview.build_overview(now=NOW)
+    mid = next(e for e in ov["exams"] if e["name"] == "Mid Term Exams")
+    assert mid["testprepExists"] is True
+    # remove one course's set -> the program-wide exam is no longer covered
+    (corpus / "courses" / "sell" / "study" / "testprep-x.md").unlink()
+    ov = overview.build_overview(now=NOW)
+    mid = next(e for e in ov["exams"] if e["name"] == "Mid Term Exams")
+    assert mid["testprepExists"] is False
+
+
+# --- Part B: assignment enrichment ----------------------------------------
+
+def test_html_to_text_readable():
+    html = "<p>Hello</p><ol><li>Do X</li><li>Do Y</li></ol><p>Deadline <strong>29th</strong></p>"
+    t = overview._html_to_text(html)
+    assert "Hello" in t and "Do X" in t and "Do Y" in t and "29th" in t
+    assert "<" not in t and "&nbsp;" not in t
+
+
+def test_html_to_text_empty():
+    assert overview._html_to_text("") == "" and overview._html_to_text(None) == ""
+
+
+def test_session_ref_from_title():
+    assert overview._session_ref("Session 4 Meesho Workbook") == 4
+    assert overview._session_ref("Case pre-work") is None
+
+
+def test_assignment_enrichment_fields(corpus):
+    ov = overview.build_overview(now=NOW)
+    a = next(a for a in ov["assignments"] if a["title"].startswith("Session"))
+    assert isinstance(a["instructionsText"], str) and a["instructionsText"]
+    assert "<" not in a["instructionsText"]
+    assert a["isGroup"] is True
+    assert isinstance(a["cutoffAt"], str) and a["allowLate"] is True
+    assert a["materials"][0]["title"] == "Call shadowing guide"
+    assert a["materials"][0]["kind"] == "file"
+    assert a["sessionRef"] == 2
+    assert isinstance(a["prereadPaths"], list)
+
+
+def test_assignment_cutoff_null_when_same_as_due(corpus):
+    raw = corpus / "courses" / "comm" / "raw" / "assignments.json"
+    data = json.loads(raw.read_text())
+    for row in data:
+        if row["id"] == "a-pitch1":
+            row["cutoffDate"] = row["dueAt"]
+    raw.write_text(json.dumps(data))
+    ov = overview.build_overview(now=NOW)
+    p1 = next(a for a in ov["assignments"] if a["title"] == "Pitch 1")
+    assert p1["cutoffAt"] is None
+
+
+def test_today_due_list_is_enriched(corpus):
+    ov = overview.build_overview(now=NOW)
+    due = ov["today"]["dueTodayOrTomorrow"]
+    p1 = next(d for d in due if d["title"] == "Pitch 1")
+    for k in ("instructionsText", "isGroup", "materials", "sessionRef", "prereadPaths"):
+        assert k in p1
+
+
+def test_today_changed_is_name_resolved_list(corpus):
+    ov = overview.build_overview(now=NOW)
+    changed = ov["today"]["changed"]
+    assert isinstance(changed, list)
+    entry = next(c for c in changed if c["courseSlug"] == "comm")
+    assert entry["courseName"] == "Power of Communication"
+    assert entry["courseName"] != entry["courseSlug"]
+    assert isinstance(entry["counts"], dict) and entry["counts"]

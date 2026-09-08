@@ -1,6 +1,7 @@
 """Outcome-dashboard data: where the student stands vs the grade — today, this
 week, assignment risk, exams, attendance runway, brain readiness, gaps. Pure —
 reads courses/ off disk, no LMS auth, no LLM. Mirrors daily_brief.py."""
+import html as _htmllib
 import os
 import re
 import sys
@@ -25,12 +26,11 @@ _SECTION_RE = re.compile(r"^\s*(?:\|\s*)*\d+\.\s")
 _JUNK_NAMES = {"", "a", "from mesa", "total", "component", "assessment", "evaluation"}
 
 
-def _safe(fn, empty):
+def _safe(fn, empty, label="block"):
     try:
         return fn()
     except Exception as exc:  # noqa: BLE001
-        print(f"overview: {getattr(fn, '__name__', 'block')} failed: {exc}",
-              file=sys.stderr)
+        print(f"overview: {label} failed: {exc}", file=sys.stderr)
         return empty
 
 
@@ -41,12 +41,89 @@ def _q(s: str) -> str:
 def _name_match(a: str, b: str) -> bool:
     """True when ``a`` and ``b`` reference the same component — one is a
     word-boundary-delimited substring of the other. Avoids "Pitch 1" matching
-    "Pitch 10"."""
+    "Pitch 10", and matches identical strings that end in ``)``."""
     a, b = (a or "").strip(), (b or "").strip()
     if not a or not b:
         return False
-    return bool(re.search(rf"\b{re.escape(a)}\b", b, re.I)
-                or re.search(rf"\b{re.escape(b)}\b", a, re.I))
+    return bool(re.search(rf"(?<!\w){re.escape(a)}(?!\w)", b, re.I)
+                or re.search(rf"(?<!\w){re.escape(b)}(?!\w)", a, re.I))
+
+
+# Keywords that let a grade *category* ("Weekly Workbooks") match a submitted
+# *instance* ("Session 3 Nykaa Workbook") that shares one of them.
+_COMPONENT_KEYWORDS = {
+    "workbook", "assignment", "case", "quiz", "reflection", "pitch",
+    "presentation", "viva", "submission", "project", "essay", "report",
+}
+
+
+def _component_matches(component_name: str, submission_title: str) -> bool:
+    if _name_match(component_name, submission_title):
+        return True
+    # Keyword overlap is for numberless *categories* ("Weekly Workbooks") vs
+    # their instances. A numbered component ("Pitch 1") matches by name only, so
+    # "Pitch 1" never swallows a submitted "Pitch 10".
+    if re.search(r"\d", component_name or ""):
+        return False
+    cn, st = component_name.lower(), submission_title.lower()
+    return any(k in cn and k in st for k in _COMPONENT_KEYWORDS)
+
+
+def _assignment_backed(component_name: str) -> bool:
+    """A numberless component whose name carries an assignment keyword is a
+    deliverable-backed *category*, so a missing submission is a real ``False``
+    (not the ``None`` of a participation / attendance row, nor of a numbered
+    single deliverable that may not be released yet)."""
+    cn = (component_name or "").lower()
+    if re.search(r"\d", cn):
+        return False
+    return any(k in cn for k in _COMPONENT_KEYWORDS)
+
+
+_TAG_RE = re.compile(r"<[^>]+>")
+_BLOCK_RE = re.compile(r"</(p|li|ol|ul|div|h[1-6]|tr)>|<br\s*/?>", re.I)
+
+
+def _html_to_text(s: str, cap: int = 2000) -> str:
+    if not s:
+        return ""
+    s = _BLOCK_RE.sub("\n", s)
+    s = _TAG_RE.sub("", s)
+    s = _htmllib.unescape(s)
+    s = re.sub(r"[ \t]+\n", "\n", s)
+    s = re.sub(r"\n{3,}", "\n\n", s).strip()
+    return s[:cap]
+
+
+def _session_ref(title: str):
+    m = daily_brief._SESSION_RE.search(title or "")
+    return int(m.group(1)) if m else None
+
+
+def _assignment_detail(a: dict, cslug: str | None) -> dict:
+    """The extra per-assignment fields the focused-assignment page needs. Pure —
+    ``brain.query`` is the only outside call and it is wrapped in ``_safe``."""
+    sref = _session_ref(a.get("title", ""))
+    cutoff = daily_brief._parse(a.get("cutoffDate"))
+    mats = [{"title": m.get("title", ""), "kind": m.get("kind", "file")}
+            for m in (a.get("materials") or []) if isinstance(m, dict)]
+    prereads: list[str] = []
+    if cslug and sref is not None:
+        prereads = _safe(
+            lambda: [r["path"] for r in brain.query(
+                cslug, type="material", session_min=sref, session_max=sref)
+                if r.get("path")],
+            [], label="asg-prereads")
+    return {
+        "instructionsText": _html_to_text(a.get("instructions") or ""),
+        "isGroup": bool(a.get("isGroup")),
+        "cutoffAt": (cutoff.astimezone().isoformat()
+                     if (cutoff and a.get("cutoffDate") != a.get("dueAt")) else None),
+        "allowLate": bool(a.get("allowLate")),
+        "materials": mats,
+        "sessionRef": sref,
+        "prereadPaths": prereads,
+    }
 
 
 def _courses() -> list[dict]:
@@ -82,13 +159,14 @@ def parse_assessment(outline_body: str) -> list[dict]:
         return []
     lines = outline_body.splitlines()
     start = next((i for i, l in enumerate(lines) if _ASSESS_HDR.search(l)), None)
-    if start is not None:
-        block: list[str] = []
-        for l in lines[start + 1:]:
-            if _SECTION_RE.match(l) and not _ASSESS_HDR.search(l):
-                break
-            block.append(l)
-        lines = block
+    if start is None:
+        return []  # no "Assessment and Evaluation" header — don't scan the whole outline
+    block: list[str] = []
+    for l in lines[start + 1:]:
+        if _SECTION_RE.match(l) and not _ASSESS_HDR.search(l):
+            break
+        block.append(l)
+    lines = block
 
     out: list[dict] = []
     seen: set[str] = set()
@@ -296,6 +374,7 @@ def _att_stale() -> bool:
 def build_overview(now: datetime | None = None) -> dict:
     now = now or datetime.now(timezone.utc)
     today = daily_brief._local_date(now)
+    today_local = now.astimezone().date()
     courses = _courses()
     slugs = {c["slug"]: c["name"] for c in courses}
 
@@ -303,45 +382,57 @@ def build_overview(now: datetime | None = None) -> dict:
     scrape_age = (round((time.time() - ev_path.stat().st_mtime) / 3600, 1)
                   if ev_path.exists() else 999.0)
 
-    db = _safe(lambda: daily_brief.build_daily_brief(now=now, within_hours=48), {})
-    week = _safe(lambda: daily_brief.build_daily_brief(now=now, within_hours=168), {})
+    db = _safe(lambda: daily_brief.build_daily_brief(now=now, within_hours=48), {},
+               label="daily-brief")
+    week = _safe(lambda: daily_brief.build_daily_brief(now=now, within_hours=168), {},
+                 label="week-brief")
 
     # --- assessment weights per course ---
     weights: dict[str, list[dict]] = {}
     for s in slugs:
-        weights[s] = _safe(lambda s=s: parse_assessment(_outline_body(s)), [])
+        weights[s] = _safe(lambda s=s: parse_assessment(_outline_body(s)), [],
+                           label="assessment")
 
     def _weight_for(course_slug, title: str):
         for comp in weights.get(course_slug, []):
-            if _name_match(comp["name"], title):
+            if _component_matches(comp["name"], title):
                 return comp["weightPct"]
         return None
 
-    # --- assignments + risk ---
+    # --- assignments + risk (+ per-assignment detail, keyed by id for reuse) ---
     assignments = []
+    detail_by_id: dict = {}
     for a, course_label, is_club in _safe(
-            lambda: list(daily_brief._iter_assignment_files()), []):
+            lambda: list(daily_brief._iter_assignment_files()), [], label="assignments"):
         if not isinstance(a, dict):
             continue
+        cslug = next((s for s, n in slugs.items() if n == course_label), None)
+        detail = _assignment_detail(a, cslug)
+        if a.get("id") is not None:
+            detail_by_id[a["id"]] = detail
         status = ("submitted" if a.get("mySubmissionStatus") == "submitted"
                   else "draft" if a.get("status") == "draft" else "not-started")
         if status == "submitted":
             continue
-        cslug = next((s for s, n in slugs.items() if n == course_label), None)
         w = _weight_for(cslug, a.get("title", "")) if cslug else None
         due = daily_brief._parse(a.get("dueAt"))
         hours = round((due - now).total_seconds() / 3600, 1) if due else None
         urgency = 1.0 if hours is None else max(0.05, min(1.0, 1.0 - hours / (14 * 24)))
-        base = (w or 5) / 30.0
+        base = (w or 5) / 50.0
         risk = round(min(1.0, base * urgency * (1.0 if status == "not-started" else 0.6)), 3)
-        assignments.append({
+        # An overdue / imminent unstarted item must never render green.
+        if status == "not-started" and hours is not None and hours <= 24:
+            risk = max(risk, 0.5)
+        row = {
             "id": a.get("id"), "title": a.get("title") or a.get("id"),
             "course": course_label, "courseSlug": cslug, "weightPct": w,
             "dueAt": due.astimezone().isoformat() if due else None,
             "hoursAway": hours, "status": status, "isClub": is_club,
             "submissionType": a.get("submissionType", "n/a"), "risk": risk,
             "helpCommand": f'/mesa:ares-brain-assignment-help "{_q(course_label)}" "{_q(a.get("title") or "")}"',
-        })
+        }
+        row.update(detail)
+        assignments.append(row)
     assignments.sort(key=lambda x: -x["risk"])
 
     # --- grade picture ---
@@ -356,7 +447,13 @@ def build_overview(now: datetime | None = None) -> dict:
                 if isinstance(raw, list) else set())
         rows, ahead = [], 0
         for c in comps:
-            done = any(_name_match(c["name"], t) for t in subs) or None
+            matched = any(_component_matches(c["name"], t) for t in subs)
+            if matched:
+                done = True
+            elif _assignment_backed(c["name"]):
+                done = False
+            else:
+                done = None
             if done is not True:
                 ahead += c["weightPct"]
             rows.append({"name": c["name"], "weightPct": c["weightPct"], "done": done})
@@ -407,19 +504,29 @@ def build_overview(now: datetime | None = None) -> dict:
         cslug = e.get("courseSlug")
         exam_courses = [cslug] if cslug else ["all"]
         tp_slugs = list(slugs) if exam_courses == ["all"] else exam_courses
+        if cslug:
+            cname = slugs.get(cslug, cslug)
+            tp_cmds = [{"course": cname,
+                        "command": f'/mesa:ares-brain-testprep "{_q(cname)}"'}]
+        else:
+            tp_cmds = [{"course": n,
+                        "command": f'/mesa:ares-brain-testprep "{_q(n)}"'}
+                       for n in slugs.values()]
+        tp_cmd = tp_cmds[0]["command"] if tp_cmds else '/mesa:ares-brain-testprep'
         exam_rows.append({
             "name": e.get("title"), "date": daily_brief._local_date(s_dt),
-            "inDays": (s_dt.date() - now.date()).days,
+            "inDays": (s_dt.astimezone().date() - today_local).days,
             "courses": exam_courses,
             "courseNames": [slugs.get(c, c) for c in exam_courses],
             "coverageSessions": None,
             "brainReady": (all(b["state"] == "ready" for b in brain_rows) if not cslug
                            else next((b["state"] == "ready" for b in brain_rows
                                       if b["courseSlug"] == cslug), False)),
-            "testprepExists": any(
+            "testprepExists": bool(tp_slugs) and all(
                 bool(list((course_dir(x) / "study").glob("testprep-*.md")))
-                for x in tp_slugs if (course_dir(x) / "study").exists()),
-            "testprepCommand": '/mesa:ares-brain-testprep "<course>"',
+                for x in tp_slugs),
+            "testprepCommand": tp_cmd,
+            "testprepCommands": tp_cmds,
         })
 
     # --- attendance runway ---
@@ -432,10 +539,11 @@ def build_overview(now: datetime | None = None) -> dict:
     end = end or last_sess
     att_raw = daily_brief._read_json(global_file("_attendance.json"))
     att_list = att_raw.get("raw", []) if isinstance(att_raw, dict) else []
+    att_list = att_list if isinstance(att_list, list) else []  # tolerate {"raw": null} / {"raw": 5}
     by_cid = {c["id"]: c["slug"] for c in courses if c.get("id")}
     attendance = []
     tot_att = tot_conf = 0
-    for a in att_list if isinstance(att_list, list) else []:
+    for a in att_list:
         try:
             if not isinstance(a, dict):
                 continue
@@ -492,7 +600,7 @@ def build_overview(now: datetime | None = None) -> dict:
         if e.get("eventType") != "session":
             continue
         d = daily_brief._parse(e.get("startAt"))
-        if d and 0 <= (d.date() - now.date()).days <= 7:
+        if d and 0 <= (d.astimezone().date() - today_local).days <= 7:
             this_week.append({
                 "when": daily_brief._local_date(d), "kind": "class",
                 "title": e.get("title") or "Class", "course": e.get("courseName"),
@@ -501,7 +609,20 @@ def build_overview(now: datetime | None = None) -> dict:
             })
     this_week.sort(key=lambda x: (x["when"] or "9999", x["kind"]))
 
-    missing_books = _safe(_scan_missing_books, [])
+    missing_books = _safe(_scan_missing_books, [], label="missing-books")
+
+    # --- today: enrich the due list, name-resolve the changed feed ---
+    due_today = db.get("assignmentsDue", []) if isinstance(db, dict) else []
+    if isinstance(due_today, list):
+        for d in due_today:
+            if isinstance(d, dict) and d.get("id") in detail_by_id:
+                d.update(detail_by_id[d["id"]])
+
+    changed_raw = db.get("changed", {}) if isinstance(db, dict) else {}
+    changed = [{"courseName": slugs.get(k, k), "courseSlug": k,
+                "counts": v if isinstance(v, dict) else {}}
+               for k, v in (changed_raw.items()
+                            if isinstance(changed_raw, dict) else [])]
 
     return {
         "generatedAt": now.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -510,8 +631,8 @@ def build_overview(now: datetime | None = None) -> dict:
         "kpis": kpis,
         "today": {
             "classes": db.get("classesToday", []) if isinstance(db, dict) else [],
-            "dueTodayOrTomorrow": db.get("assignmentsDue", []) if isinstance(db, dict) else [],
-            "changed": db.get("changed", {}) if isinstance(db, dict) else {},
+            "dueTodayOrTomorrow": due_today if isinstance(due_today, list) else [],
+            "changed": changed,
         },
         "thisWeek": this_week,
         "assignments": assignments,

@@ -18,7 +18,14 @@ import {
   type JobKind,
 } from "./lib/jobs.js";
 
-const KINDS: JobKind[] = ["sync", "ingest", "transcribe", "transcribe-url", "transcribe-inbox"];
+const KINDS: JobKind[] = [
+  "sync",
+  "calendar-sync",
+  "ingest",
+  "transcribe",
+  "transcribe-url",
+  "transcribe-inbox",
+];
 const WEB_DIST = join(repoRoot(), "dashboard", "web", "dist");
 const MIME: Record<string, string> = {
   ".html": "text/html",
@@ -93,6 +100,8 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     return json(res, 200, { job: currentJob(), lastRuns: lastRunMap() });
 
   if (match("GET", "/api/overview", method, url)) {
+    const bad = guardOrigin(req);
+    if (bad) return json(res, 403, { error: bad });
     const r = await runPythonJSON(["overview", "--json"]);
     return r.ok ? json(res, 200, r.data) : json(res, 503, { error: r.error });
   }

@@ -85,6 +85,20 @@ describe("routes", () => {
     expect(JSON.parse(res.body)).toEqual({ error: "course required" });
   });
 
+  it("rejects GET /api/overview with a foreign Host", async () => {
+    const res = await raw("/api/overview", { headers: { host: "evil.example" } });
+    expect(res.status).toBe(403);
+  });
+
+  it("POST /api/jobs {kind:calendar-sync} -> 202", async () => {
+    const res = await raw("/api/jobs", {
+      method: "POST",
+      headers: { "content-type": "application/json", host },
+      body: JSON.stringify({ kind: "calendar-sync" }),
+    });
+    expect(res.status).toBe(202);
+  });
+
   it("unknown path -> 404 (api) ", async () => {
     expect((await fetch(`${base}/api/nope`)).status).toBe(404);
   });

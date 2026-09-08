@@ -74,6 +74,7 @@ Old components deleted in T2 (superseded): `KpiStrip, TodayCard, WeekCard, Assig
 ## Task 1: `overview.py` — data fixes + assignment enrichment + 2 server additions
 
 **Files:**
+
 - Modify: `scraper/overview.py`
 - Modify: `scraper/tests/test_overview.py`
 - Modify: `dashboard/server/src/lib/jobs.ts`, `dashboard/server/src/index.ts`
@@ -81,6 +82,7 @@ Old components deleted in T2 (superseded): `KpiStrip, TodayCard, WeekCard, Assig
 - Create: `dashboard/server/test/python.test.ts`
 
 **Interfaces produced (consumed by T2–T5 via `api.ts` `Overview`):**
+
 - `assignments[]` and `today.dueTodayOrTomorrow[]` rows each add:
   `instructionsText: string`, `isGroup: boolean`, `cutoffAt: string | null`,
   `allowLate: boolean`, `materials: {title: string, kind: string}[]`,
@@ -95,6 +97,7 @@ Old components deleted in T2 (superseded): `KpiStrip, TodayCard, WeekCard, Assig
 - [ ] **Step 1: failing test — exam countdown uses local dates**
 
 Add to `test_overview.py`:
+
 ```python
 def test_exam_countdown_is_local_not_utc(monkeypatch):
     monkeypatch.setenv("TZ", "Asia/Kolkata")
@@ -110,6 +113,7 @@ def test_exam_countdown_is_local_not_utc(monkeypatch):
         monkeypatch.delenv("TZ", raising=False)
         time.tzset()
 ```
+
 (If the fixture `_events.json` has no 2026-09-19 exam, add one, or assert on whichever exam date the fixture carries with the corrected arithmetic.)
 
 - [ ] **Step 2: run it — FAIL** (`inDays` == 11)
@@ -119,6 +123,7 @@ def test_exam_countdown_is_local_not_utc(monkeypatch):
 - [ ] **Step 3: fix the date arithmetic**
 
 In `build_overview`, compute once near the top: `today_local = now.astimezone().date()`.
+
 - `_exams` / the exam-row loop: `"inDays": (s_dt.astimezone().date() - today_local).days`.
 - the this-week filter (line ~484): `if 0 <= e["inDays"] <= 7` is fine once `inDays` is local; the class/assignment `when` filter (line ~497) must also compare `d.astimezone().date()` to `today_local`, and drop anything `< today_local`.
 - `daily_brief._local_date` already uses `.astimezone()` — leave it.
@@ -139,9 +144,11 @@ def test_attendance_raw_null_tolerated(tmp_path, monkeypatch):
 - [ ] **Step 6: run — FAIL** (`TypeError: 'NoneType' object is not iterable`).
 
 - [ ] **Step 7: fix** — in `build_overview`, right after `att_list` is read:
+
 ```python
 att_list = att_list if isinstance(att_list, list) else []
 ```
+
 and delete the inline `if isinstance(att_list, list) else []` on the row loop. The `cp_vals` comprehension then iterates the guarded list.
 
 - [ ] **Step 8: run — PASS**, full pytest green.
@@ -159,6 +166,7 @@ def test_grade_done_true_for_category_with_submitted_instance(...):
     # and a component with no matching submission is explicitly False, not None
     assert any(c["done"] is False for c in gp["components"])
 ```
+
 (Extend the fixture corpus: a course with an assessment table containing a
 category component + a submitted instance assignment whose title shares a
 keyword.)
@@ -168,6 +176,7 @@ keyword.)
 - [ ] **Step 11: fix the matching + `done` tri-state**
 
 - Add a keyword set near `_name_match`:
+
 ```python
 _COMPONENT_KEYWORDS = {
     "workbook", "assignment", "case", "quiz", "reflection", "pitch",
@@ -179,6 +188,7 @@ def _component_matches(component_name: str, submission_title: str) -> bool:
     cn, st = component_name.lower(), submission_title.lower()
     return any(k in cn and k in st for k in _COMPONENT_KEYWORDS)
 ```
+
 - grade-picture loop: `matched = any(_component_matches(c["name"], t) for t in subs)`;
   `done = True if matched else (False if <component looks assignment-backed> else None)`.
   "assignment-backed" heuristic: the component name contains any `_COMPONENT_KEYWORDS`
@@ -189,8 +199,8 @@ def _component_matches(component_name: str, submission_title: str) -> bool:
   `(?<!\w){re.escape(a)}(?!\w)` both directions.
 
 - [ ] **Step 12: run — PASS**; check `test_weight_match_is_word_bounded` and
-`test_parse_assessment_keeps_parenthetical_qualifier` still pass (adjust the
-latter's downstream assertion if it now matches).
+      `test_parse_assessment_keeps_parenthetical_qualifier` still pass (adjust the
+      latter's downstream assertion if it now matches).
 
 - [ ] **Step 13: risk divisor + never-green-when-overdue**
 
@@ -198,6 +208,7 @@ latter's downstream assertion if it now matches).
 `if status == "not-started" and hours is not None and hours <= 24: risk = max(risk, 0.5)`
 so an overdue/imminent item can't render green. Update any test asserting an exact
 risk number. Add:
+
 ```python
 def test_overdue_assignment_risk_not_green():
     # via build_overview with a fixture assignment 100h overdue, weightPct None
@@ -208,7 +219,8 @@ def test_overdue_assignment_risk_not_green():
 
 - [ ] **Step 14: `testprepCommand` interpolation**
 
-Exam-row build: 
+Exam-row build:
+
 ```python
 if cslug:
     tp_cmd = f'/mesa:ares-brain-testprep "{_q(slugs.get(cslug, cslug))}"'
@@ -220,6 +232,7 @@ else:
 row["testprepCommand"] = tp_cmd
 row["testprepCommands"] = tp_cmds
 ```
+
 Test: a course-scoped exam → `testprepCommand` has the real course name, no `<course>`.
 
 - [ ] **Step 15: `testprepExists` `all()` for program-wide + `parse_assessment` header-required + `_safe` label**
@@ -280,9 +293,11 @@ def _session_ref(title: str):
     m = daily_brief._SESSION_RE.search(title or "")
     return int(m.group(1)) if m else None
 ```
+
 In the assignment loop (and the `today.dueTodayOrTomorrow` producer — that lives in
 `daily_brief`; add the same fields there OR post-process in `overview` by joining on
 `id`), add:
+
 ```python
 sref = _session_ref(a.get("title", ""))
 cutoff = daily_brief._parse(a.get("cutoffDate"))
@@ -303,35 +318,42 @@ row.update({
     "prereadPaths": prereads,
 })
 ```
+
 `brain.query` is in the import allowlist. Keep it inside `_safe`.
 
 - [ ] **Step 20: `today.changed` → name-resolved list**
 
 Where `today.changed` is set (currently `db.get("changed", {})`), transform:
+
 ```python
 changed_raw = db.get("changed", {}) if isinstance(db, dict) else {}
 changed = [{"courseName": slugs.get(k, k), "courseSlug": k,
             "counts": v if isinstance(v, dict) else {}}
            for k, v in (changed_raw.items() if isinstance(changed_raw, dict) else [])]
 ```
+
 Test: `ov["today"]["changed"]` is a list; an entry has `courseName` != `courseSlug`
 for a known course.
 
 - [ ] **Step 21: run full pytest — green.** Update `test_build_overview_shape` /
-any key-set assertion for the new fields + the `changed` shape.
+      any key-set assertion for the new fields + the `changed` shape.
 
 ### Part C — server: `calendar-sync` job + Host guard on the overview GET
 
 - [ ] **Step 22: failing test — `calendar-sync` argv**
 
 `dashboard/server/test/jobs.test.ts`:
+
 ```ts
 it("calendar-sync job runs `calendar-sync`", () => {
-  const spy = vi.spyOn(py, "runPython").mockReturnValue({ done: Promise.resolve({ code: 0 }), kill: () => {} });
+  const spy = vi
+    .spyOn(py, "runPython")
+    .mockReturnValue({ done: Promise.resolve({ code: 0 }), kill: () => {} });
   startJob({ kind: "calendar-sync" });
   expect(spy.mock.calls[0][0]).toEqual(["calendar-sync"]);
 });
 ```
+
 (match the file's existing spy pattern.)
 
 - [ ] **Step 23: run — FAIL** (type error: `"calendar-sync"` not in `JobKind`).
@@ -344,6 +366,7 @@ it("calendar-sync job runs `calendar-sync`", () => {
 - [ ] **Step 25: failing test — `GET /api/overview` Host guard**
 
 `routes.test.ts`:
+
 ```ts
 it("rejects GET /api/overview with a foreign Host", async () => {
   const res = await fetch(`${base}/api/overview`, { headers: { Host: "evil.example" } });
@@ -354,6 +377,7 @@ it("rejects GET /api/overview with a foreign Host", async () => {
 - [ ] **Step 26: run — FAIL** (200 or 503, not 403).
 
 - [ ] **Step 27: implement** — in the `GET /api/overview` handler, call `guardOrigin(req)` first:
+
 ```ts
 if (match("GET", "/api/overview", method, url)) {
   const bad = guardOrigin(req);
@@ -362,6 +386,7 @@ if (match("GET", "/api/overview", method, url)) {
   return r.ok ? json(res, 200, r.data) : json(res, 503, { error: r.error });
 }
 ```
+
 Confirm the existing overview.test.ts still passes (same-origin fetch in tests sets a localhost Host).
 
 - [ ] **Step 28: `runPythonJSON` unit test** — `dashboard/server/test/python.test.ts` (new):
@@ -370,6 +395,7 @@ Confirm the existing overview.test.ts still passes (same-origin fetch in tests s
 import { describe, it, expect, vi } from "vitest";
 // mock node:child_process spawn to return a fake child emitting canned stdout/close
 ```
+
 Cases: (a) stdout `"noise\n{\"ok\":1}\n"` + exit 0 → `{ok:true, data:{ok:1}}`;
 (b) exit 1 + stderr → `{ok:false, error: <stderr tail>}`;
 (c) no `{`-line + exit 0 → `{ok:false}`;
@@ -392,6 +418,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ## Task 2: Web shell — theme matrix, summary bar, tab router
 
 **Files:**
+
 - Modify: `dashboard/web/src/index.css`, `src/main.tsx`, `src/api.ts`, `src/App.tsx`
 - Create: `src/lib/theme.ts`, `src/lib/useHashRoute.ts`, `src/lib/format.ts`,
   `src/components/{Header,Settings,Tabs,SectionHeader,MetaRow,Rule,StatePill}.tsx`
@@ -400,6 +427,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 - Modify/replace: `test/*` for the deleted set; add `test/{theme,useHashRoute,Header,Settings,Tabs}.test.*`
 
 **Interfaces produced (consumed by T3–T5):**
+
 - `useHashRoute(): { tab: string; params: string[]; go(hash: string): void }` — parses `#tab/seg/seg`.
 - `applyTheme(): void` and `getThemePrefs()` / `setThemePrefs({theme, appearance})` from `lib/theme.ts`.
 - `<SectionHeader>{title}</SectionHeader>` — uppercase 11px + `border-b-[3px] border-edge` + spacing per spec §3.
@@ -428,25 +456,33 @@ Fix latent nullability the review flagged: `OverviewAssignment.id: string | null
 ```ts
 export type ThemeName = "meadow" | "violet";
 export type Appearance = "system" | "light" | "dark";
-const TKEY = "ares.theme", AKEY = "ares.appearance";
+const TKEY = "ares.theme",
+  AKEY = "ares.appearance";
 export function getThemePrefs(): { theme: ThemeName; appearance: Appearance } {
-  let theme: ThemeName = "meadow", appearance: Appearance = "system";
+  let theme: ThemeName = "meadow",
+    appearance: Appearance = "system";
   try {
-    const t = localStorage.getItem(TKEY); if (t === "meadow" || t === "violet") theme = t;
+    const t = localStorage.getItem(TKEY);
+    if (t === "meadow" || t === "violet") theme = t;
     const a = localStorage.getItem(AKEY);
     if (a === "system" || a === "light" || a === "dark") appearance = a;
-  } catch { /* private mode */ }
+  } catch {
+    /* private mode */
+  }
   return { theme, appearance };
 }
 export function setThemePrefs(p: { theme: ThemeName; appearance: Appearance }) {
-  try { localStorage.setItem(TKEY, p.theme); localStorage.setItem(AKEY, p.appearance); } catch {}
+  try {
+    localStorage.setItem(TKEY, p.theme);
+    localStorage.setItem(AKEY, p.appearance);
+  } catch {}
   applyTheme();
 }
 export function applyTheme() {
   const { theme, appearance } = getThemePrefs();
   const r = document.documentElement;
-  r.dataset.theme = theme;                 // "meadow" | "violet"
-  r.dataset.appearance = appearance;       // "system" | "light" | "dark"
+  r.dataset.theme = theme; // "meadow" | "violet"
+  r.dataset.appearance = appearance; // "system" | "light" | "dark"
 }
 ```
 
@@ -482,6 +518,7 @@ export function applyTheme() {
   :root:not([data-appearance="light"]):not([data-theme="violet"]) { }
 }
 ```
+
 > The `@media` + attribute combination cannot be written as a single selector list.
 > Implement it as: a base rule for each (theme, appearance) explicit combo, plus
 > one `@media (prefers-color-scheme: dark)` block containing the `:root:not([data-appearance="light"])` variants for both themes. Four dark value-sets total
@@ -490,9 +527,17 @@ export function applyTheme() {
 > @media copy". Verify in T6 by toggling appearance and prefers-color-scheme.
 
 ```css
-body { margin: 0; background: var(--color-paper); color: var(--color-ink);
-       color-scheme: light dark; font: 14px/1.5 system-ui, sans-serif; }
+body {
+  margin: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  color-scheme: light dark;
+  font:
+    14px/1.5 system-ui,
+    sans-serif;
+}
 ```
+
 Muted text in components: `text-[color:var(--color-ink-muted)]`.
 
 - [ ] **Step 4: `main.tsx`** — `import { applyTheme } from "./lib/theme"; applyTheme();` before `createRoot(...).render(<App/>)`. Also add a tiny inline script in `index.html` `<head>` that reads the two localStorage keys and sets `documentElement.dataset` to avoid a flash (guarded try/catch).
@@ -501,17 +546,26 @@ Muted text in components: `text-[color:var(--color-ink-muted)]`.
 
 ```ts
 import { useSyncExternalStore, useCallback } from "react";
-function read() { return window.location.hash.replace(/^#/, "") || "today"; }
+function read() {
+  return window.location.hash.replace(/^#/, "") || "today";
+}
 export function useHashRoute() {
   const hash = useSyncExternalStore(
-    (cb) => { window.addEventListener("hashchange", cb); return () => window.removeEventListener("hashchange", cb); },
-    read, () => "today",
+    (cb) => {
+      window.addEventListener("hashchange", cb);
+      return () => window.removeEventListener("hashchange", cb);
+    },
+    read,
+    () => "today",
   );
   const [tab, ...params] = hash.split("/");
-  const go = useCallback((h: string) => { window.location.hash = h; }, []);
+  const go = useCallback((h: string) => {
+    window.location.hash = h;
+  }, []);
   return { tab: tab || "today", params, go };
 }
 ```
+
 Test: set `window.location.hash`, assert `tab`/`params`; `go("assignments/x/1")` updates it.
 
 - [ ] **Step 6: `lib/format.ts`** — `relTime(iso)` ("in 24h", "3d ago"), `fmtDate(isoOrYmd)` ("Wed 9 Sep" — parse `"<ymd>T00:00"` to dodge the UTC trap), `fmtTime(iso)` ("09:30"), `countdown(iso)` ("2d 4h", "overdue"). Port `fmtTime`/`fmtDay` logic from the current `TodayCard`/`WeekCard` before they're deleted. Unit-test each with a fixed input.
@@ -528,21 +582,23 @@ Tests: `Rule` renders a separator; `StatePill` maps state→class; `MetaRow` put
 
 Props `{ ov: Overview; busy: boolean; onResync: () => void; onOpenSettings: () => void }`.
 Sticky `top-0 z-20 border-b-[3px] border-edge bg-paper`, `h-14 px-4 md:px-8 flex items-center gap-4`.
+
 - wordmark tag (`bg-cta border-[3px] border-edge rounded-nb px-2 py-0.5 text-[12px] font-bold`) + `fmtDate(ov.date)` + `ov.term` in a `MetaRow`.
 - chips (`hidden md:flex`): a `<Chip label value tint?>` — `dueThisWeek`, `attendanceNow→attendanceBestCase%`, `nextExamInDays==null? "—" : exam Nd`, `brainReady/courseCount`. Tint `soon` per spec §5.1 thresholds.
 - right (`ml-auto flex items-center gap-3`): `updated {relTime(ov.generatedAt)}` muted; `<Button variant="default" onClick={onResync} disabled={busy}>{busy ? "syncing…" : "⟲ Re-sync"}</Button>`; gear `<Button variant="neutral" size="icon" onClick={onOpenSettings} aria-label="Settings">⚙</Button>`.
 - a `useEffect` binding `keydown` "r" → `onResync()` when `document.activeElement` is not an input/textarea and `!busy`.
-Test: renders chips; chip tint class appears when `nextExamInDays=6`; Re-sync disabled + "syncing…" when `busy`; clicking Re-sync calls `onResync`; "r" key calls it.
+  Test: renders chips; chip tint class appears when `nextExamInDays=6`; Re-sync disabled + "syncing…" when `busy`; clicking Re-sync calls `onResync`; "r" key calls it.
 
 - [ ] **Step 9: `Settings.tsx`** (spec §5.2)
 
 Props `{ open: boolean; onClose: () => void }`. A fixed overlay panel (`bg-card border-[3px] border-edge shadow-[var(--nb-shadow)] rounded-nb`), right sheet on mobile.
+
 - Theme: two swatch buttons `meadow` / `violet`, each shows 4 mini colour blocks (hard-code the hex from spec §4.1/4.2 light for the preview). Selected = pressed state.
 - Appearance: segmented `System | Light | Dark`.
 - On change: `setThemePrefs({theme, appearance})` (re-applies live).
 - Read-only list: attendance min 75, chat unlock 15, port 4319 (static text; note "set via env").
 - `Esc` / backdrop click → `onClose`.
-Test: clicking "violet" writes `localStorage["ares.theme"]="violet"` and sets `documentElement.dataset.theme`; segmented "Dark" writes appearance and sets dataset; re-mount reflects stored values.
+  Test: clicking "violet" writes `localStorage["ares.theme"]="violet"` and sets `documentElement.dataset.theme`; segmented "Dark" writes appearance and sets dataset; re-mount reflects stored values.
 
 - [ ] **Step 10: `Tabs.tsx`** (spec §5.3)
 
@@ -565,35 +621,69 @@ export function App() {
   const stop = useRef<(() => void) | undefined>(undefined);
   const { tab, params, go } = useHashRoute();
 
-  const refresh = () => getOverview().then((o) => { setOv(o); setErr(""); }).catch((e) => setErr(String(e)));
-  useEffect(() => { refresh(); api.getState().then((s) => setJob(s.job)); }, []);
-  useEffect(() => { const t = setInterval(() => api.getState().then((s) => setJob(s.job)), 3000); return () => clearInterval(t); }, []);
+  const refresh = () =>
+    getOverview()
+      .then((o) => {
+        setOv(o);
+        setErr("");
+      })
+      .catch((e) => setErr(String(e)));
+  useEffect(() => {
+    refresh();
+    api.getState().then((s) => setJob(s.job));
+  }, []);
+  useEffect(() => {
+    const t = setInterval(() => api.getState().then((s) => setJob(s.job)), 3000);
+    return () => clearInterval(t);
+  }, []);
   const busy = job?.status === "running";
 
   async function onJob(kind: string, opts: Record<string, string> = {}) {
     try {
       const r = await api.startJob({ kind, ...opts });
-      if (!r.jobId) { setLines((p) => [...p, `! ${r.error}`]); return; }
-      setLines([]); stop.current?.();
-      stop.current = api.streamLog(r.jobId,
+      if (!r.jobId) {
+        setLines((p) => [...p, `! ${r.error}`]);
+        return;
+      }
+      setLines([]);
+      stop.current?.();
+      stop.current = api.streamLog(
+        r.jobId,
         (l) => setLines((p) => [...p, l]),
-        () => { api.getState().then((s) => setJob(s.job)); refresh(); },
-        () => { api.getState().then((s) => setJob(s.job)); });
-    } catch (e) { setLines((p) => [...p, `! ${e}`]); }
+        () => {
+          api.getState().then((s) => setJob(s.job));
+          refresh();
+        },
+        () => {
+          api.getState().then((s) => setJob(s.job));
+        },
+      );
+    } catch (e) {
+      setLines((p) => [...p, `! ${e}`]);
+    }
   }
 
-  if (!ov && err) return <ErrorCard message={err} onRetry={refresh} />;   // full-page, only pre-first-load
+  if (!ov && err) return <ErrorCard message={err} onRetry={refresh} />; // full-page, only pre-first-load
   if (!ov) return <div className="mx-auto max-w-[1400px] p-8">loading…</div>;
 
-  const counts = { assignments: ov.assignments.length, gaps:
-    ov.gaps.pendingTranscripts.length + ov.gaps.missingBooks.length +
-    (ov.gaps.scrapeStale ? 1 : 0) };
+  const counts = {
+    assignments: ov.assignments.length,
+    gaps:
+      ov.gaps.pendingTranscripts.length +
+      ov.gaps.missingBooks.length +
+      (ov.gaps.scrapeStale ? 1 : 0),
+  };
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 pb-8 md:px-8">
-      <Header ov={ov} busy={!!busy} onResync={() => onJob("sync")} onOpenSettings={() => setSettingsOpen(true)} />
+      <Header
+        ov={ov}
+        busy={!!busy}
+        onResync={() => onJob("sync")}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
       <Tabs active={tab} counts={counts} onSelect={(t) => go(t)} />
-      {err && ov && <StaleBanner onRetry={refresh} />}   {/* non-blocking */}
+      {err && ov && <StaleBanner onRetry={refresh} />} {/* non-blocking */}
       <main className="py-6">
         {tab === "today" && <TodayTab ov={ov} go={go} />}
         {tab === "assignments" && <AssignmentsTab ov={ov} params={params} go={go} />}
@@ -608,6 +698,7 @@ export function App() {
   );
 }
 ```
+
 T2 ships placeholder tab components (`export function TodayTab() { return <SectionHeader>Today</SectionHeader>; }` etc.) so the app compiles; T3–T5 replace them. `ErrorCard` / `StaleBanner` are small local components (neubrutalist `bg-bad`/`bg-soon` panels).
 
 - [ ] **Step 13: delete the superseded components + tests**; fix any dangling import.
@@ -635,7 +726,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 
 - [ ] **Step 3: `DueNow.tsx`** — `<SectionHeader>Due now</SectionHeader>`, `divide-y divide-[color:var(--color-rule)]`. Row: title, course muted, right side `relTime(dueAt)` (or `<StatePill state="soon">soon</StatePill>` when `hoursAway != null && hoursAway < 6`) + an `Open →` button (`accent`) that, if `assignments.find(a => a.id === item.id)`, calls `go("assignments/" + slug + "/" + id)`, else `go("assignments")`. `submitted` rows: `line-through opacity-60` + an `ok` check, sorted last. Test: submitted sorts last + struck; `Open →` on a matched item navigates to the focused hash; `< 6h` shows the soon pill.
 
-- [ ] **Step 4: `ChangedFeed.tsx`** — `<SectionHeader>Since last scrape</SectionHeader>` + muted sub `updated {relTime? or "N h ago"}`. One row per `changed[]` entry: `courseName` then the `counts` as small `StatePill state="neutral"` chips (`4 announcements`, `1 material`) — never `·` text. Empty → render nothing (parent handles the all-empty case). Test: a row shows the course *name* not slug; counts render as chips.
+- [ ] **Step 4: `ChangedFeed.tsx`** — `<SectionHeader>Since last scrape</SectionHeader>` + muted sub `updated {relTime? or "N h ago"}`. One row per `changed[]` entry: `courseName` then the `counts` as small `StatePill state="neutral"` chips (`4 announcements`, `1 material`) — never `·` text. Empty → render nothing (parent handles the all-empty case). Test: a row shows the course _name_ not slug; counts render as chips.
 
 - [ ] **Step 5:** build + check + test + `npm run check`; prettier; commit `feat(dashboard): Today tab`.
 
@@ -648,7 +739,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 - [ ] **Step 1: `AssignmentsTab.tsx` routing** — if `params.length >= 2` render `<AssignmentPage ov={ov} slug={params[0]} id={params[1]} go={go}/>`, else the list view.
 
 - [ ] **Step 2: list view** — header `<MetaRow items={["{n} open", "{m} due this week", "worst: {title} ({weight})"]} />` (compute `m` = assignments with `hoursAway != null && hoursAway <= 168`; worst = `assignments[0]`). List `divide-y divide-[color:var(--color-rule)]`, each row a button (`go("assignments/{slug}/{id}")` when `id`): status square (`border-[3px] border-edge` + fill `bad`/`soon`/`ok` by status), title `font-medium`, course muted, right `<MetaRow items={[weight ?? "ungraded", dueLabel, "Open →"]} />` where `dueLabel` = `countdown(dueAt)` in `bad` text when overdue/`<48h`. Ungraded/club rows `opacity-80`. Below: `<div className="mt-6 border-t border-[color:var(--color-rule)] pt-6"><GradePicture rows={ov.gradePicture}/></div>`.
-Test: rows in `risk` order; `weightPct:null` → "ungraded"; clicking a row sets the focused hash; overdue due-label has the `bad` class.
+      Test: rows in `risk` order; `weightPct:null` → "ungraded"; clicking a row sets the focused hash; overdue due-label has the `bad` class.
 
 - [ ] **Step 3: `GradePicture.tsx`** — `<SectionHeader>Grade picture</SectionHeader>`, per course: course name, a bar (`h-3 border-[3px] border-edge rounded-nb` with a filled `bg-edge` segment `width: {100 - aheadPct}%`), the `summary` line muted beneath. Test: bar fill width matches `100 - aheadPct`; summary text rendered.
 
@@ -661,7 +752,7 @@ Test: rows in `risk` order; `weightPct:null` → "ungraded"; clicking a row sets
   - **Maps to** panel (hide when `sessionRef == null`): `Session {sessionRef}`, `prereadPaths` as `<li>` (plain text paths; no links to files — the server doesn't serve them), a `<CopyButton value={'/mesa:ares-brain-course-brief "' + course + '"'} label="Brief this session"/>`.
   - **Start in Claude** panel: `<CopyButton value={a.helpCommand} label="Start in Claude"/>` (yellow, large) + muted "paste in Claude Code".
   - **Checklist** panel: `<AssignmentChecklist id={id}/>`.
-Test: renders instructions paragraphs; `CopyButton` carries `helpCommand`; missing assignment → not-found; back button navigates.
+    Test: renders instructions paragraphs; `CopyButton` carries `helpCommand`; missing assignment → not-found; back button navigates.
 
 - [ ] **Step 5: `AssignmentChecklist.tsx`** — state `{ text: string; done: boolean }[]` from `localStorage["ares.checklist." + id]` (try/catch, default `[]`); a text input + Enter adds; checkbox toggles; a `×` deletes; every mutation writes back. A `status` segmented control `not started | started | submitted` persisted to `ares.localstatus.<id>` with a muted note "local only — not sent to the LMS". Test (mock `localStorage`): add persists; reload reads back; toggle writes `done:true`; status control persists.
 
@@ -683,7 +774,7 @@ Test: renders instructions paragraphs; `CopyButton` carries `helpCommand`; missi
   - Transcripts: per `pendingTranscripts[]` group — `<MetaRow items={["{count} recordings", courseName]} />` + `<Button onClick={() => onJob("transcribe", { course: courseSlug })} disabled={busy}>Transcribe all</Button>`; a `<details>` lists `items[]` (`title`, `recordedOn`).
   - Missing books: keyed by `title` — `title` — `author`, muted `mentioned in {mentionedIn.map(slug→name).join(", ")}`, a PDF `<input type="file" accept="application/pdf" multiple>` (dashed `border-[3px] border-dashed border-edge rounded-nb p-2`) → `upload(mentionedIn[0], "book", files)` → render `written`/`rejected`. Hint: `drop a PDF here, or put it in courses/{slug}/inbox/books/`.
   - Stale: `scrape is {Math.round(scrapeAgeHours/24)} days old` + `<Button onClick={() => onJob("sync")}>Re-sync</Button>`; `attendanceStale` → a muted note.
-  Test: a Transcribe button per group; click → `onJob("transcribe", {course})`; `scrapeStale:false` hides the stale row; upload input → `upload` called with `(mentionedIn[0], "book", files)`; book messages keyed by title survive a re-render with a reordered list.
+    Test: a Transcribe button per group; click → `onJob("transcribe", {course})`; `scrapeStale:false` hides the stale row; upload input → `upload` called with `(mentionedIn[0], "book", files)`; book messages keyed by title survive a re-render with a reordered list.
 
 - [ ] **Step 5: cleanup** — grep `src` for imports of `ui/skeleton`, `ui/table`, `ui/card`; delete the unused ones and their nonexistent tests; `grep -r "lucide-react" src` → if zero, remove from `package.json` deps and re-run `npm install`.
 
