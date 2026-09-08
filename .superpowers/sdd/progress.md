@@ -65,4 +65,4 @@ Deferred follow-ups: Tabler webfont ~4MB (subset later); dark mode not visually 
 
 ## G — outcome dashboard. Branch g-dashboard off main. Spec .../2026-09-08-outcome-dashboard-design.md, plan .../2026-09-08-outcome-dashboard.md (5 tasks).
 T1 overview.py+CLI  T2 /api/overview + transcribe job kind  T3 web React+neobrutalism.dev migration  T4 the 10 sections  T5 glue+live.
-T1: NOT started.
+T1: complete (4bc18e5 + fixes 9ac1f2c, review Approved w/ follow-ups -> all applied). overview.py data layer + `overview` CLI subcommand. Fix wave: attendance 3-state (state ok|watch|risk, atRisk kept as state!="ok"), per-row guard in attendance loop + defensive int(), _name_match word-boundary weight matching (Pitch 1 != Pitch 10), _SECTION_RE two-pipe format, _INLINE_RE keeps (), nested-breakdown -> parent total, testprepExists scoped to exam's own course. Spec §3+§5 updated. pytest 225, vitest 24.
