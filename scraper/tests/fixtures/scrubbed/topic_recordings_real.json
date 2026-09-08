@@ -1,0 +1,20 @@
+{
+ "data": {
+  "recordings": [
+   {
+    "id": "498e625a-878e-45f7-ba66-271759557654",
+    "topicId": "d0e928ae-2cb1-4460-a23d-9962770b99c9",
+    "title": "Session 1",
+    "videoUrl": "https://www.youtube.com/live/3_FxQk86qLo?si=iUF5ywYyFW2JRQve",
+    "provider": "youtube",
+    "embedUrl": "https://www.youtube-nocookie.com/embed/3_FxQk86qLo?rel=0&modestbranding=1",
+    "thumbnailUrl": null,
+    "durationSec": null,
+    "recordedOn": "2026-08-22",
+    "isPublished": true,
+    "createdAt": "2026-08-22T06:46:30.851Z",
+    "updatedAt": "2026-08-22T06:46:34.373Z"
+   }
+  ]
+ }
+}

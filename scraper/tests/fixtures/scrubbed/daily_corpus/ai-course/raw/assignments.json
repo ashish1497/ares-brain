@@ -1,0 +1,6 @@
+[ { "id":"a-soon", "courseName":"AI Course", "title":"Essay 1",
+    "dueAt":"2026-09-17T04:00:00.000Z", "submissionType":"file", "mySubmissionStatus":null },
+  { "id":"a-far", "courseName":"AI Course", "title":"Essay 2",
+    "dueAt":"2026-09-30T04:00:00.000Z", "submissionType":"file", "mySubmissionStatus":null },
+  { "id":"a-done", "courseName":"AI Course", "title":"Quiz 0",
+    "dueAt":"2026-09-16T04:00:00.000Z", "submissionType":"any", "mySubmissionStatus":"submitted" } ]

@@ -1,0 +1,9 @@
+{
+ "sources": {
+  "api:material:ro": {"hash": "r000", "outPath": "normalized/outline-outline.md"},
+  "api:material:r1": {"hash": "r001", "outPath": "normalized/material-s1-value-creation.md"},
+  "api:material:r2": {"hash": "r002", "outPath": "normalized/material-s2-value-chains.md"}
+ },
+ "ingestedAt": "2026-08-28T00:00:00Z",
+ "formatVersion": 2
+}

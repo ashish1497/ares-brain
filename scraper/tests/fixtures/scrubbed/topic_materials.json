@@ -1,0 +1,24 @@
+{
+ "data": {
+  "materials": [
+   {
+    "id": "e6222b6d-971c-40bd-a03a-fc1b5b151d39",
+    "topicId": "f871d5a0-0713-498f-8de8-0cc54544ab1a",
+    "title": "Business Frameworks",
+    "category": "outline",
+    "kind": "text",
+    "content": "<scrubbed>",
+    "fileName": null,
+    "fileType": null,
+    "sizeBytes": null,
+    "url": null,
+    "allowDownload": false,
+    "isPublished": true,
+    "session": 1,
+    "resourceSessionId": null,
+    "createdAt": "2026-08-09T08:51:58.084Z",
+    "updatedAt": "2026-08-14T14:08:58.048Z"
+   }
+  ]
+ }
+}

@@ -1,0 +1,21 @@
+courses/
+daily/
+.env
+scraper/.venv/
+node_modules/
+mcp/node_modules/
+mcp/dist/
+**/__pycache__/
+.DS_Store
+
+# raw spike fixtures contain PII — scrubbed copies get committed later
+scraper/tests/fixtures/*
+!scraper/tests/fixtures/scrubbed/
+
+# Google OAuth desktop client + cached token — secrets, never commit
+client_secret.json
+token.json
+**/client_secret.json
+**/token.json
+.token.lock
+.pytest_cache/

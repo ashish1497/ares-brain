@@ -1,0 +1,24 @@
+{
+ "data": {
+  "materials": [
+   {
+    "id": "c38a49c0-2d65-4446-bca8-e6bd0c31ef3a",
+    "topicId": "4f2cdf0c-1178-4058-8ece-b599a9093d00",
+    "title": "Session 1 - Wow!Momos + Xoxoday",
+    "category": "resource",
+    "kind": "file",
+    "content": null,
+    "fileName": "C4 _ Business Frameworks_ Session 1.pdf",
+    "fileType": "pdf",
+    "sizeBytes": 990111,
+    "url": null,
+    "allowDownload": true,
+    "isPublished": true,
+    "session": null,
+    "resourceSessionId": "40e36f70-3a0a-412e-9e3a-967e36ffdb72",
+    "createdAt": "2026-08-28T05:54:00.896Z",
+    "updatedAt": "2026-08-28T05:54:00.896Z"
+   }
+  ]
+ }
+}

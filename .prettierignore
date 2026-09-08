@@ -1,0 +1,25 @@
+# build output & deps
+mcp/dist/
+**/node_modules/
+scraper/.venv/
+**/.pytest_cache/
+**/__pycache__/
+
+# local data (gitignored anyway) — never format
+courses/
+daily/
+.superpowers/
+
+# test fixtures are byte-asserted by the test suite — do not reformat
+scraper/tests/fixtures/
+
+# generated / lockfiles
+package-lock.json
+**/*.lock
+
+# secrets
+.env
+client_secret.json
+token.json
+**/client_secret.json
+**/token.json

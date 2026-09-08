@@ -1,0 +1,15 @@
+{
+  "name": "mesa-course-agent-local",
+  "owner": { "name": "Ashish Bajaj" },
+  "metadata": {
+    "description": "Local single-plugin marketplace for the mesa-course-agent plugin."
+  },
+  "plugins": [
+    {
+      "name": "mesa-course-agent",
+      "source": "./",
+      "description": "Turns Mesa LMS coursework into a study agent: scrape + ingest + course brain, calendar sync (deadlines + class schedule), pre-class briefings, assignment help, test-prep, book summaries, and a daily 6 AM digest job.",
+      "version": "0.1.0"
+    }
+  ]
+}

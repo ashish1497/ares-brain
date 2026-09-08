@@ -1,0 +1,11 @@
+{
+  "name": "mesa-course-agent",
+  "version": "0.1.0",
+  "description": "Scrapes Mesa LMS coursework (assignments, materials, recordings, events) onto disk. Foundation for a study agent; briefing/calendar/test-prep come later.",
+  "mcpServers": {
+    "mesa-course-agent": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp/dist/index.js"]
+    }
+  }
+}

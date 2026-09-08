@@ -1,0 +1,17 @@
+[
+  {"id": "a-sub", "title": "Submitted One", "courseName": "Data Course",
+   "dueAt": "2026-09-15T11:30:00.000Z", "cutoffDate": null,
+   "submissionType": "file", "isGroup": false, "mySubmissionStatus": "submitted", "status": "published"},
+  {"id": "a-fut", "title": "Future Workbook", "courseName": "Data Course",
+   "dueAt": "2026-09-20T11:30:00.000Z", "cutoffDate": null,
+   "submissionType": "link", "isGroup": true, "mySubmissionStatus": null, "status": "published"},
+  {"id": "a-cut", "title": "Has Cutoff", "courseName": "Data Course",
+   "dueAt": "2026-09-18T11:30:00.000Z", "cutoffDate": "2026-09-19T17:00:00.000Z",
+   "submissionType": "file", "isGroup": false, "mySubmissionStatus": null, "status": "published"},
+  {"id": "a-past", "title": "Past Due", "courseName": "Data Course",
+   "dueAt": "2026-09-01T11:30:00.000Z", "cutoffDate": null,
+   "submissionType": "file", "isGroup": false, "mySubmissionStatus": null, "status": "published"},
+  {"id": "a-draft", "title": "Draft Assignment", "courseName": "Data Course",
+   "dueAt": "2026-09-25T11:30:00.000Z", "cutoffDate": null,
+   "submissionType": "file", "isGroup": false, "mySubmissionStatus": null, "status": "draft"}
+]

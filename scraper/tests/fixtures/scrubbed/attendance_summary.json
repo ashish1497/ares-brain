@@ -1,0 +1,94 @@
+{
+ "data": [
+  {
+   "courseId": "ac9a4adc-af63-43b3-824d-51a7280e77d6",
+   "courseName": "AI and its Application",
+   "termId": "17a4f404-0fde-4db8-9599-3a20d3199416",
+   "termName": "Term 1",
+   "attended": 3,
+   "total": 4,
+   "percentage": 75,
+   "avgCp": 0
+  },
+  {
+   "courseId": "6845bc3e-7aa5-4277-a52e-6618e2e68a2b",
+   "courseName": "Business Reader",
+   "termId": "17a4f404-0fde-4db8-9599-3a20d3199416",
+   "termName": "Term 1",
+   "attended": 1,
+   "total": 2,
+   "percentage": 50,
+   "avgCp": 0
+  },
+  {
+   "courseId": "4a448342-1f2e-4d49-8b47-93f5f48dbb4f",
+   "courseName": "Career Readiness",
+   "termId": "17a4f404-0fde-4db8-9599-3a20d3199416",
+   "termName": "Term 1",
+   "attended": 1,
+   "total": 1,
+   "percentage": 100,
+   "avgCp": 0
+  },
+  {
+   "courseId": "22afcf18-9929-4ea9-ba57-d97038fcbce4",
+   "courseName": "Crafting Marketing Strategies",
+   "termId": "17a4f404-0fde-4db8-9599-3a20d3199416",
+   "termName": "Term 1",
+   "attended": 1,
+   "total": 4,
+   "percentage": 25,
+   "avgCp": 0
+  },
+  {
+   "courseId": "f2395447-6636-4fec-a2dc-a776310e893f",
+   "courseName": "Data Driven Decision Making",
+   "termId": "17a4f404-0fde-4db8-9599-3a20d3199416",
+   "termName": "Term 1",
+   "attended": 4,
+   "total": 4,
+   "percentage": 100,
+   "avgCp": 0
+  },
+  {
+   "courseId": "5cb000ec-8fc0-4b58-806c-faf348b1e9c8",
+   "courseName": "Entrepreneurship 101",
+   "termId": "17a4f404-0fde-4db8-9599-3a20d3199416",
+   "termName": "Term 1",
+   "attended": 2,
+   "total": 2,
+   "percentage": 100,
+   "avgCp": 0
+  },
+  {
+   "courseId": "dd9636d1-be40-462d-b5b0-6f9ede886dcc",
+   "courseName": "Fundamentals of Finance",
+   "termId": "17a4f404-0fde-4db8-9599-3a20d3199416",
+   "termName": "Term 1",
+   "attended": 5,
+   "total": 5,
+   "percentage": 100,
+   "avgCp": 0
+  },
+  {
+   "courseId": "dd9ee2d4-0f42-4aa7-87b3-70deccd1bafc",
+   "courseName": "Power of Communication",
+   "termId": "17a4f404-0fde-4db8-9599-3a20d3199416",
+   "termName": "Term 1",
+   "attended": 3,
+   "total": 5,
+   "percentage": 60,
+   "avgCp": 0.7
+  },
+  {
+   "courseId": "0fac4693-281a-4980-ae96-77e779f5de03",
+   "courseName": "The Art of Selling",
+   "termId": "17a4f404-0fde-4db8-9599-3a20d3199416",
+   "termName": "Term 1",
+   "attended": 3,
+   "total": 4,
+   "percentage": 75,
+   "avgCp": 0
+  }
+ ]
+}

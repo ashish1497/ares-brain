@@ -1,0 +1,48 @@
+{
+ "data": {
+  "topics": [
+   {
+    "id": "f871d5a0-0713-498f-8de8-0cc54544ab1a",
+    "courseId": "41e90532-d355-4d05-903d-df8dff2ccaa7",
+    "title": "Outlines",
+    "type": "outline",
+    "sequence": 1
+   },
+   {
+    "id": "d0ff98fb-6881-4a76-a84b-1b626cfa9e10",
+    "courseId": "41e90532-d355-4d05-903d-df8dff2ccaa7",
+    "title": "Pre-Reads",
+    "type": "prereads",
+    "sequence": 2
+   },
+   {
+    "id": "265ffa6b-b723-448f-8f43-66904cfa8738",
+    "courseId": "41e90532-d355-4d05-903d-df8dff2ccaa7",
+    "title": "Assignments",
+    "type": "assignments",
+    "sequence": 3
+   },
+   {
+    "id": "4f2cdf0c-1178-4058-8ece-b599a9093d00",
+    "courseId": "41e90532-d355-4d05-903d-df8dff2ccaa7",
+    "title": "Resources",
+    "type": "resources",
+    "sequence": 4
+   },
+   {
+    "id": "d0e928ae-2cb1-4460-a23d-9962770b99c9",
+    "courseId": "41e90532-d355-4d05-903d-df8dff2ccaa7",
+    "title": "Class Recordings",
+    "type": "recordings",
+    "sequence": 5
+   },
+   {
+    "id": "2ade52be-c973-426e-806e-d536f15de6ab",
+    "courseId": "41e90532-d355-4d05-903d-df8dff2ccaa7",
+    "title": "Announcements",
+    "type": "announcements",
+    "sequence": 6
+   }
+  ]
+ }
+}

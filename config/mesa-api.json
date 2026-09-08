@@ -1,0 +1,22 @@
+{
+  "baseUrl": "https://api-students.mesaschool.co.in/api/v1",
+  "frontendBase": "https://students.mesaschool.co.in",
+  "authRefresh": "https://students.mesaschool.co.in/api/auth/refresh",
+  "termIdOverride": null,
+  "eventsWindowDays": 60,
+  "announcementsMaxPages": 5,
+  "endpoints": {
+    "me": "/users/me",
+    "assignmentsMy": "/assignments/my",
+    "assignmentsByCourse": "/assignments",
+    "attendanceSummary": "/attendance/student/summary",
+    "eventsMy": "/events/my",
+    "announcements": "/announcements",
+    "courses": "/curriculum/courses",
+    "topics": "/curriculum/topics",
+    "topicMaterials": "/content/topics/{topicId}/materials",
+    "topicRecordings": "/content/topics/{topicId}/recordings",
+    "materialSignedUrl": "/content/materials/{materialId}/signed-url"
+  },
+  "notes": "See docs/lms-api.md. Routes reverse-engineered + confirmed by the 2026-09-01 spike."
+}

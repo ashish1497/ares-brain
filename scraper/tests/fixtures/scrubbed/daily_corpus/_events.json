@@ -1,0 +1,10 @@
+{ "window": {"from":"x","to":"y"}, "events": [
+  { "id":"s-today", "eventType":"session", "title":"AI Session 3",
+    "startAt":"2026-09-15T09:00:00.000Z", "endAt":"2026-09-15T10:30:00.000Z",
+    "courseName":"AI Course", "courseSlug":"ai-course", "room":"Delta", "instructorName":"Divij" },
+  { "id":"s-tomorrow", "eventType":"session", "title":"AI Session 4",
+    "startAt":"2026-09-16T09:00:00.000Z", "endAt":"2026-09-16T10:30:00.000Z",
+    "courseName":"AI Course", "courseSlug":"ai-course", "room":"Delta" },
+  { "id":"e-today", "eventType":"event", "title":"Guest talk",
+    "startAt":"2026-09-15T12:00:00.000Z", "endAt":"2026-09-15T13:00:00.000Z" }
+]}

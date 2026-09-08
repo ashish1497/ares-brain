@@ -1,0 +1,38 @@
+{
+  "name": "mesa-course-agent-repo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Repo-wide formatting, linting and git hooks for mesa-course-agent. The runnable code lives in mcp/ (workspace) and scraper/ (Python).",
+  "workspaces": [
+    "mcp"
+  ],
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "check": "prettier --check . && eslint . && npm run --workspace mcp check",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.13.0",
+    "eslint": "^9.13.0",
+    "eslint-config-prettier": "^9.1.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.10",
+    "prettier": "^3.3.3",
+    "typescript-eslint": "^8.11.0"
+  },
+  "lint-staged": {
+    "mcp/**/*.{ts,js,mjs,cjs}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{md,json,yml,yaml}": "prettier --write"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "esbuild@0.21.5": true
+  }
+}

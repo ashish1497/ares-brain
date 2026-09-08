@@ -1,0 +1,30 @@
+{
+ "sources": {
+  "api:material:m1": {
+   "hash": "h1",
+   "outPath": "normalized/material-intro-to-frameworks.md"
+  },
+  "api:assignment:a1": {
+   "hash": "h2",
+   "outPath": "normalized/assignment-session-1-workbook.md"
+  },
+  "api:event:e2": {
+   "hash": "h3",
+   "outPath": "normalized/session-frameworks-s2.md"
+  },
+  "api:material:mo": {
+   "hash": "h4",
+   "outPath": "normalized/outline-outline.md"
+  },
+  "api:announcement:an1": {
+   "hash": "h5",
+   "outPath": "normalized/announcement-groups.md"
+  },
+  "transcript:rec1": {
+   "hash": "h6",
+   "outPath": "normalized/transcript-long.md"
+  }
+ },
+ "ingestedAt": "2026-08-28T00:00:00Z",
+ "formatVersion": 2
+}

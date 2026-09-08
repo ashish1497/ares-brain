@@ -1,0 +1,24 @@
+{
+ "data": {
+  "courses": [
+   {
+    "id": "62d906df-a634-4842-97b9-1ca7186a9c61",
+    "termId": "7431dfa8-b658-4849-b148-c89b68027f4a",
+    "title": "Start Strong",
+    "shortName": "SS_PT",
+    "code": null,
+    "description": null,
+    "courseType": "core",
+    "classType": "online",
+    "instructorName": null,
+    "coverImageUrl": null,
+    "visible": true,
+    "startDate": null,
+    "endDate": null,
+    "sequence": null,
+    "createdAt": "2026-08-05T17:30:35.331Z",
+    "updatedAt": "2026-08-05T17:30:37.461Z"
+   }
+  ]
+ }
+}

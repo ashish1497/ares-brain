@@ -1,0 +1,20 @@
+{
+ "window": { "from": "x", "to": "y" },
+ "events": [
+  { "id": "ex-fut", "eventType": "exam", "title": "Mid Term Exam",
+    "startAt": "2026-09-19T08:30:00.000Z", "endAt": "2026-09-19T11:30:00.000Z", "courseName": "Program" },
+  { "id": "ex-past", "eventType": "exam", "title": "Baseline Assessment",
+    "startAt": "2026-08-22T08:30:00.000Z", "endAt": "2026-08-22T10:00:00.000Z" },
+  { "id": "sess-1", "eventType": "session", "title": "Marketing Strategy with Prof. Menon",
+    "startAt": "2026-09-20T04:00:00.000Z", "endAt": "2026-09-20T05:30:00.000Z",
+    "courseName": "Crafting Marketing Strategies", "room": "Delta Classroom",
+    "instructorName": "Siddarth Menon", "meetingLink": "https://youtu.be/live-abc" },
+  { "id": "sess-past", "eventType": "session", "title": "Old class",
+    "startAt": "2026-08-15T04:00:00.000Z", "endAt": "2026-08-15T05:30:00.000Z" },
+  { "id": "sess-baddate", "eventType": "session", "title": "Broken class",
+    "startAt": "not-a-date" },
+  { "id": "evt-1", "eventType": "event", "title": "Guest Lecture: Founder Stories",
+    "startAt": "2026-09-21T09:00:00.000Z", "endAt": "2026-09-21T10:00:00.000Z",
+    "courseName": "Program", "room": "Auditorium" }
+ ]
+}

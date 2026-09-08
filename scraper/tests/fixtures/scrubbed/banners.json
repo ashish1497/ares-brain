@@ -1,0 +1,74 @@
+{
+ "data": {
+  "banners": [
+   {
+    "id": "49d751e3-694c-4fde-a027-7a5469e66241",
+    "title": null,
+    "subtitle": null,
+    "ctaLabel": null,
+    "ctaUrl": null,
+    "imageUrl": "https://example.test/asset",
+    "startDate": "2026-08-30T07:56:00.000Z",
+    "endDate": "2026-09-06T07:56:00.000Z",
+    "status": "active",
+    "sortOrder": 0,
+    "programIds": [
+     "f0255280-da18-4b9f-b76a-cab1cca7bd3c"
+    ],
+    "createdAt": "2026-08-30T07:56:34.536Z",
+    "updatedAt": "2026-08-30T07:56:34.536Z"
+   },
+   {
+    "id": "26157bec-083c-4847-8616-50d9a2163b9b",
+    "title": "Student Council Speeches",
+    "subtitle": null,
+    "ctaLabel": null,
+    "ctaUrl": null,
+    "imageUrl": "https://example.test/asset",
+    "startDate": "2026-08-31T00:51:00.000Z",
+    "endDate": "2026-09-03T12:59:00.000Z",
+    "status": "active",
+    "sortOrder": 0,
+    "programIds": [
+     "f0255280-da18-4b9f-b76a-cab1cca7bd3c"
+    ],
+    "createdAt": "2026-08-31T06:24:15.095Z",
+    "updatedAt": "2026-08-31T06:24:15.095Z"
+   },
+   {
+    "id": "f8b6eb79-c5ff-4489-ad31-27d2abaa3485",
+    "title": null,
+    "subtitle": null,
+    "ctaLabel": null,
+    "ctaUrl": null,
+    "imageUrl": "https://example.test/asset",
+    "startDate": "2026-08-31T06:31:00.000Z",
+    "endDate": "2026-09-06T06:31:00.000Z",
+    "status": "active",
+    "sortOrder": 0,
+    "programIds": [
+     "f0255280-da18-4b9f-b76a-cab1cca7bd3c"
+    ],
+    "createdAt": "2026-08-31T06:32:19.623Z",
+    "updatedAt": "2026-08-31T06:32:19.623Z"
+   },
+   {
+    "id": "cc8c4551-4b93-4274-8a7f-15004fa884ff",
+    "title": null,
+    "subtitle": null,
+    "ctaLabel": null,
+    "ctaUrl": null,
+    "imageUrl": "https://example.test/asset",
+    "startDate": "2026-08-30T07:54:00.000Z",
+    "endDate": "2026-09-06T07:54:00.000Z",
+    "status": "active",
+    "sortOrder": 0,
+    "programIds": [
+     "f0255280-da18-4b9f-b76a-cab1cca7bd3c"
+    ],
+    "createdAt": "2026-08-30T07:55:56.763Z",
+    "updatedAt": "2026-08-30T07:55:56.763Z"
+   }
+  ]
+ }
+}
