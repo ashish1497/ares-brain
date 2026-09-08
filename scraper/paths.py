@@ -1,9 +1,9 @@
-"""Filesystem layout for the course agent. Mirrors mcp/src/lib/paths.ts."""
+"""Filesystem layout for the ares-brain agent. Mirrors mcp/src/lib/paths.ts."""
 import os
 import re
 from pathlib import Path
 
-HOME = Path(os.environ.get("COURSE_AGENT_HOME", Path(__file__).resolve().parent.parent))
+HOME = Path(os.environ.get("ARES_BRAIN_HOME", Path(__file__).resolve().parent.parent))
 
 
 def slugify(name: str) -> str:

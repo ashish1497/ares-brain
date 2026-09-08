@@ -178,7 +178,7 @@ def ensure_calendar(service, state: dict) -> str:
 
     created = service.calendars().insert(body={
         "summary": _CAL_NAME, "timeZone": _TZ,
-        "description": "Auto-managed by mesa-course-agent. Do not hand-edit.",
+        "description": "Auto-managed by mesa. Do not hand-edit.",
     }).execute()
     state["calendarId"] = created["id"]
     return created["id"]
@@ -245,7 +245,7 @@ def build_desired_events(now: datetime | None = None) -> dict[str, dict]:
         desc = (f"Course: {course_label}\n"
                 f"Submission: {a.get('submissionType', 'n/a')}\n"
                 f"Group: {'yes' if a.get('isGroup') else 'no'}\n"
-                f"Source: mesa-course-agent")
+                f"Source: mesa")
         if not submitted and not is_draft and due > now:
             body = _event_body(f"{prefix}{title} — due", due, desc, rem)
             out[f"asg:{a['id']}:due"] = {"body": body, "hash": _hash(body)}
@@ -264,7 +264,7 @@ def build_desired_events(now: datetime | None = None) -> dict[str, dict]:
         if start is None or start <= now:
             continue
         end = _parse(e["endAt"]) or start + timedelta(minutes=90)
-        desc = f"Course: {e.get('courseName', 'Program')}\nSource: mesa-course-agent"
+        desc = f"Course: {e.get('courseName', 'Program')}\nSource: mesa"
         body = _event_body(e.get("title") or e["id"], start, desc, EXAM_REMINDERS, end=end)
         out[f"exam:{e['id']}"] = {"body": body, "hash": _hash(body)}
 
@@ -285,7 +285,7 @@ def build_desired_events(now: datetime | None = None) -> dict[str, dict]:
         if e.get("room"):
             lines.append(f"Room: {e['room']}")
         lines.append(f"Type: {et}")
-        lines.append("Source: mesa-course-agent")
+        lines.append("Source: mesa")
         body = _event_body(e.get("title") or e["id"], start, "\n".join(lines),
                            sess_rem, end=end, location=e.get("room") or None)
         out[f"{et}:{e['id']}"] = {"body": body, "hash": _hash(body)}

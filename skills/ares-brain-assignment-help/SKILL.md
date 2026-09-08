@@ -1,6 +1,6 @@
 ---
-name: assignment-help
-description: Produce approach + a worked skeleton (not a submittable draft) for a specific assignment. Use for /assignment-help.
+name: ares-brain-assignment-help
+description: Produce approach + a worked skeleton (not a submittable draft) for a specific assignment. Use for /mesa:ares-brain-assignment-help.
 ---
 
 # assignment-help

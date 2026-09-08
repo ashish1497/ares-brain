@@ -1,6 +1,6 @@
 ---
-name: brain-build
-description: Build or refresh a course's GUIDE.md — a structured overview of concepts, frameworks, and how the sessions connect — from its normalized corpus. Use for /course-brain.
+name: ares-brain-brain-build
+description: Build or refresh a course's GUIDE.md — a structured overview of concepts, frameworks, and how the sessions connect — from its normalized corpus. Use for /mesa:ares-brain-course-brain.
 ---
 
 # brain-build

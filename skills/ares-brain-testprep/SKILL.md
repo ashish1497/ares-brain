@@ -1,6 +1,6 @@
 ---
-name: testprep
-description: Generate a graded practice question set for a course, with collapsible model answers, persisted to study/. Use for /testprep.
+name: ares-brain-testprep
+description: Generate a graded practice question set for a course, with collapsible model answers, persisted to study/. Use for /mesa:ares-brain-testprep.
 ---
 
 # testprep

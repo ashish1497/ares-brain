@@ -1,9 +1,9 @@
 {
-  "name": "mesa-course-agent-repo",
+  "name": "ares-brain",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Repo-wide formatting, linting and git hooks for mesa-course-agent. The runnable code lives in mcp/ (workspace) and scraper/ (Python).",
+  "description": "Repo-wide formatting, linting and git hooks for mesa. The runnable code lives in mcp/ (workspace) and scraper/ (Python).",
   "workspaces": [
     "mcp"
   ],
@@ -32,7 +32,6 @@
     "*.{md,json,yml,yaml}": "prettier --write"
   },
   "allowScripts": {
-    "esbuild@0.28.2": true,
-    "esbuild@0.21.5": true
+    "esbuild": true
   }
 }

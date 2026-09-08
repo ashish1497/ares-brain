@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-02
 **Status:** Draft for review
-**Scope:** Phase A-ingest of the mesa-course-agent project. Follows A-scrape (shipped, merged @ `e831486`). Produces the `normalized/` corpus + transcripts. No LLM, no brain, no calendar.
+**Scope:** Phase A-ingest of the mesa project. Follows A-scrape (shipped, merged @ `e831486`). Produces the `normalized/` corpus + transcripts. No LLM, no brain, no calendar.
 
 ---
 
@@ -22,7 +22,7 @@ No embeddings, no vector index, no retrieval, no `brain_*` tools, no Google Cale
 - `.env` is a real secret — never read into logs, printed, or committed.
 - `courses/` is gitignored (real student data). `mcp/dist/`, `mcp/node_modules/`, `scraper/.venv/`, raw `scraper/tests/fixtures/*` (except `scrubbed/`) not committed.
 - Committed test fixtures carry no real PII.
-- `COURSE_AGENT_HOME` env overrides the repo root for the data tree; `paths.py` / `mcp/src/config.ts` resolve it.
+- `ARES_BRAIN_HOME` env overrides the repo root for the data tree; `paths.py` / `mcp/src/config.ts` resolve it.
 - Every step is idempotent and resumable; one failure never aborts the whole run (`_run_all` pattern in `lms_scrape.py`).
 
 ---
@@ -149,7 +149,7 @@ Returns `{transcribed: [...], skipped: [...], failed: [...]}`.
 - **`ingest({ course? })`** — spawns `lms_scrape.py ingest [--course …] --json`, returns `{perCourse: {slug: {normalized, skipped, orphansDeleted}}, errors: [...]}`.
 - `status` tool gains: per course, `transcripts` and `normalized` file counts (it already scans those dirs — confirm the counts are wired), and `lastIngest` from `normalized/_ingest.json` `ingestedAt`.
 
-`/course-ingest [course]` command: calls `transcribe` then `ingest`, reports transcript counts, normalized counts, and any `needs-manual` recordings verbatim.
+`/mesa:ares-brain-course-ingest [course]` command: calls `transcribe` then `ingest`, reports transcript counts, normalized counts, and any `needs-manual` recordings verbatim.
 
 ---
 
@@ -160,7 +160,7 @@ Returns `{transcribed: [...], skipped: [...], failed: [...]}`.
 - **`gsheet.py`:** fixture `outline.csv`; test the URL-extraction regex against the real outline `content` HTML (in a scrubbed fixture), and the CSV→rows parse. Network call itself stubbed (`requests.get` monkeypatched) — one test for 200, one for 403 → returns `None`.
 - **`transcribe.py`:** commit a 3-second `sample.wav` of spoken words; run the real `small` model in one slow test (marked, still run in CI) asserting the transcript file has valid frontmatter and a non-empty body — not exact text. `yt-dlp` path: monkeypatch the subprocess, assert failure → `_failed.json` entry, no raise.
 - **`ingest.py`:** a fake course tree with one of each source type; assert one normalized file per, frontmatter valid, `_ingest.json` written. Second run with nothing changed → `skipped` == all, zero rewrites (assert mtimes unchanged). Change one source → only that one re-normalized. Remove a source → its output deleted, manifest entry gone.
-- **MCP tools:** temp `COURSE_AGENT_HOME`, stub the python spawn, assert argv + summary parsing (mirror the `scrape` tool tests).
+- **MCP tools:** temp `ARES_BRAIN_HOME`, stub the python spawn, assert argv + summary parsing (mirror the `scrape` tool tests).
 - **Live run** (final task): `transcribe` one real recording end-to-end, then `ingest` the full 90 MB tree; record counts and any failures in `docs/lms-api.md`.
 
 ---
@@ -171,7 +171,7 @@ Returns `{transcribed: [...], skipped: [...], failed: [...]}`.
 2. `gsheet.py` — link regex + CSV fetch + fallback.
 3. `transcribe.py` + `transcribe` subcommand + `transcribe` MCP tool.
 4. `ingest.py` + `_ingest.json` + `ingest` subcommand + `ingest` MCP tool + inbox-skeleton creation.
-5. `_run_all` wiring (`transcribe` then `ingest` after the scrape steps), `/course-ingest` command, README update, `status` count wiring, live run.
+5. `_run_all` wiring (`transcribe` then `ingest` after the scrape steps), `/mesa:ares-brain-course-ingest` command, README update, `status` count wiring, live run.
 
 ---
 

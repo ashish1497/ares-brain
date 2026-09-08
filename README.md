@@ -1,4 +1,4 @@
-# Mesa Course Agent
+# Ares Brain
 
 A Claude Code **plugin** that turns Mesa LMS ("Nexus") coursework into a study agent:
 scrape every course onto disk, normalize it, build a per-course searchable "brain",
@@ -62,22 +62,22 @@ The repo ships a local marketplace manifest (`.claude-plugin/marketplace.json`).
 **From an interactive Claude Code terminal:**
 
 ```
-/plugin marketplace add /absolute/path/to/course-agent
-/plugin install mesa-course-agent@mesa-course-agent-local
+/plugin marketplace add /absolute/path/to/ares-brain
+/plugin install mesa@mesa-local
 ```
 
 **From a plain shell (works everywhere, incl. the desktop app where `/plugin` is
 unavailable):**
 
 ```bash
-cd /absolute/path/to           # the PARENT of course-agent
-claude plugin marketplace add ./course-agent
-claude plugin install mesa-course-agent@mesa-course-agent-local
+cd /absolute/path/to           # the PARENT of ares-brain
+claude plugin marketplace add ./ares-brain
+claude plugin install mesa@mesa-local
 claude plugin list             # confirm it's enabled
 ```
 
-Restart Claude Code. Skills then appear as `/mesa-course-agent:<name>` and MCP tools
-as `mcp__plugin_mesa-course-agent_mesa-course-agent__<tool>`.
+Restart Claude Code. Skills then appear as `/mesa:<name>` and MCP tools
+as `mcp__plugin_mesa_mesa__<tool>`.
 
 ### Updating the plugin after a repo change
 
@@ -85,29 +85,29 @@ The install is a **cache copy**, not a live link. After pulling or editing:
 
 ```bash
 cd mcp && npm run build && cd ..
-claude plugin uninstall mesa-course-agent@mesa-course-agent-local
-claude plugin marketplace update mesa-course-agent-local
-claude plugin install mesa-course-agent@mesa-course-agent-local
+claude plugin uninstall mesa@mesa-local
+claude plugin marketplace update mesa-local
+claude plugin install mesa@mesa-local
 ```
 
 ---
 
 ## Commands
 
-| Command                                  | What it does                                                                                                             |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `/course-scrape [slug]`                  | Pull latest data for every course (or one). Runs scrape → ingest → brain-index. **Not** transcription.                   |
-| `/course-ingest [slug]`                  | Transcribe class recordings, then normalize all `raw/` + `inbox/` material into `normalized/*.md`.                       |
-| `/course-brain <slug>`                   | Build/refresh `GUIDE.md` — a concept + framework + session-arc overview of one course.                                   |
-| `/course-brief <slug>`                   | Briefing for that course's next session: topic, what to read, questions to hold.                                         |
-| `/week-ahead`                            | Every class + exam in the next 7 days, with the one thing to read for each.                                              |
-| `/ask <slug> "question"`                 | Cited answer from the course corpus. Ephemeral, nothing written. Says "not in the material" rather than guessing.        |
-| `/assignment-help <slug> "<assignment>"` | Approach + a worked skeleton (not a submittable draft). Refuses if already submitted.                                    |
-| `/testprep <slug> [N-M]`                 | ~15 graded practice questions with collapsible model answers, optionally session-scoped. Saved to `study/`.              |
-| `/book-summary [slug]`                   | Summarize each uploaded book; flag books mentioned in class but missing. Summaries become searchable on the next ingest. |
-| `/calendar-sync`                         | Sync deadlines + class schedule to the "Mesa Assignments" Google Calendar.                                               |
-| `/course-daily`                          | The morning routine: scrape → calendar-sync → write `daily/<date>.md` → notify.                                          |
-| `/daily-setup` · `/daily-uninstall`      | Install / remove the 6 AM launchd job that runs `/course-daily`.                                                         |
+| Command                                                             | What it does                                                                                                             |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `/mesa:ares-brain-course-scrape [slug]`                             | Pull latest data for every course (or one). Runs scrape → ingest → brain-index. **Not** transcription.                   |
+| `/mesa:ares-brain-course-ingest [slug]`                             | Transcribe class recordings, then normalize all `raw/` + `inbox/` material into `normalized/*.md`.                       |
+| `/mesa:ares-brain-course-brain <slug>`                              | Build/refresh `GUIDE.md` — a concept + framework + session-arc overview of one course.                                   |
+| `/mesa:ares-brain-course-brief <slug>`                              | Briefing for that course's next session: topic, what to read, questions to hold.                                         |
+| `/mesa:ares-brain-week-ahead`                                       | Every class + exam in the next 7 days, with the one thing to read for each.                                              |
+| `/mesa:ares-brain-ask <slug> "question"`                            | Cited answer from the course corpus. Ephemeral, nothing written. Says "not in the material" rather than guessing.        |
+| `/mesa:ares-brain-assignment-help <slug> "<assignment>"`            | Approach + a worked skeleton (not a submittable draft). Refuses if already submitted.                                    |
+| `/mesa:ares-brain-testprep <slug> [N-M]`                            | ~15 graded practice questions with collapsible model answers, optionally session-scoped. Saved to `study/`.              |
+| `/mesa:ares-brain-book-summary [slug]`                              | Summarize each uploaded book; flag books mentioned in class but missing. Summaries become searchable on the next ingest. |
+| `/mesa:ares-brain-calendar-sync`                                    | Sync deadlines + class schedule to the "Mesa Assignments" Google Calendar.                                               |
+| `/mesa:ares-brain-course-daily`                                     | The morning routine: scrape → calendar-sync → write `daily/<date>.md` → notify.                                          |
+| `/mesa:ares-brain-daily-setup` · `/mesa:ares-brain-daily-uninstall` | Install / remove the 6 AM launchd job that runs `/mesa:ares-brain-course-daily`.                                         |
 
 Ask Claude Code to "run the status tool" for config, token expiry, sidecar health,
 per-course file counts, and last scrape/ingest times.
@@ -125,7 +125,7 @@ courses/
     transcripts/  whisper output, [hh:mm:ss] lines
     normalized/   normalized/*.md  +  _ingest.json (content-hash manifest)
     brain/        index.sqlite  GUIDE.md  course.md  _brain.json
-    study/        /assignment-help, /testprep, /book-summary artifacts
+    study/        /mesa:ares-brain-assignment-help, /mesa:ares-brain-testprep, /mesa:ares-brain-book-summary artifacts
 daily/            daily/<date>.md  +  _launchd.log
 ```
 
@@ -148,7 +148,7 @@ client.
 4. `cd scraper && uv run python lms_scrape.py calendar-auth` — browser consent, once.
    `token.json` is cached (gitignored).
 
-Then `/calendar-sync` runs headlessly. Re-run `calendar-auth` if the token is revoked
+Then `/mesa:ares-brain-calendar-sync` runs headlessly. Re-run `calendar-auth` if the token is revoked
 or expires beyond refresh. `GOOGLE_CLIENT_SECRET` / `GOOGLE_TOKEN` env vars override
 the paths.
 
@@ -160,8 +160,8 @@ empty = none; `15` = one 15-min popup).
 
 ## Daily job (6 AM)
 
-`/daily-setup` writes `~/Library/LaunchAgents/co.mesa.course-agent.daily.plist` — it
-runs `claude -p /mesa-course-agent:course-daily` at 06:00 local with a scoped
+`/mesa:ares-brain-daily-setup` writes `~/Library/LaunchAgents/co.mesa.ares-brain.daily.plist` — it
+runs `claude -p /mesa:ares-brain-course-daily` at 06:00 local with a scoped
 `--allowedTools` allowlist, logging to `daily/_launchd.log`.
 
 **The launchd job runs the `claude` binary on your `PATH`, which is a separate install
@@ -175,14 +175,14 @@ claude setup-token          # long-lived token for automation; needs the subscri
 Then trigger a test run and check the log:
 
 ```bash
-launchctl kickstart -k gui/$(id -u)/co.mesa.course-agent.daily
+launchctl kickstart -k gui/$(id -u)/co.mesa.ares-brain.daily
 cat daily/_launchd.log
 ```
 
 If the log shows a tool-permission prompt, widen `--allowedTools` in the plist and
-`launchctl bootout` / `bootstrap` it again. `/daily-uninstall` removes the job.
+`launchctl bootout` / `bootstrap` it again. `/mesa:ares-brain-daily-uninstall` removes the job.
 
-Transcription is never part of the daily run (too slow) — run `/course-ingest` by hand.
+Transcription is never part of the daily run (too slow) — run `/mesa:ares-brain-course-ingest` by hand.
 
 ---
 

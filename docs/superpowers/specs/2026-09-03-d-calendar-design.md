@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-03
 **Status:** Draft for review
-**Scope:** Sub-project D of the mesa-course-agent project. Follows A-scrape + A-ingest + B-brain (all shipped, merged to `main` @ `b340eaa`). Delivers objective 1 (assignment due dates → Google Calendar) and objective 3 (24h-before reminders). No daily-job scheduling (that's E).
+**Scope:** Sub-project D of the mesa project. Follows A-scrape + A-ingest + B-brain (all shipped, merged to `main` @ `b340eaa`). Delivers objective 1 (assignment due dates → Google Calendar) and objective 3 (24h-before reminders). No daily-job scheduling (that's E).
 
 ---
 
@@ -21,7 +21,7 @@ No `launchd` / 6 AM scheduling (E). No LLM call anywhere. No touching the user's
 - Python sidecar (`scraper/`, `uv` venv, Python 3.12) does deterministic work; a TypeScript MCP tool + a slash command drive it. MCP tools never call an LLM.
 - `.env` is a real secret — never read into logs, printed, or committed. **D does not use `.env`** — Google auth is via `gcloud` Application Default Credentials at `~/.config/gcloud/application_default_credentials.json`, and the LMS is not contacted (D reads `courses/` off disk).
 - `courses/` is gitignored. `mcp/dist/`, `mcp/node_modules/`, `scraper/.venv/`, raw `scraper/tests/fixtures/*` (except `scrubbed/`) not committed. Committed fixtures: synthetic, no PII.
-- `COURSE_AGENT_HOME` overrides the data-tree root; resolve through `paths.py`.
+- `ARES_BRAIN_HOME` overrides the data-tree root; resolve through `paths.py`.
 - Every step idempotent + resumable; one API failure never aborts the rest of the run (the `_run_all` per-item try/except pattern).
 - JSON writes via `scrape_steps._write_json`. **Note:** B-brain found that `from scrape_steps import ...` transitively imports `mesa_api` → `load_dotenv(.env)`. `calendar_sync.py` must NOT import `scrape_steps` — inline a local `_read_or_none` / `_write_json` (or import from a new leaf module) so the calendar path never loads `.env` or `requests`. Keep `calendar_sync.py` imports to: stdlib, `google.*`, `paths`.
 
@@ -37,7 +37,7 @@ No `launchd` / 6 AM scheduling (E). No LLM call anywhere. No touching the user's
 | Event shape    | A **30-minute timed event ending at the deadline** (`start = deadline − 30 min`, `end = deadline`). `reminders.overrides = [{method:"popup", minutes:1440}, {method:"popup", minutes:120}]`. Exams also get `{minutes: 10080}` (1 week). `CALENDAR_REMINDERS` env (comma minutes) overrides the assignment reminder list.                                              |
 | Reconcile      | Full reconcile — the calendar is entirely agent-managed. Each run: create new, `patch` changed, **delete** events for assignments now submitted / past / removed from the LMS. Events on the calendar with no `_calendar.json` entry are left alone (a hand-added event survives).                                                                                     |
 | State          | `courses/_calendar.json` = `{ "calendarId": "...", "syncedAt": "...Z", "events": { "<sourceKey>": { "gcalId": "...", "hash": "..." } } }`.                                                                                                                                                                                                                             |
-| Pipeline       | Standalone only: `calendar_sync` MCP tool + `/calendar-sync` command. Does NOT join `lms_scrape.py all`. Sub-project E decides whether the 6 AM job runs it.                                                                                                                                                                                                           |
+| Pipeline       | Standalone only: `calendar_sync` MCP tool + `/mesa:ares-brain-calendar-sync` command. Does NOT join `lms_scrape.py all`. Sub-project E decides whether the 6 AM job runs it.                                                                                                                                                                                           |
 | Timezone       | Deadlines are stored as UTC instants (`dueAt`/`cutoffDate`/`startAt` are ISO-8601 `...Z`). Events created with `start.dateTime`/`end.dateTime` in UTC + `timeZone: "Asia/Kolkata"` so they render at local time.                                                                                                                                                       |
 
 ---
@@ -76,7 +76,7 @@ New `lms_scrape.py` subcommand: `calendar-sync [--dry-run] [--json]` — reads `
 
 - If `state.get("calendarId")` and a `calendarList().get()` on it succeeds → return it.
 - Else `calendarList().list()`, find one with `summary == "Mesa Assignments"` → cache + return.
-- Else `calendars().insert(body={"summary": "Mesa Assignments", "timeZone": "Asia/Kolkata", "description": "Auto-managed by mesa-course-agent. Do not hand-edit."})` → cache + return.
+- Else `calendars().insert(body={"summary": "Mesa Assignments", "timeZone": "Asia/Kolkata", "description": "Auto-managed by mesa. Do not hand-edit."})` → cache + return.
 
 ### `build_desired_events() -> dict[str, dict]` (pure — no network)
 
@@ -87,7 +87,7 @@ For each **assignment** with `dueAt` parseable:
 - **due event** (`sourceKey = f"asg:{a['id']}:due"`): only if `mySubmissionStatus != "submitted"` AND `_parse(dueAt) > now` AND `status != "draft"` (published only). Body:
   - `summary`: `f"{title} — due"` (club items: prefix `"[Club] "`)
   - `start/end`: `dueAt − 30min` … `dueAt`, `timeZone: "Asia/Kolkata"`
-  - `description`: `f"Course: {courseName or 'Club / Leader'}\nSubmission: {submissionType}\nGroup: {'yes' if isGroup else 'no'}\nSource: mesa-course-agent"`
+  - `description`: `f"Course: {courseName or 'Club / Leader'}\nSubmission: {submissionType}\nGroup: {'yes' if isGroup else 'no'}\nSource: mesa"`
   - `reminders`: `{useDefault: False, overrides: [{popup, m} for m in REMINDERS]}` (`REMINDERS` default `[1440, 120]`)
 - **cutoff event** (`sourceKey = f"asg:{a['id']}:cutoff"`): only if `cutoffDate` set, `!= dueAt`, `_parse(cutoffDate) > now`, unsubmitted. `summary`: `f"{title} — LATE CUTOFF"`. Same reminders.
 
@@ -147,7 +147,7 @@ return result
 ## 5. MCP tool & command
 
 - **`calendar_sync({ dryRun? })`** — spawns `lms_scrape.py calendar-sync [--dry-run] --json`, returns the summary. Same handler shape as the other tools (`{ok, summary, stderr.slice(-2000)}` or `{ok:false, error}`). If `google` libs aren't installed → the "sidecar not set up" error, listing the extra `uv pip install` step.
-- **`/calendar-sync`** command → runs `calendar_sync` (no args, or `dryRun: true` if the user says "preview"/"dry run"). Reports: calendar name, created/updated/deleted/unchanged counts, any `errors` verbatim, and if `status == "needs-auth"` the exact `gcloud` command.
+- **`/mesa:ares-brain-calendar-sync`** command → runs `calendar_sync` (no args, or `dryRun: true` if the user says "preview"/"dry run"). Reports: calendar name, created/updated/deleted/unchanged counts, any `errors` verbatim, and if `status == "needs-auth"` the exact `gcloud` command.
 
 Neither joins `all`.
 
@@ -166,8 +166,8 @@ Neither joins `all`.
   - `insert` raising a generic exception → in `errors`, other keys still processed.
   - `dry_run=True` → zero `.execute()` mutations, state file unchanged on disk.
 - **`_service` None path**: monkeypatch `google.auth.default` to raise `DefaultCredentialsError` → `run()` returns `{status: "needs-auth"}`, exit 0, no state write.
-- **MCP tool**: temp `COURSE_AGENT_HOME`, stub the python spawn, assert argv (`--dry-run` toggles) + summary parsing. Missing `google` lib → sidecar-missing error.
-- **Live run** (final task): the user runs the `gcloud` command; then `/calendar-sync --dry-run` (inspect the plan), then a real `/calendar-sync`; verify the "Mesa Assignments" calendar appears with the right events + reminders; submit/undo a test assignment state and re-sync to see update/delete; record in `docs/lms-api.md`.
+- **MCP tool**: temp `ARES_BRAIN_HOME`, stub the python spawn, assert argv (`--dry-run` toggles) + summary parsing. Missing `google` lib → sidecar-missing error.
+- **Live run** (final task): the user runs the `gcloud` command; then `/mesa:ares-brain-calendar-sync --dry-run` (inspect the plan), then a real `/mesa:ares-brain-calendar-sync`; verify the "Mesa Assignments" calendar appears with the right events + reminders; submit/undo a test assignment state and re-sync to see update/delete; record in `docs/lms-api.md`.
 
 ---
 
@@ -175,13 +175,13 @@ Neither joins `all`.
 
 1. `calendar_sync.py` — deps, ADC `_service`, `ensure_calendar`, `build_desired_events` (pure) + fixture + tests.
 2. `canonical`/`hash` + `reconcile` + `_calendar.json` state + `run` + `--dry-run` + tests (fake service).
-3. `calendar-sync` subcommand + `calendar_sync` MCP tool + `/calendar-sync` command + README + live run + findings.
+3. `calendar-sync` subcommand + `calendar_sync` MCP tool + `/mesa:ares-brain-calendar-sync` command + README + live run + findings.
 
 ---
 
 ## 8. Open items
 
-1. **Calendar deletion / reset:** no "unsync everything" command in D. If the user wants to wipe the calendar, they delete it in Google Calendar and remove `courses/_calendar.json`; the next sync recreates it. A `/calendar-sync --reset` could be added later.
+1. **Calendar deletion / reset:** no "unsync everything" command in D. If the user wants to wipe the calendar, they delete it in Google Calendar and remove `courses/_calendar.json`; the next sync recreates it. A `/mesa:ares-brain-calendar-sync --reset` could be added later.
 2. **Multiple machines:** `_calendar.json` is per-checkout. Running sync from a second machine with its own empty state would re-create duplicate events (it can't see the first machine's `gcalId`s). D assumes one machine. If that changes, key events by an extended property (`extendedProperties.private.sourceKey`) and reconcile by listing the calendar instead of trusting local state.
 3. **Reminder noise:** 2h popups on every assignment may be a lot near a deadline cluster. `CALENDAR_REMINDERS` lets the user dial it to `1440` only. Default stays `1440,120`.
 4. **`gcloud` ADC scope caveat:** `gcloud auth application-default login` without `--scopes` grants only `cloud-platform`; the Calendar API then 403s. The `needs-auth` hint must include the exact `--scopes` flag, and the live-run task verifies a scoped login works.

@@ -16,15 +16,15 @@ Nothing below requires code changes.
 
 Already built. Recap of the moving parts:
 
-| Piece                | Where                                                     | Refresh trigger                                                  |
-| -------------------- | --------------------------------------------------------- | ---------------------------------------------------------------- |
-| Mesa token           | `.env` → `MESA_REFRESH_TOKEN`                             | auto-rotates each scrape; re-paste if locked out (~30 days idle) |
-| Calendar auth        | `client_secret.json` + `token.json` (repo root)           | `token.json` auto-refreshes; re-run `calendar-auth` if revoked   |
-| CLI auth for the job | `claude setup-token` (keychain / `~/.claude`)             | long-lived; re-run if it stops working                           |
-| The job              | `~/Library/LaunchAgents/co.mesa.course-agent.daily.plist` | `/daily-setup` rewrites it                                       |
+| Piece                | Where                                                   | Refresh trigger                                                  |
+| -------------------- | ------------------------------------------------------- | ---------------------------------------------------------------- |
+| Mesa token           | `.env` → `MESA_REFRESH_TOKEN`                           | auto-rotates each scrape; re-paste if locked out (~30 days idle) |
+| Calendar auth        | `client_secret.json` + `token.json` (repo root)         | `token.json` auto-refreshes; re-run `calendar-auth` if revoked   |
+| CLI auth for the job | `claude setup-token` (keychain / `~/.claude`)           | long-lived; re-run if it stops working                           |
+| The job              | `~/Library/LaunchAgents/co.mesa.ares-brain.daily.plist` | `/mesa:ares-brain-daily-setup` rewrites it                       |
 
-Setup order: install plugin → `calendar-auth` → `claude setup-token` → `/daily-setup`
-→ `launchctl kickstart -k gui/$(id -u)/co.mesa.course-agent.daily` → read
+Setup order: install plugin → `calendar-auth` → `claude setup-token` → `/mesa:ares-brain-daily-setup`
+→ `launchctl kickstart -k gui/$(id -u)/co.mesa.ares-brain.daily` → read
 `daily/_launchd.log`.
 
 **Watch out for:**
@@ -54,12 +54,12 @@ Full replay of the README **Install** section on the new machine:
 2. `cd scraper && uv venv --python 3.12 .venv && uv pip install -r requirements.txt`
 3. `cd mcp && npm install && npm run build`
 4. `cp .env.example .env` → paste **their own** `MESA_REFRESH_TOKEN`.
-5. `claude plugin marketplace add ./course-agent` (from the parent dir) →
-   `claude plugin install mesa-course-agent@mesa-course-agent-local`.
+5. `claude plugin marketplace add ./ares-brain` (from the parent dir) →
+   `claude plugin install mesa@mesa-local`.
 6. Calendar: **their own** GCP project + Desktop OAuth client → `client_secret.json` →
    `calendar-auth`. The OAuth consent screen must list their Google account as a test
    user. One client per person; do not share `token.json`.
-7. Optional: `claude setup-token` + `/daily-setup`.
+7. Optional: `claude setup-token` + `/mesa:ares-brain-daily-setup`.
 
 Per-person, never shared: `.env`, `client_secret.json`, `token.json`, the whole
 `courses/` and `daily/` tree.
@@ -79,11 +79,11 @@ Works for the deterministic pipeline; two things need adapting.
 no GUI. Schedule with `cron` instead of `launchd`:
 
 ```
-0 6 * * *  cd /path/to/course-agent/scraper && COURSE_AGENT_HOME=/path/to/course-agent /path/to/uv run python lms_scrape.py all >> /path/to/course-agent/daily/_cron.log 2>&1
+0 6 * * *  cd /path/to/ares-brain/scraper && ARES_BRAIN_HOME=/path/to/ares-brain /path/to/uv run python lms_scrape.py all >> /path/to/ares-brain/daily/_cron.log 2>&1
 ```
 
 Add a second line for `calendar-sync`. For the prose digest, run
-`claude -p "/mesa-course-agent:course-daily"` from cron (needs `claude` + a
+`claude -p "/mesa:ares-brain-course-daily"` from cron (needs `claude` + a
 `setup-token` on that box).
 
 ### What needs adapting
@@ -97,7 +97,7 @@ Add a second line for `calendar-sync`. For the prose digest, run
 - **`osascript` notifications are macOS-only.** On Linux the digest still gets written
   to `daily/<date>.md`; the notification step just fails harmlessly (the skill tolerates
   it). To actually get pinged, replace the notify step with a curl to a Slack/Discord
-  webhook or a `mail` command — that lives in `skills/course-daily/SKILL.md` step 5,
+  webhook or a `mail` command — that lives in `skills/mesa:ares-brain-course-daily/SKILL.md` step 5,
   so it is a docs/skill edit, not core code.
 
 ---
@@ -129,10 +129,10 @@ Rotating a leaked secret:
 - The 6 AM job = one scrape + one `calendar-sync` (cheap, deterministic) + one
   `claude -p` run that writes the digest (a handful of tool calls + one synthesis).
   Roughly one modest Claude Code turn per day.
-- `/course-brain` does real synthesis over a whole course corpus. Running it for all
+- `/mesa:ares-brain-course-brain` does real synthesis over a whole course corpus. Running it for all
   ~17 courses in one sitting is the single most expensive thing here — do it in
   batches, or only for the courses you actually study from.
-- `/course-ingest` transcription is CPU/time, not Claude cost: ~19 min per full session
+- `/mesa:ares-brain-course-ingest` transcription is CPU/time, not Claude cost: ~19 min per full session
   recording on Apple Silicon. Never put it in the scheduled job.
 - A stale `MESA_REFRESH_TOKEN` makes the scrape step fail fast (auth error) — the job
   still writes a digest from existing data with a "re-scrape" banner, so a dead token

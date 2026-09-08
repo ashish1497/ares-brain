@@ -1,6 +1,6 @@
 ---
-name: book-summary
-description: Summarize the books dropped for a course and list books mentioned in class but not uploaded. Use for /book-summary.
+name: ares-brain-book-summary
+description: Summarize the books dropped for a course and list books mentioned in class but not uploaded. Use for /mesa:ares-brain-book-summary.
 ---
 
 # book-summary
@@ -16,8 +16,8 @@ description: Summarize the books dropped for a course and list books mentioned i
      Persist each: heredoc the body on stdin to
      `cd scraper && uv run python lms_scrape.py brain-write-study --course <slug> --name book-<bookSlug>-summary --type book-summary --sources "normalized/<the book doc>.md"`.
 4. Mention scan: `brain_query({ course, type: "transcript", text: "book read author recommend must-read" })` and the same for `type: "self-note"`. `brain_get` the hits. Extract candidate book titles + authors named as recommended reading. Drop any that already exist as a `type: book` doc (compare loosely by title). List the remainder as:
-   > **Mentioned in class, not uploaded:** <title> — <author?>. Drop the PDF into `inbox/<slug>/books/` and run `/course-ingest`.
-5. Tell the user which summaries were written (paths) and the missing-book list. Note that after the next `/course-ingest` the summaries become searchable via `/ask`.
+   > **Mentioned in class, not uploaded:** <title> — <author?>. Drop the PDF into `inbox/<slug>/books/` and run `/mesa:ares-brain-course-ingest`.
+5. Tell the user which summaries were written (paths) and the missing-book list. Note that after the next `/mesa:ares-brain-course-ingest` the summaries become searchable via `/mesa:ares-brain-ask`.
 
 ## Rules
 
