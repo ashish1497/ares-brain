@@ -6,6 +6,7 @@ node_modules/
 mcp/node_modules/
 mcp/dist/
 dashboard/server/dist/
+dashboard/web/dist/
 **/__pycache__/
 .DS_Store
 
