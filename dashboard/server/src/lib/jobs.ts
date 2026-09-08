@@ -98,6 +98,11 @@ export function killCurrent() {
   if (current?.status === "running") kill();
 }
 
+/** Test-only: how many line/end listeners are currently on the bus. */
+export function _listenerCounts() {
+  return { line: bus.listenerCount("line"), end: bus.listenerCount("end") };
+}
+
 /** Test-only: clear the in-process singleton between test cases. */
 export function _resetForTest() {
   current = null;

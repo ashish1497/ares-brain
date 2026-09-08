@@ -1,5 +1,5 @@
 import busboy from "busboy";
-import { createWriteStream, mkdirSync } from "node:fs";
+import { createWriteStream, mkdirSync, unlink } from "node:fs";
 import { basename, join } from "node:path";
 import type { IncomingMessage } from "node:http";
 import { repoRoot } from "./repo.js";
@@ -18,12 +18,21 @@ export function safeName(name: string) {
     .replace(/^_+/, "");
 }
 
+/** A course slug is safe iff it is a plain slug — no `..`, `/`, `\`, or other path chars. */
+export function courseSlugOk(course: string): boolean {
+  return /^[A-Za-z0-9._-]+$/.test(course);
+}
+
 export function receiveUpload(
   req: IncomingMessage,
   course: string,
   kind: "book" | "recording",
 ): Promise<{ written: string[]; rejected: { name: string; reason: string }[] }> {
   return new Promise((resolve, reject) => {
+    if (!courseSlugOk(course)) {
+      reject(new Error("unknown course"));
+      return;
+    }
     const dir = join(
       repoRoot(),
       "courses",
@@ -45,13 +54,22 @@ export function receiveUpload(
       }
       pending.push(
         new Promise((res, rej) => {
-          const ws = createWriteStream(join(dir, name));
-          stream.pipe(ws);
-          ws.on("finish", () => {
-            written.push(name);
+          const target = join(dir, name);
+          const ws = createWriteStream(target);
+          let limited = false;
+          stream.on("limit", () => {
+            limited = true;
+            ws.destroy();
+            unlink(target, () => {});
+            rejected.push({ name, reason: "file too large" });
             res();
           });
-          ws.on("error", rej);
+          stream.pipe(ws);
+          ws.on("finish", () => {
+            if (!limited) written.push(name);
+            res();
+          });
+          ws.on("error", (e) => (limited ? res() : rej(e)));
         }),
       );
     });
