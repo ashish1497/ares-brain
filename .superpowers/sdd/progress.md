@@ -56,3 +56,5 @@ T1 python transcribe-url+--inbox  T2 dashboard/server  T3 dashboard/web  T4 glue
 T1: NOT started.
 T1: complete (3e3369b, review Approved). Minors deferred: _write_url_transcript omits course: key (harmless, ingest overrides); test_cli_transcribe_url_dispatch mocks transcribe_url so arg-threading untested; whisper_raises test does not pin error string.
 T2: complete (b20e1d6 + fixes a21cdf5). Review Needs-work -> 3 Important fixed (upload path-traversal, SSE leak/crash, Host/Origin guard) + minors. server vitest 25.
+T3: complete (39a7055 + fixes 3600fb1). Review Approved -> fixed 2 freeze bugs (reload-mid-job, SSE drop), Tabler webfont, --color-accent, minors. web vitest 6.
+DEFER to whole-branch: Tabler webfont adds ~4MB to dist/ (ttf 2.8MB) - subset or self-host 6 glyphs if it matters. dashboard/web has no tsc typecheck (T4 should add to check + CI).
