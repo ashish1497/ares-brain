@@ -494,3 +494,28 @@ Verified working by hand this session (plugin loaded in an interactive Claude Co
 (deleted 1 past class, unchanged 148) → `daily_brief` tool → `daily/2026-09-04.md`
 (4 classes, Selling session-5 pre-read matched, nothing due 72h) → notification. All 5
 skill steps good end to end.
+
+## F dashboard — live run 2026-09-08
+
+`npm run --workspace ares-dashboard start` on `127.0.0.1:4319`, verified in a browser:
+
+- UI renders (dark mode, Tabler icons, course picker populated from `_index.json`,
+  4 cards, job-log strip, "Chat — phase 2").
+- `POST /api/jobs {kind:"ingest",course:"ai-and-its-application"}` → 202, job spawned
+  `lms_scrape.py ingest --course …`, stdout streamed over SSE to `event: end`,
+  state → `status:"done" exitCode:0` (22 skipped, 0 errors).
+- Guards: 2nd job while running → **409**; `Host: evil.com` → **403**.
+- Page reload mid/after-job → poll picks up state, buttons re-enable (the T3 freeze fix).
+
+**Not verified — `transcribe-url` end to end.** yt-dlp cannot reach YouTube from this
+machine's network (every attempt, incl. the always-available "Me at the zoo" video,
+returns `{"ok": false, "error": "could not pull audio from the url"}`). The job
+runner + SSE + `transcribe_url` error handling all behave correctly; only the actual
+audio pull fails. On a machine with working yt-dlp egress this should transcribe;
+if not, yt-dlp now often needs a `--cookies-from-browser` / PO-token workaround
+(YouTube anti-bot) — a future `transcribe.py` option.
+
+**FINDING (fix before merge):** `lms_scrape.py transcribe-url` exits 0 even when
+`transcribe_url` returns `{"ok": false}`, so the dashboard shows the job as
+`done`/green. The CLI dispatch should `sys.exit(1)` on `ok is False` → job runner
+marks it `failed`.
