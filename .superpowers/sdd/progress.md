@@ -58,3 +58,4 @@ T1: complete (3e3369b, review Approved). Minors deferred: _write_url_transcript 
 T2: complete (b20e1d6 + fixes a21cdf5). Review Needs-work -> 3 Important fixed (upload path-traversal, SSE leak/crash, Host/Origin guard) + minors. server vitest 25.
 T3: complete (39a7055 + fixes 3600fb1). Review Approved -> fixed 2 freeze bugs (reload-mid-job, SSE drop), Tabler webfont, --color-accent, minors. web vitest 6.
 DEFER to whole-branch: Tabler webfont adds ~4MB to dist/ (ttf 2.8MB) - subset or self-host 6 glyphs if it matters. dashboard/web has no tsc typecheck (T4 should add to check + CI).
+T4: complete (05cb0d6). Glue: dashboard/ aggregator workspace, root dashboard scripts, /mesa:ares-brain-dashboard command, CI dashboard job, eslint dashboard/** glob + web tsc check. npm run check CLEAN (0 errors, 10 scoped no-explicit-any warnings). Pre-commit hook ran normally.
