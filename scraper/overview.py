@@ -1,27 +1,27 @@
 """Outcome-dashboard data: where the student stands vs the grade — today, this
 week, assignment risk, exams, attendance runway, brain readiness, gaps. Pure —
 reads courses/ off disk, no LMS auth, no LLM. Mirrors daily_brief.py."""
-import json
 import os
 import re
 import sys
 import time
 from datetime import datetime, timezone
-from pathlib import Path
 
 import brain
 import daily_brief
-from paths import course_dir, courses_root, global_file
+from paths import course_dir, global_file
 
 _ATT_MIN = int(os.environ.get("ARES_BRAIN_ATTENDANCE_MIN", "75"))
 _CHAT_UNLOCK = int(os.environ.get("ARES_BRAIN_CHAT_UNLOCK", "15"))
 
 _ASSESS_HDR = re.compile(r"assessment\s+(?:and|&)\s+evaluation", re.I)
-# "Name: 30%" — an inline weighted component inside one cell.
-_INLINE_RE = re.compile(r"([A-Za-z][A-Za-z0-9 /&+.'\-]*?)\s*:\s*(\d{1,3})\s*%")
+# "Name: 30%" — an inline weighted component inside one cell. The char class keeps
+# ``()`` so parenthetical qualifiers ("Personal Branding (Component 1)") survive.
+_INLINE_RE = re.compile(r"([A-Za-z][A-Za-z0-9 /&+.'()\-]*?)\s*:\s*(\d{1,3})\s*%")
 _PCT_RE = re.compile(r"(\d{1,3})\s*%")
-# A numbered outline section header ("3. Assessment ...", "4. Schedule ...").
-_SECTION_RE = re.compile(r"^\s*\|?\s*\d+\.\s+\S")
+# A numbered outline section header ("3. Assessment ...", "4. Schedule ..."). Real
+# outlines lead the digit with one or more pipe cells: "|  | 4. Rules  |".
+_SECTION_RE = re.compile(r"^\s*(?:\|\s*)*\d+\.\s")
 _JUNK_NAMES = {"", "a", "from mesa", "total", "component", "assessment", "evaluation"}
 
 
@@ -36,6 +36,17 @@ def _safe(fn, empty):
 
 def _q(s: str) -> str:
     return (s or "").replace('"', "'")
+
+
+def _name_match(a: str, b: str) -> bool:
+    """True when ``a`` and ``b`` reference the same component — one is a
+    word-boundary-delimited substring of the other. Avoids "Pitch 1" matching
+    "Pitch 10"."""
+    a, b = (a or "").strip(), (b or "").strip()
+    if not a or not b:
+        return False
+    return bool(re.search(rf"\b{re.escape(a)}\b", b, re.I)
+                or re.search(rf"\b{re.escape(b)}\b", a, re.I))
 
 
 def _courses() -> list[dict]:
@@ -95,14 +106,26 @@ def parse_assessment(outline_body: str) -> list[dict]:
         seen.add(n.lower())
         out.append({"name": n, "weightPct": pct})
 
+    parent_active = False  # a non-parenthetical component contributed on a prior line
     for raw in lines:
         cells = [c.strip() for c in raw.split("|") if c.strip()]
         if "%" not in raw:
             if cells and ":" not in raw:
                 last_label = cells[0]
+                parent_active = False
             continue
-        for nm, pct in _INLINE_RE.findall(raw):
-            _add(nm, int(pct))
+        added_nonparen = False
+        for m in _INLINE_RE.finditer(raw):
+            nm, pct = m.group(1), int(m.group(2))
+            is_paren = raw[:m.start()].rstrip().endswith("(")
+            if is_paren and (parent_active or added_nonparen):
+                continue  # nested breakdown — the parent total already counts it
+            before = len(out)
+            _add(nm, pct)
+            if not is_paren and len(out) > before:
+                added_nonparen = True
+        if added_nonparen:
+            parent_active = True
         residual = _INLINE_RE.sub(" ", raw)
         bares = _PCT_RE.findall(residual)
         label = next((c for c in cells
@@ -135,11 +158,22 @@ def attendance_runway(att: dict, sessions_to_mid: int, sessions_to_end: int,
                       minimum: int = _ATT_MIN) -> dict:
     """Attendance now, plus best-case and floor projections to each exam.
 
-    ``atRisk`` is true when even perfect attendance for every remaining session
-    cannot lift the endterm figure to ``minimum``.
+    ``state`` is one of:
+    - ``"risk"``  — even perfect attendance keeps the endterm figure below
+      ``minimum`` (unrecoverable).
+    - ``"watch"`` — not risk, but at/below the line now, or one more miss drops
+      below it.
+    - ``"ok"``    — comfortably clear.
+    ``atRisk`` mirrors ``state != "ok"`` for callers that only want a bool.
     """
-    a = int(att.get("attended", 0) or 0)
-    t = int(att.get("total", 0) or 0)
+    try:
+        a = int(att.get("attended") or 0)
+    except (TypeError, ValueError):
+        a = 0
+    try:
+        t = int(att.get("total") or 0)
+    except (TypeError, ValueError):
+        t = 0
     now_pct = round(a / t * 100, 1) if t else 0.0
 
     def _best(extra: int) -> int:
@@ -149,15 +183,28 @@ def attendance_runway(att: dict, sessions_to_mid: int, sessions_to_end: int,
     bc_mid = _best(sessions_to_mid)
     bc_end = _best(sessions_to_end)
     floor = round(a / (t + sessions_to_end) * 100) if (t + sessions_to_end) else 0
-    at_risk = bc_end < minimum
-    note = f"even perfect attendance stays below {minimum}%" if at_risk else ""
+    one_miss_pct = round(a / (t + 1) * 100)
+
+    if bc_end < minimum:
+        state = "risk"
+        note = f"even perfect attendance stays below {minimum}%"
+    elif now_pct <= minimum or one_miss_pct < minimum:
+        state = "watch"
+        if now_pct == minimum and one_miss_pct >= minimum:
+            note = f"sitting at exactly {minimum}%"
+        else:
+            note = f"one more miss drops below {minimum}%"
+    else:
+        state = "ok"
+        note = ""
+    at_risk = state != "ok"
     return {
         "attended": a, "conducted": t, "nowPct": now_pct,
         "avgCp": att.get("avgCp", 0),
         "sessionsLeftToMidterm": sessions_to_mid,
         "sessionsLeftToEndterm": sessions_to_end,
         "bestCaseMidtermPct": bc_mid, "bestCaseEndtermPct": bc_end,
-        "floorEndtermPct": floor, "atRisk": at_risk, "note": note,
+        "floorEndtermPct": floor, "state": state, "atRisk": at_risk, "note": note,
     }
 
 
@@ -252,8 +299,7 @@ def build_overview(now: datetime | None = None) -> dict:
 
     def _weight_for(course_slug, title: str):
         for comp in weights.get(course_slug, []):
-            nm, ti = comp["name"].lower(), (title or "").lower()
-            if nm and (nm in ti or ti in nm):
+            if _name_match(comp["name"], title):
                 return comp["weightPct"]
         return None
 
@@ -296,8 +342,7 @@ def build_overview(now: datetime | None = None) -> dict:
                 if isinstance(raw, list) else set())
         rows, ahead = [], 0
         for c in comps:
-            nm = c["name"].lower()
-            done = any(nm in t or t in nm for t in subs) or None
+            done = any(_name_match(c["name"], t) for t in subs) or None
             if done is not True:
                 ahead += c["weightPct"]
             rows.append({"name": c["name"], "weightPct": c["weightPct"], "done": done})
@@ -346,17 +391,19 @@ def build_overview(now: datetime | None = None) -> dict:
     exam_rows = []
     for s_dt, e in _exams(now):
         cslug = e.get("courseSlug")
+        exam_courses = [cslug] if cslug else ["all"]
+        tp_slugs = list(slugs) if exam_courses == ["all"] else exam_courses
         exam_rows.append({
             "name": e.get("title"), "date": daily_brief._local_date(s_dt),
             "inDays": (s_dt.date() - now.date()).days,
-            "courses": [cslug] if cslug else ["all"],
+            "courses": exam_courses,
             "coverageSessions": None,
             "brainReady": (all(b["state"] == "ready" for b in brain_rows) if not cslug
                            else next((b["state"] == "ready" for b in brain_rows
                                       if b["courseSlug"] == cslug), False)),
             "testprepExists": any(
                 bool(list((course_dir(x) / "study").glob("testprep-*.md")))
-                for x in slugs if (course_dir(x) / "study").exists()),
+                for x in tp_slugs if (course_dir(x) / "study").exists()),
             "testprepCommand": '/mesa:ares-brain-testprep "<course>"',
         })
 
@@ -374,18 +421,22 @@ def build_overview(now: datetime | None = None) -> dict:
     attendance = []
     tot_att = tot_conf = 0
     for a in att_list if isinstance(att_list, list) else []:
-        if not isinstance(a, dict):
+        try:
+            if not isinstance(a, dict):
+                continue
+            slug = by_cid.get(a.get("courseId"))
+            if not slug:
+                continue
+            f = fut.get(slug, [])
+            n_mid = len([d for d in f if mid is None or d <= mid])
+            n_end = len([d for d in f if end is None or d <= end])
+            rw = attendance_runway(a, n_mid, n_end)
+            tot_att += rw["attended"]
+            tot_conf += rw["conducted"]
+            attendance.append({"course": slugs.get(slug, slug), "courseSlug": slug, **rw})
+        except Exception as exc:  # noqa: BLE001 — one bad row must not abort the build
+            print(f"overview: attendance row skipped: {exc}", file=sys.stderr)
             continue
-        slug = by_cid.get(a.get("courseId"))
-        if not slug:
-            continue
-        f = fut.get(slug, [])
-        n_mid = len([d for d in f if mid is None or d <= mid])
-        n_end = len([d for d in f if end is None or d <= end])
-        rw = attendance_runway(a, n_mid, n_end)
-        tot_att += rw["attended"]
-        tot_conf += rw["conducted"]
-        attendance.append({"course": slugs.get(slug, slug), "courseSlug": slug, **rw})
 
     # --- kpis ---
     all_due = week.get("assignmentsDue", []) if isinstance(week, dict) else []

@@ -102,7 +102,8 @@ knows all of this from the scrape — it should say it, ranked by what protects 
       "sessionsLeftToMidterm":4, "sessionsLeftToEndterm":8,
       "bestCaseMidtermPct":85, "bestCaseEndtermPct":88,
       "floorEndtermPct":41,      // attend none from here
-      "atRisk": true,            // bestCaseEndtermPct < ARES_BRAIN_ATTENDANCE_MIN, OR nowPct within one miss of it
+      "state": "ok"|"watch"|"risk", // risk = bestCaseEndtermPct < ARES_BRAIN_ATTENDANCE_MIN (unrecoverable); watch = not risk but at/below the line now or one more miss drops below it; ok = else
+      "atRisk": true,            // convenience bool == (state != "ok")
       "note":"one more miss drops below 75%" }
   ],
   "attendanceMin": 75,
@@ -167,7 +168,7 @@ Blocks:
   that `courseSlug` with `startAt` date `<= examDate` (midterm = next `Mid Term`,
   endterm = last session in the calendar). `bestCaseX = round((attended + left) /
 (conducted + left) * 100)`. `floorEndterm = round(attended / (conducted + leftEnd) *
-100)`. `atRisk` per §2. `note` computed for the near-threshold case.
+100)`. `state` (`ok`/`watch`/`risk`) per the data model above; `atRisk` == `state != "ok"`. `note` computed for the `watch`/`risk` case.
 - **brain** — `brain.brain_status(slug)` per course + `pendingTranscripts` (see gaps).
   `state`: `not-built` if `guideBuiltAt is None`; `stale` if `indexStale` OR
   `guideSourcesBehind > 0` OR `pendingTranscripts > 0`; else `ready`.
@@ -228,7 +229,7 @@ Blocks:
 6. **Exam prep** — `exams[]`: name, date + countdown, coverage, `brain ready` /
    `no practice set` badges, `[Generate practice set ↗]` (copies `testprepCommand`).
 7. **Attendance runway** — `attendance[]` rows: course · `nowPct%` · `N left` ·
-   `best case midterm/endterm` · a red flag + `note` when `atRisk`.
+   `best case midterm/endterm` · an amber flag for `state == "watch"`, a red flag + `note` for `state == "risk"`.
 8. **Where you stand** — `brain[]` rows: course · state badge · `reason`. A `[Fix]`
    that either runs `ingest`+`brain-index` as a job (deterministic part) or copies
    `buildCommand`.
