@@ -186,6 +186,21 @@ Transcription is never part of the daily run (too slow) — run `/mesa:ares-brai
 
 ---
 
+## Dashboard
+
+A localhost web UI: pick a course, run a sync, upload books or recordings, transcribe a
+YouTube link, and watch the job log stream.
+
+```bash
+npm run dashboard          # dev — Vite on :5173 proxying the API on :4319
+npm run dashboard:build    # then: npm run --workspace ares-dashboard start  (serves :4319)
+```
+
+Or `/mesa:ares-brain-dashboard` from Claude Code. Binds `127.0.0.1` only, no auth. One
+long job at a time. Chat is phase 2.
+
+---
+
 ## Deployment
 
 This is a local, single-user agent. For running it on a schedule, a second machine, or
@@ -204,18 +219,18 @@ npm install                # once, at the repo root — also wires the pre-commi
 npm run format             # prettier --write across the repo
 npm run format:check       # prettier --check (what CI runs)
 npm run lint               # eslint (mcp/ TypeScript)
-npm run check              # format:check + lint + mcp tsc + mcp vitest
+npm run check              # format:check + lint + mcp tsc + mcp vitest + dashboard web tsc + dashboard build
 
 cd mcp && npm test          # vitest
 cd scraper && uv run pytest # ~190 tests
 ```
 
 A **pre-commit hook** (husky + lint-staged) auto-runs `eslint --fix` + `prettier` on
-staged `mcp/` TS and `prettier` on staged `*.md` / `*.json` / `*.yaml`. Test fixtures
+staged `mcp/` and `dashboard/` TS and `prettier` on staged `*.md` / `*.json` / `*.yaml`. Test fixtures
 under `scraper/tests/fixtures/` are prettier-ignored (they're byte-asserted by tests).
 
-**CI** (`.github/workflows/ci.yml`) runs three jobs on push/PR: `format:check`,
-`mcp` lint+build+test, `scraper` pytest.
+**CI** (`.github/workflows/ci.yml`) runs four jobs on push/PR: `format:check`,
+`mcp` lint+build+test, `dashboard` build+typecheck+test, `scraper` pytest.
 
 ---
 

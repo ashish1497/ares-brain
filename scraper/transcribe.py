@@ -1,12 +1,14 @@
 """Transcribe class recordings: pull audio from the YouTube link with yt-dlp,
 run faster-whisper. All recordings are YouTube links (see docs/lms-api.md)."""
+import hashlib
 import os
 import subprocess
 import tempfile
+from datetime import date
 from pathlib import Path
 
 from paths import course_dir, raw_dir, ensure
-from scrape_steps import _write_json, _read_or_none
+from scrape_steps import _write_json, _read_or_none, global_file
 
 try:
     from ingest import _yaml_scalar
@@ -70,28 +72,72 @@ def _write_transcript(dest: Path, rec: dict, course: dict, segs: list) -> None:
     dest.write_text("\n".join(fm) + body + "\n")
 
 
-def step_transcribe(index: list[dict], course: str | None = None) -> dict:
+def _write_url_transcript(dest: Path, url: str, title: str, segs: list) -> None:
+    body = "\n".join(f"[{_fmt_ts(s)}] {t}" for s, t in segs)
+    fm = [
+        "---",
+        "type: transcript",
+        f"source: {_yaml_scalar('url:' + url)}",
+        f"title: {_yaml_scalar(title)}",
+        f"recordedOn: {_yaml_scalar(date.today().isoformat())}",
+        "---", "",
+    ]
+    ensure(dest.parent)
+    dest.write_text("\n".join(fm) + body + "\n")
+
+
+def transcribe_url(slug: str, url: str, title: str | None = None) -> dict:
+    try:
+        idx = _read_or_none(global_file("_index.json")) or []
+        course = next((c for c in idx if c.get("slug") == slug), None)
+        if course is None:
+            return {"ok": False, "error": f"unknown course slug: {slug}"}
+        resolved = title or url
+        dest = (course_dir(slug) / "transcripts"
+                / f"url-{hashlib.sha1(url.encode()).hexdigest()[:10]}.md")
+        if dest.exists():
+            return {"ok": True, "path": f"transcripts/{dest.name}", "url": url,
+                    "title": resolved, "skipped": True}
+        with tempfile.TemporaryDirectory() as tmp:
+            audio = _pull_audio(url, Path(tmp))
+            if audio is None:
+                return {"ok": False, "error": "could not pull audio from the url"}
+            try:
+                segs = _whisper(audio)
+            except Exception as exc:  # noqa: BLE001
+                return {"ok": False, "error": f"transcription failed: {exc}"}
+        _write_url_transcript(dest, url, resolved, segs)
+        return {"ok": True, "path": f"transcripts/{dest.name}", "url": url, "title": resolved}
+    except Exception as exc:  # noqa: BLE001 - never raise
+        return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+
+
+def step_transcribe(index: list[dict], course: str | None = None,
+                    inbox_only: bool = False) -> dict:
     scope = [c for c in index if course is None or c["slug"] == course]
     transcribed, skipped, failed = [], [], []
     for c in scope:
         try:
-            _transcribe_course(c, transcribed, skipped, failed)
+            _transcribe_course(c, transcribed, skipped, failed, inbox_only=inbox_only)
         except Exception as exc:  # noqa: BLE001 - one bad course must not abort the rest
             failed.append({"id": c.get("slug", "?"), "status": "needs-manual",
                            "error": f"{type(exc).__name__}: {exc}"})
     return {"transcribed": transcribed, "skipped": skipped, "failed": failed}
 
 
-def _transcribe_course(c: dict, transcribed: list, skipped: list, failed: list) -> None:
+def _transcribe_course(c: dict, transcribed: list, skipped: list, failed: list,
+                       inbox_only: bool = False) -> None:
     tdir = course_dir(c["slug"]) / "transcripts"
-    try:
-        recs = _read_or_none(raw_dir(c["slug"]) / "recordings.json") or []
-    except Exception as exc:  # noqa: BLE001
-        recs = []
-        failed.append({"id": c.get("slug", "?"), "status": "needs-manual",
-                       "error": f"recordings.json unreadable: {exc}"})
-    if not isinstance(recs, list):
-        recs = []
+    recs = []
+    if not inbox_only:
+        try:
+            recs = _read_or_none(raw_dir(c["slug"]) / "recordings.json") or []
+        except Exception as exc:  # noqa: BLE001
+            recs = []
+            failed.append({"id": c.get("slug", "?"), "status": "needs-manual",
+                           "error": f"recordings.json unreadable: {exc}"})
+        if not isinstance(recs, list):
+            recs = []
     inbox_root = course_dir(c["slug"]) / "inbox" / "recordings"
     inbox_recs = sorted(inbox_root.glob("*")) if inbox_root.exists() else []
     failed_here = []

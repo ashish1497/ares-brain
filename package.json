@@ -5,14 +5,18 @@
   "type": "module",
   "description": "Repo-wide formatting, linting and git hooks for mesa. The runnable code lives in mcp/ (workspace) and scraper/ (Python).",
   "workspaces": [
-    "mcp"
+    "mcp",
+    "dashboard",
+    "dashboard/*"
   ],
   "scripts": {
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "check": "prettier --check . && eslint . && npm run --workspace mcp check",
+    "dashboard": "npm run --workspace ares-dashboard dev",
+    "dashboard:build": "npm run --workspace ares-dashboard build",
+    "check": "prettier --check . && eslint . && npm run --workspace mcp check && npm run --workspace ares-dashboard-web check && npm run dashboard:build",
     "prepare": "husky"
   },
   "devDependencies": {
@@ -26,6 +30,10 @@
   },
   "lint-staged": {
     "mcp/**/*.{ts,js,mjs,cjs}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "dashboard/**/*.{ts,tsx}": [
       "eslint --fix",
       "prettier --write"
     ],

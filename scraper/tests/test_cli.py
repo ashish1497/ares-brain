@@ -137,6 +137,20 @@ def test_cli_transcribe_reads_cached_index(home, monkeypatch):
     assert result == {"transcribed": [], "skipped": [], "failed": []}
 
 
+def test_cli_transcribe_url_dispatch(home, monkeypatch):
+    import json, importlib, paths, transcribe
+    (home / "courses").mkdir(parents=True, exist_ok=True)
+    (home / "courses" / "_index.json").write_text(json.dumps(
+        [{"id": "x", "name": "C", "slug": "c1"}]))
+    importlib.reload(paths); importlib.reload(transcribe)
+    monkeypatch.setattr(transcribe, "transcribe_url",
+                        lambda *a, **k: {"ok": True, "path": "transcripts/url-x.md"})
+    import lms_scrape
+    r = lms_scrape.run(["transcribe-url", "--course", "c1",
+                        "--url", "https://youtu.be/x", "--json"])
+    assert r["ok"] is True
+
+
 def test_cli_ingest_creates_inbox_and_normalizes(home):
     (home / "courses").mkdir(exist_ok=True)
     (home / "courses" / "_index.json").write_text(json.dumps(
@@ -295,6 +309,49 @@ def test_cli_brain_write_study(home, monkeypatch, capsys):
     assert r["path"] == "study/testprep-20260903.md"
     written = (home / "courses" / "course-one" / "study" / "testprep-20260903.md").read_text()
     assert 'type: "testprep"' in written and 'course: "Course One"' in written and "Q1. explain X" in written
+
+
+def test_main_exit_code_zero_on_clean_result(home, monkeypatch):
+    import lms_scrape
+    monkeypatch.setattr(lms_scrape, "run", lambda argv: {"errors": [], "courses": 3})
+    assert lms_scrape.main_exit_code(["all", "--json"]) == 0
+
+
+def test_main_exit_code_one_on_errors(home, monkeypatch):
+    import lms_scrape
+    monkeypatch.setattr(lms_scrape, "run", lambda argv: {"errors": ["boom"]})
+    assert lms_scrape.main_exit_code(["all", "--json"]) == 1
+
+
+def test_main_exit_code_one_on_ok_false(home, monkeypatch):
+    import lms_scrape
+    monkeypatch.setattr(lms_scrape, "run", lambda argv: {"ok": False})
+    assert lms_scrape.main_exit_code(["x"]) == 1
+
+
+def test_main_exit_code_one_on_failed_list(home, monkeypatch):
+    import lms_scrape
+    monkeypatch.setattr(lms_scrape, "run",
+                        lambda argv: {"transcribed": [], "skipped": [], "failed": ["r1"]})
+    assert lms_scrape.main_exit_code(["x"]) == 1
+
+
+def test_main_exit_code_zero_when_run_returns_none(home, monkeypatch):
+    import lms_scrape
+    monkeypatch.setattr(lms_scrape, "run", lambda argv: None)
+    assert lms_scrape.main_exit_code(["whoami"]) == 0
+
+
+def test_cli_transcribe_inbox_without_index(home, monkeypatch):
+    (home / "courses").mkdir(exist_ok=True)
+    import transcribe, importlib, paths
+    importlib.reload(paths); importlib.reload(transcribe)
+    monkeypatch.setattr(
+        transcribe, "step_transcribe",
+        lambda index, course, inbox_only: {"transcribed": [], "skipped": [], "failed": []})
+    import lms_scrape
+    result = lms_scrape.run(["transcribe", "--inbox", "--json"])
+    assert result == {"transcribed": [], "skipped": [], "failed": []}
 
 
 def test_cli_daily_brief(home, monkeypatch):
