@@ -5,7 +5,8 @@
   "type": "module",
   "description": "Repo-wide formatting, linting and git hooks for mesa. The runnable code lives in mcp/ (workspace) and scraper/ (Python).",
   "workspaces": [
-    "mcp"
+    "mcp",
+    "dashboard/*"
   ],
   "scripts": {
     "format": "prettier --write .",
