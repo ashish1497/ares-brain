@@ -1,9 +1,9 @@
 import { defineConfig } from "vite";
-import preact from "@preact/preset-vite";
+import react from "@vitejs/plugin-react";
 import tailwind from "@tailwindcss/vite";
 
 export default defineConfig({
-  plugins: [preact(), tailwind()],
+  plugins: [react(), tailwind()],
   server: {
     port: 5173,
     proxy: {
@@ -13,5 +13,5 @@ export default defineConfig({
       },
     },
   },
-  test: { globals: true, environment: "jsdom", setupFiles: ["./test/setup.ts"] },
+  test: { environment: "jsdom", globals: true, setupFiles: ["./test/setup.ts"] },
 });
