@@ -30,6 +30,19 @@ jobs:
       - run: npm run --workspace mcp build
       - run: npm run --workspace mcp test
 
+  dashboard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run --workspace ares-dashboard build
+      - run: npm run --workspace ares-dashboard-web check
+      - run: npm run --workspace ares-dashboard test
+
   scraper:
     runs-on: ubuntu-latest
     steps:

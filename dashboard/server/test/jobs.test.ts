@@ -24,7 +24,7 @@ beforeEach(() => {
 describe("jobs", () => {
   it("builds argv per kind and streams lines", async () => {
     const f = fakeRun();
-    const job = startJob({ kind: "sync" });
+    startJob({ kind: "sync" });
     expect((runPython as any).mock.calls[0][0]).toEqual(["all"]);
     f.emit("line one");
     expect(currentJob()!.log).toContain("line one");

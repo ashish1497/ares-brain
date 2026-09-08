@@ -1,0 +1,17 @@
+{
+  "name": "ares-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -k -n web,server \"npm:dev:web\" \"npm:dev:server\"",
+    "dev:web": "npm run --workspace ares-dashboard-web dev",
+    "dev:server": "npm run --workspace ares-dashboard-server dev",
+    "build": "npm run --workspace ares-dashboard-web build && npm run --workspace ares-dashboard-server build",
+    "start": "npm run --workspace ares-dashboard-server start",
+    "test": "npm run --workspace ares-dashboard-server test && npm run --workspace ares-dashboard-web test",
+    "check": "npm run --workspace ares-dashboard-web check"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}
