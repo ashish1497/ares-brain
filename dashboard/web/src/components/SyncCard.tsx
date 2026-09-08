@@ -22,7 +22,7 @@ export function SyncCard({
           : ""}
       </p>
       <button
-        class="h-9 w-full rounded-md border border-[var(--color-line)] text-sm disabled:opacity-50"
+        class="h-9 w-full rounded-md border border-[var(--color-line)] text-sm enabled:border-transparent enabled:bg-[var(--color-accent)] enabled:text-white disabled:opacity-50"
         disabled={busy}
         onClick={onRun}
       >

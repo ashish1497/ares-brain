@@ -22,22 +22,32 @@ export function App() {
       setCourses(c);
       if (c[0]) setCourse(c[0].slug);
     });
-    api.getState().then(setState);
+    api.getState().then((s) => {
+      setState(s);
+      if (s.job?.status === "running") follow(s.job.id);
+    });
   }, []);
 
   useEffect(() => {
-    if (busy) return;
+    // Always-on safety net: a cheap GET /api/state every 3s. The SSE stream just
+    // makes updates snappier; if it drops or the page reloaded mid-job, this poll
+    // still recovers `busy` once the job leaves "running".
     const t = setInterval(() => api.getState().then(setState), 3000);
     return () => clearInterval(t);
-  }, [busy]);
+  }, []);
 
   function follow(jobId: string) {
     setLines([]);
     stopRef.current?.();
+    const recover = () => {
+      stopRef.current = undefined;
+      api.getState().then(setState);
+    };
     stopRef.current = api.streamLog(
       jobId,
       (l) => setLines((prev) => [...prev, l]),
-      () => api.getState().then(setState),
+      recover,
+      recover,
     );
   }
 
@@ -48,7 +58,9 @@ export function App() {
       setState(s);
       follow(r.jobId);
     } else if (r.error) {
-      setLines((p) => [...p, `! ${r.error}`]);
+      const msg =
+        r.error === "busy" ? "A job is already running — wait for it to finish." : r.error;
+      setLines((p) => [...p, `! ${msg}`]);
     }
   }
 

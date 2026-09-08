@@ -33,7 +33,7 @@ export function YouTubeCard({
       />
       {err && <p class="mb-2 text-[12px] text-red-600">{err}</p>}
       <button
-        class="h-9 w-full rounded-md border border-[var(--color-line)] text-sm disabled:opacity-50"
+        class="h-9 w-full rounded-md border border-[var(--color-line)] text-sm enabled:border-transparent enabled:bg-[var(--color-accent)] enabled:text-white disabled:opacity-50"
         disabled={busy || !course}
         onClick={() => {
           if (!/^https?:\/\//.test(url.trim())) {

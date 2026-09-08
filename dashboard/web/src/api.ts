@@ -54,6 +54,7 @@ export function streamLog(
   jobId: string,
   onLine: (l: string) => void,
   onEnd: (exitCode: number) => void,
+  onError?: () => void,
 ): () => void {
   const es = new EventSource(`/api/jobs/${jobId}/log`);
   es.onmessage = (e) => onLine(JSON.parse(e.data));
@@ -61,6 +62,9 @@ export function streamLog(
     onEnd(JSON.parse((e as MessageEvent).data).exitCode);
     es.close();
   });
-  es.onerror = () => es.close();
+  es.onerror = () => {
+    es.close();
+    onError?.();
+  };
   return () => es.close();
 }
