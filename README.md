@@ -188,8 +188,9 @@ Transcription is never part of the daily run (too slow) — run `/mesa:ares-brai
 
 ## Dashboard
 
-A localhost web UI: pick a course, run a sync, upload books or recordings, transcribe a
-YouTube link, and watch the job log stream.
+A localhost web UI — one scrolling page that answers "where do I stand?" for the term.
+Not another LMS view: every section is derived from the scraped data and points at the
+next action.
 
 ```bash
 npm run dashboard          # dev — Vite on :5173 proxying the API on :4319
@@ -197,7 +198,29 @@ npm run dashboard:build    # then: npm run --workspace ares-dashboard start  (se
 ```
 
 Or `/mesa:ares-brain-dashboard` from Claude Code. Binds `127.0.0.1` only, no auth. One
-long job at a time. Chat is phase 2.
+long job at a time. React + Vite, neubrutalist styling, follows the OS light/dark theme.
+
+**The sections**
+
+| Section                     | Answers                                                                                                                                                                                                                                                                                                           |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| KPI strip                   | due this week, next exam, CP average, attendance now → best case, brains ready. Tiles turn amber when a number needs attention.                                                                                                                                                                                   |
+| Today                       | classes with times/room/instructor, what's due today or tomorrow, what changed in the LMS since the last scrape.                                                                                                                                                                                                  |
+| This week                   | the next 7 days grouped by day — classes, assignment due dates, exams.                                                                                                                                                                                                                                            |
+| Assignments — by grade risk | every unsubmitted task, ordered by weight × urgency, each with its grade weight and a **Start** command. Below: per-course "% of grade still ahead".                                                                                                                                                              |
+| Exam prep                   | each exam, days out, whether its course brain is ready, whether a practice set exists.                                                                                                                                                                                                                            |
+| Attendance runway           | per course: attendance now, sessions left, best-case % to midterm / endterm, and a three-state flag — **on track** / **watch** (at the line, or one miss from it once ≥ 4 sessions held) / **at risk** (even perfect attendance can't recover 75%). Threshold is an assumption — set `ARES_BRAIN_ATTENDANCE_MIN`. |
+| Where you stand             | per course brain: ready / stale / not-built, why, and **Ingest** / **Build brain**.                                                                                                                                                                                                                               |
+| Needs your input            | recordings still to transcribe (**Transcribe all** pulls the scraped YouTube links), books mentioned in outlines but not added (drop the PDF right here), stale scrape (**Sync**).                                                                                                                                |
+| Chat                        | locked until `ARES_BRAIN_CHAT_UNLOCK` (default 15) course brains are ready — phase 2.                                                                                                                                                                                                                             |
+
+**Deterministic vs copy-command.** Buttons that do a bounded job — Sync, Ingest,
+Transcribe, upload — run it directly and stream the log. Anything that needs a
+Claude session — assignment help, `course-brain`, `testprep` — hands you the exact
+`/mesa:ares-brain-*` command to paste. The dashboard never drives Claude itself.
+
+Env: `ARES_BRAIN_DASHBOARD_PORT` (4319), `ARES_BRAIN_ATTENDANCE_MIN` (75),
+`ARES_BRAIN_CHAT_UNLOCK` (15).
 
 ---
 

@@ -519,3 +519,28 @@ if not, yt-dlp now often needs a `--cookies-from-browser` / PO-token workaround
 `transcribe_url` returns `{"ok": false}`, so the dashboard shows the job as
 `done`/green. The CLI dispatch should `sys.exit(1)` on `ok is False` → job runner
 marks it `failed`.
+
+## G outcome dashboard — live run 2026-09-09
+
+`npm run --workspace ares-dashboard build` then `... start` on `127.0.0.1:4319`,
+verified in a browser (light + dark), real data (17 courses, 149 calendar events):
+
+- `GET /api/overview` → 200, full shape. All 10 sections render: KPI strip, Today
+  (5 classes with formatted times, 3 due today/tomorrow, 8 changed courses), This
+  week (grouped by day, past days filtered), Assignments by grade risk (4, each
+  with a Start command + per-course "% ahead"), Exam prep (5 exams, course names
+  resolved, brain-ready + practice-set badges), Attendance runway (9 courses,
+  three-state flags), Where you stand (17 brains: 2 ready / 8 stale / 7 not-built),
+  Needs your input (9 transcribe groups), Chat (locked, 2/17, unlocks at 15).
+- Theme: follows `prefers-color-scheme`; palette B (green edge, mint/near-black
+  paper). Fixed a Tailwind v4 bug — `@theme` nested in `@media` flattens and the
+  dark tokens leaked into light mode.
+- Attendance runway math checked against `_attendance.json`: e.g. Power of
+  Communication 5/7 = 71% → watch; Crafting Marketing 1/5 = 20%, best case 60% →
+  at risk; Entrepreneurship 2/2 = 100% early → on track (one-miss projection is
+  suppressed below 4 sessions held).
+
+**Not re-verified this run:** the job actions (Sync / Ingest / Transcribe / upload)
+— same job runner + SSE as the F live run above, unchanged. `transcribe` (scraped
+YouTube links, no `--inbox`) is a new job kind but the same yt-dlp egress block
+applies on this machine.

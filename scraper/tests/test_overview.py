@@ -110,6 +110,23 @@ def test_attendance_runway_finished_course_below_minimum():
     assert "finished at 50%" in r["note"]
 
 
+def test_attendance_runway_early_perfect_not_watch():
+    # 2 of 2 held, +8 sessions ahead — one hypothetical miss would math to 67%,
+    # but with only 2 conducted that is denominator noise, not a trend. state: ok.
+    r = overview.attendance_runway({"attended": 2, "total": 2}, 2, 8, minimum=75)
+    assert r["nowPct"] == 100.0
+    assert r["state"] == "ok"
+    assert r["note"] == ""
+
+
+def test_attendance_runway_one_miss_watch_after_four_held():
+    # 7 of 9 = 77.8% now; one more miss -> 7/10 = 70% < 75, and 9 sessions is
+    # enough history for that to signal a trend. state: watch.
+    r = overview.attendance_runway({"attended": 7, "total": 9}, 4, 8, minimum=75)
+    assert r["state"] == "watch"
+    assert "one more miss" in r["note"]
+
+
 def test_attendance_runway_bad_values_default_to_zero():
     r = overview.attendance_runway({"attended": "n/a", "total": None},
                                    sessions_to_mid=0, sessions_to_end=2, minimum=75)

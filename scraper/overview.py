@@ -161,10 +161,15 @@ def attendance_runway(att: dict, sessions_to_mid: int, sessions_to_end: int,
     ``state`` is one of:
     - ``"risk"``  — even perfect attendance keeps the endterm figure below
       ``minimum`` (unrecoverable), or the course is finished below ``minimum``.
-    - ``"watch"`` — not risk, but at/below the line now, or one more miss drops
-      below it.
+    - ``"watch"`` — not risk, but at/below the line now, or (once at least 4
+      sessions have been held) one more miss drops below it.
     - ``"ok"``    — comfortably clear (or finished at/above ``minimum``).
     ``atRisk`` mirrors ``state != "ok"`` for callers that only want a bool.
+
+    The one-miss projection only applies after ``conducted >= 4``: below that a
+    single absence swings the percentage too far to signal a trend (2/2 = 100%
+    would read as "watch" off one hypothetical miss), so early on the state
+    rests on ``now_pct`` alone.
 
     When ``sessions_to_end == 0`` the course is over: there are no sessions left
     to model, so the one-miss projection is skipped and the state is decided
@@ -197,7 +202,7 @@ def attendance_runway(att: dict, sessions_to_mid: int, sessions_to_end: int,
     elif bc_end < minimum:
         state = "risk"
         note = f"even perfect attendance stays below {minimum}%"
-    elif now_pct <= minimum or one_miss_pct < minimum:
+    elif now_pct <= minimum or (t >= 4 and one_miss_pct < minimum):
         state = "watch"
         if now_pct == minimum and one_miss_pct >= minimum:
             note = f"sitting at exactly {minimum}%"
