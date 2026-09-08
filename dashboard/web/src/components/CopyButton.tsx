@@ -27,7 +27,7 @@ export function CopyButton({ value, label = "Copy" }: { value: string; label?: s
         {label}
       </Button>
       {copied && (
-        <span className="text-xs font-bold text-[var(--color-edge)]">
+        <span className="text-xs font-bold text-[color:var(--color-ink-muted)]">
           copied — paste in Claude Code
         </span>
       )}

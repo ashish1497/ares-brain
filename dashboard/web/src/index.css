@@ -1,34 +1,109 @@
 @import "tailwindcss";
 
+/* Meadow light — the ONLY values inside @theme; this is what generates the
+   bg-, border- and text- utilities. Runtime theming below is plain :root overrides. */
 @theme {
   --color-edge: #0f8a5f;
   --color-paper: #eafff4;
   --color-card: #ffffff;
-  --color-ink: #10231b;
-  --color-accent: #ff8a3d;
+  --color-ink: #0e2119;
   --color-cta: #ffd23f;
-  --color-ok: #7ee081;
-  --color-soon: #ffb056;
-  --color-bad: #ff6b6b;
+  --color-accent: #e8590c;
+  --color-ok: #2f9e44;
+  --color-soon: #f08c00;
+  --color-bad: #e03131;
   --radius-nb: 2px;
-}
-
-/* dark: override the RUNTIME css vars on :root — NOT inside @theme */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-paper: #161d1a;
-    --color-card: #1e2624;
-    --color-ink: #eafff4;
-    --color-edge: #12b876;
-  }
+  /* Placeholder only — generates the divide-rule/border-rule utilities; the real
+     per-theme value comes from the :root color-mix override below. */
+  --color-rule: #0f8a5f26;
 }
 
 :root {
   --nb-border: 3px;
   --nb-shadow: 4px 4px 0 var(--color-edge);
+  --color-rule: color-mix(in srgb, var(--color-edge) 15%, transparent);
+  --color-ink-muted: color-mix(in srgb, var(--color-ink) 60%, transparent);
+  --color-ink-faint: color-mix(in srgb, var(--color-ink) 40%, transparent);
 }
+
+/* ---- Ultraviolet light ---- */
+:root[data-theme="violet"] {
+  --color-edge: #5b21b6;
+  --color-paper: #faf3e0;
+  --color-card: #fffdf7;
+  --color-ink: #241436;
+  --color-cta: #ffd23f;
+  --color-accent: #7c3aed;
+  --color-ok: #2f9e44;
+  --color-soon: #f08c00;
+  --color-bad: #e03131;
+}
+
+/* ---- Meadow dark (explicit appearance="dark") ---- */
+/* keep in sync with the @media copy below */
+:root[data-appearance="dark"]:not([data-theme="violet"]) {
+  --color-edge: #16b981;
+  --color-paper: #141a17;
+  --color-card: #1f2723;
+  --color-ink: #eafff4;
+  --color-cta: #ffd23f;
+  --color-accent: #ff8a4c;
+  --color-ok: #51cf66;
+  --color-soon: #ffc078;
+  --color-bad: #ff6b6b;
+}
+
+/* ---- Ultraviolet dark (explicit appearance="dark") ---- */
+/* keep in sync with the @media copy below */
+:root[data-appearance="dark"][data-theme="violet"] {
+  --color-edge: #a78bfa;
+  --color-paper: #17121f;
+  --color-card: #211a2e;
+  --color-ink: #f3ecff;
+  --color-cta: #ffd23f;
+  --color-accent: #c4b5fd;
+  --color-ok: #51cf66;
+  --color-soon: #ffc078;
+  --color-bad: #ff6b6b;
+}
+
+/* appearance: system → follow the OS unless the user forced light/dark explicitly */
+@media (prefers-color-scheme: dark) {
+  /* ---- Meadow dark (system) ---- */
+  /* keep in sync with the explicit copy above */
+  :root:not([data-appearance="light"]):not([data-appearance="dark"]):not([data-theme="violet"]) {
+    --color-edge: #16b981;
+    --color-paper: #141a17;
+    --color-card: #1f2723;
+    --color-ink: #eafff4;
+    --color-cta: #ffd23f;
+    --color-accent: #ff8a4c;
+    --color-ok: #51cf66;
+    --color-soon: #ffc078;
+    --color-bad: #ff6b6b;
+  }
+
+  /* ---- Ultraviolet dark (system) ---- */
+  /* keep in sync with the explicit copy above */
+  :root:not([data-appearance="light"]):not([data-appearance="dark"])[data-theme="violet"] {
+    --color-edge: #a78bfa;
+    --color-paper: #17121f;
+    --color-card: #211a2e;
+    --color-ink: #f3ecff;
+    --color-cta: #ffd23f;
+    --color-accent: #c4b5fd;
+    --color-ok: #51cf66;
+    --color-soon: #ffc078;
+    --color-bad: #ff6b6b;
+  }
+}
+
 body {
+  margin: 0;
   background: var(--color-paper);
   color: var(--color-ink);
   color-scheme: light dark;
+  font:
+    14px/1.5 system-ui,
+    sans-serif;
 }

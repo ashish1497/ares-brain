@@ -2,31 +2,61 @@ import { useEffect, useRef, useState } from "react";
 import * as api from "./api";
 import { getOverview, type Job, type Overview } from "./api";
 import { Header } from "./components/Header";
-import { KpiStrip } from "./components/KpiStrip";
-import { TodayCard } from "./components/TodayCard";
-import { WeekCard } from "./components/WeekCard";
-import { AssignmentsCard } from "./components/AssignmentsCard";
-import { ExamsCard } from "./components/ExamsCard";
-import { AttendanceCard } from "./components/AttendanceCard";
-import { BrainCard } from "./components/BrainCard";
-import { GapsCard } from "./components/GapsCard";
-import { ChatLockCard } from "./components/ChatLockCard";
+import { Tabs } from "./components/Tabs";
+import { Settings } from "./components/Settings";
 import { JobLog } from "./components/JobLog";
-import { Alert, AlertTitle, AlertDescription } from "./components/ui/alert";
 import { Button } from "./components/ui/button";
+import { useHashRoute } from "./lib/useHashRoute";
+import { TodayTab } from "./components/today/TodayTab";
+import { AssignmentsTab } from "./components/assignments/AssignmentsTab";
+import { AttendanceTab } from "./components/AttendanceTab";
+import { ExamsTab } from "./components/ExamsTab";
+import { BrainTab } from "./components/BrainTab";
+import { GapsTab } from "./components/GapsTab";
+
+const TAB_IDS = ["today", "assignments", "attendance", "exams", "brain", "gaps"];
+
+/** Full-page error state shown only when the very first load fails. */
+function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="mx-auto max-w-[1400px] px-4 py-8 md:px-8">
+      <div className="rounded-nb border-[3px] border-edge bg-bad p-4 text-black shadow-[var(--nb-shadow)] md:p-6">
+        <h2 className="mb-1 font-bold">couldn&apos;t load overview</h2>
+        <p className="mb-3 text-sm">{message}</p>
+        <Button type="button" variant="neutral" size="sm" onClick={onRetry}>
+          Retry
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** Non-blocking banner shown when a later refresh fails after a good first load. */
+function StaleBanner({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="mt-4 flex items-center justify-between gap-3 rounded-nb border-[3px] border-edge bg-soon p-3 text-black shadow-[var(--nb-shadow)]">
+      <span className="text-sm font-bold">showing stale data — the last refresh failed</span>
+      <Button type="button" variant="neutral" size="sm" onClick={onRetry}>
+        Retry
+      </Button>
+    </div>
+  );
+}
 
 export function App() {
   const [ov, setOv] = useState<Overview | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const [err, setErr] = useState("");
   const [job, setJob] = useState<Job | null>(null);
   const [lines, setLines] = useState<string[]>([]);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const stop = useRef<(() => void) | undefined>(undefined);
+  const { tab, params, go } = useHashRoute();
 
   const refresh = () =>
     getOverview()
       .then((o) => {
         setOv(o);
-        setErr(null);
+        setErr("");
       })
       .catch((e: unknown) => setErr(e instanceof Error ? e.message : String(e)));
   useEffect(() => {
@@ -40,8 +70,12 @@ export function App() {
   const busy = job?.status === "running";
 
   async function onJob(kind: string, opts: Record<string, string> = {}) {
-    const r = await api.startJob({ kind, ...opts });
-    if (r.jobId) {
+    try {
+      const r = await api.startJob({ kind, ...opts });
+      if (!r.jobId) {
+        setLines((p) => [...p, `! ${r.error}`]);
+        return;
+      }
       setLines([]);
       stop.current?.();
       stop.current = api.streamLog(
@@ -55,41 +89,47 @@ export function App() {
           api.getState().then((s) => setJob(s.job));
         },
       );
-    } else setLines((p) => [...p, `! ${r.error}`]);
+    } catch (e) {
+      setLines((p) => [...p, `! ${e}`]);
+    }
   }
 
-  if (!ov && err)
-    return (
-      <div className="mx-auto max-w-4xl p-6">
-        <Alert variant="bad">
-          <AlertTitle>couldn't load overview</AlertTitle>
-          <AlertDescription>{err}</AlertDescription>
-          <Button
-            type="button"
-            variant="neutral"
-            size="sm"
-            className="mt-2"
-            onClick={() => refresh()}
-          >
-            Retry
-          </Button>
-        </Alert>
-      </div>
-    );
-  if (!ov) return <div className="mx-auto max-w-4xl p-6">loading…</div>;
+  if (!ov && err) return <ErrorCard message={err} onRetry={refresh} />;
+  if (!ov) return <div className="mx-auto max-w-[1400px] p-8">loading…</div>;
+
+  const counts = {
+    assignments: ov.assignments.length,
+    gaps:
+      ov.gaps.pendingTranscripts.length +
+      ov.gaps.missingBooks.length +
+      (ov.gaps.scrapeStale ? 1 : 0),
+  };
+
+  const active = TAB_IDS.includes(tab) ? tab : "today";
+  const tabProps = { ov, onJob, busy: !!busy, go, params };
+
   return (
-    <div className="mx-auto max-w-4xl p-4 sm:p-6">
-      <Header ov={ov} busy={!!busy} onJob={onJob} />
-      <KpiStrip k={ov.kpis} min={ov.attendanceMin} />
-      <TodayCard today={ov.today} />
-      <WeekCard week={ov.thisWeek} />
-      <AssignmentsCard assignments={ov.assignments} grade={ov.gradePicture} />
-      <ExamsCard exams={ov.exams} />
-      <AttendanceCard rows={ov.attendance} min={ov.attendanceMin} />
-      <BrainCard rows={ov.brain} busy={!!busy} onJob={onJob} />
-      <GapsCard gaps={ov.gaps} ageHours={ov.scrapeAgeHours} busy={!!busy} onJob={onJob} />
-      <ChatLockCard k={ov.kpis} unlockAt={ov.chatUnlockAt} />
-      {(job || lines.length > 0) && <JobLog job={job} lines={lines} />}
-    </div>
+    <>
+      <Header
+        ov={ov}
+        busy={!!busy}
+        onResync={() => onJob("sync")}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
+      <Tabs active={active} counts={counts} onSelect={(t) => go(t)} />
+      <div className="mx-auto max-w-[1400px] px-4 pb-8 md:px-8">
+        {err && ov && <StaleBanner onRetry={refresh} />}
+        <main className="py-6">
+          {active === "today" && <TodayTab {...tabProps} />}
+          {active === "assignments" && <AssignmentsTab {...tabProps} />}
+          {active === "attendance" && <AttendanceTab {...tabProps} />}
+          {active === "exams" && <ExamsTab {...tabProps} />}
+          {active === "brain" && <BrainTab {...tabProps} />}
+          {active === "gaps" && <GapsTab {...tabProps} />}
+        </main>
+        {(job || lines.length > 0) && <JobLog job={job} lines={lines} />}
+      </div>
+      <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+    </>
   );
 }

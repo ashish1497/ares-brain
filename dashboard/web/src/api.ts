@@ -47,6 +47,11 @@ export interface OverviewClass {
   prereadPaths: string[];
 }
 
+export interface OverviewMaterial {
+  title: string;
+  kind: string;
+}
+
 export interface OverviewDueSoon {
   title: string;
   course: string;
@@ -55,13 +60,26 @@ export interface OverviewDueSoon {
   submitted: boolean;
   isClub: boolean;
   submissionType: string;
+  instructionsText: string;
+  isGroup: boolean;
+  cutoffAt: string | null;
+  allowLate: boolean;
+  materials: OverviewMaterial[];
+  sessionRef: number | null;
+  prereadPaths: string[];
+}
+
+export interface OverviewChanged {
+  courseName: string;
+  courseSlug: string;
+  /** { "<changeKind>": count } */
+  counts: Record<string, number>;
 }
 
 export interface OverviewToday {
   classes: OverviewClass[];
   dueTodayOrTomorrow: OverviewDueSoon[];
-  /** { "<courseSlug>": { "<changeKind>": count } } */
-  changed: Record<string, Record<string, number>>;
+  changed: OverviewChanged[];
 }
 
 export interface OverviewAction {
@@ -74,7 +92,7 @@ export interface OverviewWeekItem {
   when: string;
   kind: "class" | "assignment" | "exam";
   title: string;
-  course: string;
+  course: string | null;
   courseSlug: string | null;
   weightPct: number | null;
   status: "not-started" | "draft" | "submitted" | null;
@@ -83,7 +101,7 @@ export interface OverviewWeekItem {
 }
 
 export interface OverviewAssignment {
-  id: string;
+  id: string | null;
   title: string;
   course: string;
   courseSlug: string | null;
@@ -95,6 +113,13 @@ export interface OverviewAssignment {
   submissionType: string;
   risk: number;
   helpCommand: string;
+  instructionsText: string;
+  isGroup: boolean;
+  cutoffAt: string | null;
+  allowLate: boolean;
+  materials: OverviewMaterial[];
+  sessionRef: number | null;
+  prereadPaths: string[];
 }
 
 export interface OverviewGradeComponent {
@@ -112,7 +137,7 @@ export interface OverviewGradePicture {
 }
 
 export interface OverviewExam {
-  name: string;
+  name: string | null;
   date: string;
   inDays: number;
   courses: string[];
@@ -121,6 +146,7 @@ export interface OverviewExam {
   brainReady: boolean;
   testprepExists: boolean;
   testprepCommand: string;
+  testprepCommands: { course: string; command: string }[];
 }
 
 export interface OverviewAttendance {
@@ -144,9 +170,9 @@ export interface OverviewBrain {
   course: string;
   courseSlug: string;
   state: "ready" | "stale" | "not-built";
-  corpusBytes: number;
-  sourceCount: number;
-  indexStale: boolean;
+  corpusBytes: number | null;
+  sourceCount: number | null;
+  indexStale: boolean | null;
   guideBuiltAt: string | null;
   guideSourcesBehind: number;
   pendingTranscripts: number;
@@ -157,7 +183,7 @@ export interface OverviewBrain {
 export interface OverviewPendingTranscriptItem {
   title: string;
   recordedOn: string | null;
-  videoUrl: string;
+  videoUrl: string | null;
 }
 
 export interface OverviewPendingTranscriptGroup {

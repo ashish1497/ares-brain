@@ -10,6 +10,14 @@ test("shows lines and idle state", () => {
       lines={["a", "b"]}
     />,
   );
-  expect(screen.getByText("running · sync")).toBeInTheDocument();
+  expect(screen.getByText("running")).toBeInTheDocument();
+  expect(screen.getByText("sync")).toBeInTheDocument();
   expect(screen.getByText("a\nb", { normalizer: (s: string) => s })).toBeInTheDocument();
+});
+
+test("has no middot between status and kind", () => {
+  render(
+    <JobLog job={{ id: "1", kind: "sync", status: "failed", startedAt: "", log: [] }} lines={[]} />,
+  );
+  expect(screen.queryByText(/·/)).not.toBeInTheDocument();
 });

@@ -4,6 +4,19 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Ares Brain</title>
+    <script>
+      (function () {
+        try {
+          var theme = localStorage.getItem("ares.theme");
+          var appearance = localStorage.getItem("ares.appearance");
+          document.documentElement.dataset.theme = theme === "violet" ? "violet" : "meadow";
+          document.documentElement.dataset.appearance =
+            appearance === "light" || appearance === "dark" ? appearance : "system";
+        } catch (e) {
+          /* private mode */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

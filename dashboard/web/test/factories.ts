@@ -3,6 +3,7 @@ import type {
   OverviewAssignment,
   OverviewAttendance,
   OverviewBrain,
+  OverviewChanged,
   OverviewExam,
   OverviewGaps,
   OverviewKpis,
@@ -34,6 +35,13 @@ export const weekItem = (over: Partial<OverviewWeekItem> = {}): OverviewWeekItem
   ...over,
 });
 
+export const changed = (over: Partial<OverviewChanged> = {}): OverviewChanged => ({
+  courseName: "Course",
+  courseSlug: "course",
+  counts: { announcements: 1 },
+  ...over,
+});
+
 export const assignment = (over: Partial<OverviewAssignment> = {}): OverviewAssignment => ({
   id: "a1",
   title: "Assignment",
@@ -47,6 +55,13 @@ export const assignment = (over: Partial<OverviewAssignment> = {}): OverviewAssi
   submissionType: "file",
   risk: 0,
   helpCommand: "/mesa:ares-brain-assignment-help",
+  instructionsText: "",
+  isGroup: false,
+  cutoffAt: null,
+  allowLate: false,
+  materials: [],
+  sessionRef: null,
+  prereadPaths: [],
   ...over,
 });
 
@@ -60,6 +75,7 @@ export const exam = (over: Partial<OverviewExam> = {}): OverviewExam => ({
   brainReady: false,
   testprepExists: false,
   testprepCommand: "/mesa:ares-brain-testprep",
+  testprepCommands: [],
   ...over,
 });
 
@@ -110,7 +126,7 @@ export const overview = (over: Partial<Overview> = {}): Overview => ({
   scrapeAgeHours: 2,
   term: "Term 1",
   kpis: kpis(),
-  today: { classes: [], dueTodayOrTomorrow: [], changed: {} },
+  today: { classes: [], dueTodayOrTomorrow: [], changed: [] },
   thisWeek: [],
   assignments: [],
   gradePicture: [],
