@@ -20,7 +20,7 @@ export function safeName(name: string) {
 
 /** A course slug is safe iff it is a plain slug — no `..`, `/`, `\`, or other path chars. */
 export function courseSlugOk(course: string): boolean {
-  return /^[A-Za-z0-9._-]+$/.test(course);
+  return /^[A-Za-z0-9._-]+$/.test(course) && course !== "." && course !== "..";
 }
 
 export function receiveUpload(

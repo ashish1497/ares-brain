@@ -188,7 +188,8 @@ def run(argv: list[str]) -> dict | None:
         return None
     if args.cmd == "transcribe":
         import transcribe as _t
-        index = json.loads(scrape_steps.global_file("_index.json").read_text())
+        _idx_file = scrape_steps.global_file("_index.json")
+        index = json.loads(_idx_file.read_text()) if _idx_file.exists() else []
         result = _t.step_transcribe(index, args.course, inbox_only=args.inbox)
         print(json.dumps(result) if args.json else json.dumps(result, indent=1))
         return result
@@ -284,5 +285,19 @@ def run(argv: list[str]) -> dict | None:
     return summary
 
 
+def main_exit_code(argv: list[str]) -> int:
+    """Run the CLI and map a failure-shaped result dict to exit code 1.
+
+    `run()` stays pure (returns the dict); the process exit-code policy lives
+    here so the dashboard doesn't show failed jobs as a green "done".
+    """
+    r = run(argv)
+    if isinstance(r, dict) and (
+        r.get("ok") is False or r.get("failed") or r.get("errors")
+    ):
+        return 1
+    return 0
+
+
 if __name__ == "__main__":
-    run(sys.argv[1:])
+    sys.exit(main_exit_code(sys.argv[1:]))

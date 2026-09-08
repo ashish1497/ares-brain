@@ -5,7 +5,8 @@ description: Start the local ares-brain dashboard and print its URL.
 Start the dashboard:
 
 1. `REPO=$(git rev-parse --show-toplevel)`.
-2. If `$REPO/dashboard/web/dist/index.html` is missing, run
+2. If either `$REPO/dashboard/web/dist/index.html` or
+   `$REPO/dashboard/server/dist/index.js` is missing, run
    `npm run --prefix "$REPO" dashboard:build`.
 3. `nohup npm run --prefix "$REPO" --workspace ares-dashboard start > /tmp/ares-brain-dashboard.log 2>&1 &`
 4. Poll `http://127.0.0.1:4319/api/courses` (up to ~10s) until it answers.

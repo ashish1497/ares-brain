@@ -42,6 +42,12 @@ export function App() {
     const recover = () => {
       stopRef.current = undefined;
       api.getState().then(setState);
+      // A job may have created the first courses (e.g. a Sync on first run) —
+      // refresh the picker so course-scoped cards stop being disabled.
+      api.getCourses().then((c) => {
+        setCourses(c);
+        setCourse((cur) => cur || c[0]?.slug || "");
+      });
     };
     stopRef.current = api.streamLog(
       jobId,
@@ -52,7 +58,13 @@ export function App() {
   }
 
   async function run(body: Parameters<typeof api.startJob>[0]) {
-    const r = await api.startJob(body);
+    let r: Awaited<ReturnType<typeof api.startJob>>;
+    try {
+      r = await api.startJob(body);
+    } catch (e) {
+      setLines((p) => [...p, `! network error: ${e instanceof Error ? e.message : String(e)}`]);
+      return;
+    }
     if (r.jobId) {
       const s = await api.getState();
       setState(s);

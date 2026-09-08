@@ -12,6 +12,7 @@ import {
   lastRunMap,
   onLine,
   onEnd,
+  killCurrent,
   BusyError,
   type JobKind,
 } from "./lib/jobs.js";
@@ -25,6 +26,10 @@ const MIME: Record<string, string> = {
   ".svg": "image/svg+xml",
   ".json": "application/json",
   ".ico": "image/x-icon",
+  ".png": "image/png",
+  ".woff2": "font/woff2",
+  ".woff": "font/woff",
+  ".ttf": "font/ttf",
 };
 
 function serverPort(): number {
@@ -99,7 +104,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     if ((b.kind === "transcribe-url" || b.kind === "transcribe-inbox") && !b.course)
       return json(res, 400, { error: "course required" });
     if (b.kind === "transcribe-url" && !b.url) return json(res, 400, { error: "url required" });
-    if (b.course && !courseSlugOk(b.course)) return json(res, 400, { error: "unknown course" });
+    if (b.course && !courseAllowed(b.course)) return json(res, 400, { error: "unknown course" });
     try {
       const job = startJob(b);
       return json(res, 202, { jobId: job.id });
@@ -193,4 +198,10 @@ if (isMain) {
   createServer().listen(port, "127.0.0.1", () =>
     console.log(`ares-brain dashboard  http://127.0.0.1:${port}`),
   );
+  for (const sig of ["SIGTERM", "SIGINT"] as const) {
+    process.on(sig, () => {
+      killCurrent();
+      process.exit(0);
+    });
+  }
 }

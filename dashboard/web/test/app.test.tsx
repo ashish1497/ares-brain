@@ -57,6 +57,24 @@ test("busy clears (buttons re-enable) when the streamed job ends", async () => {
   });
 });
 
+test("refetches the course list when a job ends (first-run Sync populates it)", async () => {
+  mockApi.getState.mockResolvedValue(runningState());
+  mockApi.getCourses.mockResolvedValue([]);
+  let onEnd: (code: number) => void = () => {};
+  mockApi.streamLog.mockImplementation((_id, _line, end) => {
+    onEnd = end;
+    return () => {};
+  });
+  render(<App />);
+  await waitFor(() => expect(mockApi.streamLog).toHaveBeenCalled());
+
+  const before = mockApi.getCourses.mock.calls.length;
+  mockApi.getCourses.mockResolvedValue([{ slug: "new-course", name: "New" }]);
+  onEnd(0);
+
+  await waitFor(() => expect(mockApi.getCourses.mock.calls.length).toBeGreaterThan(before));
+});
+
 test("stream error refetches state so the poll can recover", async () => {
   mockApi.getState.mockResolvedValue(runningState());
   let onError: () => void = () => {};

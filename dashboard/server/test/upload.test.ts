@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extOk, safeName } from "../src/lib/upload.js";
+import { extOk, safeName, courseSlugOk } from "../src/lib/upload.js";
 
 describe("upload helpers", () => {
   it("book accepts pdf/docx only", () => {
@@ -14,5 +14,11 @@ describe("upload helpers", () => {
   it("safeName strips path + weird chars", () => {
     expect(safeName("../../etc/pa ss.pdf")).toBe("pa_ss.pdf");
     expect(safeName("nice-file.pdf")).toBe("nice-file.pdf");
+  });
+  it("courseSlugOk rejects dot segments but allows real slugs", () => {
+    expect(courseSlugOk("..")).toBe(false);
+    expect(courseSlugOk(".")).toBe(false);
+    expect(courseSlugOk("../evil")).toBe(false);
+    expect(courseSlugOk("business-frameworks")).toBe(true);
   });
 });

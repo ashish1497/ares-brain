@@ -132,6 +132,27 @@ describe("routes", () => {
     expect(JSON.parse(res.body)).toEqual({ error: "unknown course" });
   });
 
+  it("POST /api/jobs with a bare `..` course -> 400", async () => {
+    const res = await raw("/api/jobs", {
+      method: "POST",
+      headers: { "content-type": "application/json", host },
+      body: JSON.stringify({ kind: "ingest", course: ".." }),
+    });
+    expect(res.status).toBe(400);
+    expect(JSON.parse(res.body)).toEqual({ error: "unknown course" });
+  });
+
+  it("POST /api/upload?course=.. -> 400 and writes nothing into inbox/books/", async () => {
+    const res = await raw(`/api/upload?course=${encodeURIComponent("..")}&kind=book`, {
+      method: "POST",
+      headers: { "content-type": "multipart/form-data; boundary=b", host },
+      body: '--b\r\nContent-Disposition: form-data; name="f"; filename="x.pdf"\r\n\r\nhi\r\n--b--\r\n',
+    });
+    expect(res.status).toBe(400);
+    expect(JSON.parse(res.body)).toEqual({ error: "unknown course" });
+    expect(existsSync(join(repoRoot(), "inbox", "books", "x.pdf"))).toBe(false);
+  });
+
   it("POST /api/upload?course=../evil -> 400 and writes nothing outside courses/", async () => {
     const res = await raw(`/api/upload?course=${encodeURIComponent("../evil")}&kind=book`, {
       method: "POST",
