@@ -15,7 +15,7 @@ export interface ApiConfig {
 }
 
 export function home(): string {
-  return process.env.COURSE_AGENT_HOME || repoRoot;
+  return process.env.ARES_BRAIN_HOME || repoRoot;
 }
 
 export function loadApiConfig(): ApiConfig {

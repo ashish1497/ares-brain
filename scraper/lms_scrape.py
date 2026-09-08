@@ -1,4 +1,4 @@
-"""Mesa course-agent scraper CLI.
+"""Mesa ares-brain scraper CLI.
 
     python lms_scrape.py whoami
     python lms_scrape.py courses

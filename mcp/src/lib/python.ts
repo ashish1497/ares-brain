@@ -48,7 +48,7 @@ export function runScraper(args: string[]): Promise<ScraperRun> {
   return new Promise((resolve) => {
     const child = spawn(py, ["lms_scrape.py", ...args, "--json"], {
       cwd: join(repoRootPath(), "scraper"),
-      env: { ...process.env, COURSE_AGENT_HOME: home() },
+      env: { ...process.env, ARES_BRAIN_HOME: home() },
     });
     child.stdout.setEncoding("utf8");
     child.stderr.setEncoding("utf8");

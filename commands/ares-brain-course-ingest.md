@@ -2,7 +2,7 @@
 description: Transcribe class recordings and normalize all scraped + dropped material.
 ---
 
-Run the `transcribe` tool, then the `ingest` tool, from the mesa-course-agent MCP
+Run the `transcribe` tool, then the `ingest` tool, from the mesa MCP
 server (pass `course` only if the user named one).
 
 Report:

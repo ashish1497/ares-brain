@@ -15,7 +15,7 @@ def scrubbed():
 
 @pytest.fixture
 def home(tmp_path, monkeypatch):
-    monkeypatch.setenv("COURSE_AGENT_HOME", str(tmp_path))
+    monkeypatch.setenv("ARES_BRAIN_HOME", str(tmp_path))
     monkeypatch.chdir(tmp_path)
     (tmp_path / "courses").mkdir()
     import importlib

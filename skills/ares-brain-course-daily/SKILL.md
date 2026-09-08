@@ -1,6 +1,6 @@
 ---
-name: course-daily
-description: The 6 AM job — scrape Mesa, sync the calendar, write daily/<date>.md and notify. Run by launchd via `claude -p /course-daily`; also runnable by hand.
+name: ares-brain-course-daily
+description: The 6 AM job — scrape Mesa, sync the calendar, write daily/<date>.md and notify. Run by launchd via `claude -p /mesa:ares-brain-course-daily`; also runnable by hand.
 ---
 
 # course-daily

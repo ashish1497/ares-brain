@@ -4,13 +4,13 @@
 
 **Goal:** Keep a dedicated agent-owned "Mesa Assignments" Google Calendar in full sync with unsubmitted assignment due dates, late-cutoff dates, club-assignment deadlines, and exam events — each event carrying a 24h + 2h popup reminder.
 
-**Architecture:** A pure-Python `scraper/calendar_sync.py` builds the desired-event set from `courses/` on disk (no network), then reconciles it against a `courses/_calendar.json` state file via the Google Calendar API using `gcloud` Application Default Credentials. An MCP tool + `/calendar-sync` command drive it. Standalone — not wired into `lms_scrape.py all`. No LLM.
+**Architecture:** A pure-Python `scraper/calendar_sync.py` builds the desired-event set from `courses/` on disk (no network), then reconciles it against a `courses/_calendar.json` state file via the Google Calendar API using `gcloud` Application Default Credentials. An MCP tool + `/mesa:ares-brain-calendar-sync` command drive it. Standalone — not wired into `lms_scrape.py all`. No LLM.
 
 **Tech Stack:** Python 3.12 (`uv` venv) + `google-api-python-client` + `google-auth`; existing TypeScript MCP server; `pytest` / `vitest`.
 
 ## Global Constraints
 
-- Repo `~/Documents/Projects/mesa/course-agent/`; executor creates a `d-calendar` branch off `main` first.
+- Repo `~/Documents/Projects/mesa/ares-brain/`; executor creates a `d-calendar` branch off `main` first.
 - **No LLM call anywhere. No `launchd` / scheduling. No touching any calendar other than "Mesa Assignments". No two-way sync** — Google is a write target, the LMS is the source of truth. (spec §1)
 - **`calendar_sync.py` must NOT import `scrape_steps`** — that transitively imports `mesa_api` → `load_dotenv(.env)` + `requests`. Inline `_read_or_none` / `_write_json`. Keep imports to: stdlib, `google.*`, `googleapiclient.*`, `paths`. (spec §1)
 - `.env` is a real secret — never read/printed/committed. **D does not use `.env`.** Google auth is `gcloud` ADC (`~/.config/gcloud/application_default_credentials.json`). The LMS is never contacted.
@@ -18,7 +18,7 @@
 - `courses/` gitignored (`_calendar.json` included). Not committed: `mcp/dist/`, `mcp/node_modules/`, `scraper/.venv/`, raw `scraper/tests/fixtures/*` except `scrubbed/`. Committed fixtures synthetic, no PII.
 - Resolve paths through `paths.py` (`HOME`, `course_dir`, `courses_root`, `global_file`, `ensure`). `paths.HOME` module-level, re-derived on `importlib.reload` (the `home` conftest fixture relies on this).
 - Every API call individually try/excepted → `errors` list; one failure never aborts the rest.
-- Calendar name EXACTLY `"Mesa Assignments"`. Calendar body `timeZone: "Asia/Kolkata"`, `description: "Auto-managed by mesa-course-agent. Do not hand-edit."`.
+- Calendar name EXACTLY `"Mesa Assignments"`. Calendar body `timeZone: "Asia/Kolkata"`, `description: "Auto-managed by mesa. Do not hand-edit."`.
 - Event: 30-min timed, `end = deadline`, `start = deadline − 30 min`, `start.dateTime`/`end.dateTime` in UTC ISO + `timeZone: "Asia/Kolkata"`. `reminders = {useDefault: False, overrides: [{method:"popup", minutes:m} for m in REMINDERS]}`. Assignment `REMINDERS` default `[1440, 120]`, overridable via `CALENDAR_REMINDERS` env (comma-separated minutes). Exams: `[10080, 1440, 120]`.
 - `sourceKey`: `f"asg:{id}:due"`, `f"asg:{id}:cutoff"`, `f"exam:{id}"`.
 - State `courses/_calendar.json` = `{"calendarId": str, "syncedAt": "...Z", "events": {sourceKey: {"gcalId": str, "hash": str}}}`.
@@ -37,7 +37,7 @@
 | `scraper/tests/test_calendar_sync.py`              |                                                                                                                                         |
 | `mcp/src/tools/calendar_sync.ts`                   | spawn `calendar-sync`                                                                                                                   |
 | `mcp/test/calendar_sync.test.ts`                   |                                                                                                                                         |
-| `commands/calendar-sync.md`                        | slash command                                                                                                                           |
+| `commands/mesa:ares-brain-calendar-sync.md`        | slash command                                                                                                                           |
 
 **Modified:** `scraper/requirements.txt` (+2 deps), `scraper/lms_scrape.py` (`calendar-sync` subcommand), `mcp/src/index.ts` (register tool), `README.md`, `docs/lms-api.md` (live-run findings).
 
@@ -211,7 +211,7 @@ NOW = datetime(2026, 9, 10, tzinfo=timezone.utc)
 
 @pytest.fixture
 def corpus(home):
-    """Lay the fixture corpus into a temp COURSE_AGENT_HOME."""
+    """Lay the fixture corpus into a temp ARES_BRAIN_HOME."""
     dst = home / "courses"
     shutil.rmtree(dst)
     shutil.copytree(FIX, dst)
@@ -388,7 +388,7 @@ def ensure_calendar(service, state: dict) -> str:
 
     created = service.calendars().insert(body={
         "summary": _CAL_NAME, "timeZone": _TZ,
-        "description": "Auto-managed by mesa-course-agent. Do not hand-edit.",
+        "description": "Auto-managed by mesa. Do not hand-edit.",
     }).execute()
     state["calendarId"] = created["id"]
     return created["id"]
@@ -451,7 +451,7 @@ def build_desired_events(now: datetime | None = None) -> dict[str, dict]:
         desc = (f"Course: {course_label}\n"
                 f"Submission: {a.get('submissionType', 'n/a')}\n"
                 f"Group: {'yes' if a.get('isGroup') else 'no'}\n"
-                f"Source: mesa-course-agent")
+                f"Source: mesa")
         if not submitted and not is_draft and due > now:
             body = _event_body(f"{prefix}{title} — due", due, desc, rem)
             out[f"asg:{a['id']}:due"] = {"body": body, "hash": _hash(body)}
@@ -476,7 +476,7 @@ def build_desired_events(now: datetime | None = None) -> dict[str, dict]:
         if start <= now:
             continue
         end = _parse(e["endAt"]) if e.get("endAt") else start + timedelta(minutes=90)
-        desc = f"Course: {e.get('courseName', 'Program')}\nSource: mesa-course-agent"
+        desc = f"Course: {e.get('courseName', 'Program')}\nSource: mesa"
         body = _event_body(e.get("title") or e["id"], start, desc, EXAM_REMINDERS, end=end)
         out[f"exam:{e['id']}"] = {"body": body, "hash": _hash(body)}
 
@@ -758,7 +758,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 **Files:**
 
 - Modify: `scraper/lms_scrape.py`, `scraper/tests/test_cli.py`, `mcp/src/index.ts`, `README.md`, `docs/lms-api.md`
-- Create: `mcp/src/tools/calendar_sync.ts`, `mcp/test/calendar_sync.test.ts`, `commands/calendar-sync.md`
+- Create: `mcp/src/tools/calendar_sync.ts`, `mcp/test/calendar_sync.test.ts`, `commands/mesa:ares-brain-calendar-sync.md`
 
 **Interfaces:**
 
@@ -862,7 +862,7 @@ describe("calendar_sync tool", () => {
 Run: `cd mcp && npx vitest run && npx tsc --noEmit && npm run build`
 Expected: all green, `dist/index.js` present.
 
-- [ ] **Step 5: Write `commands/calendar-sync.md`**
+- [ ] **Step 5: Write `commands/mesa:ares-brain-calendar-sync.md`**
 
 ```markdown
 ---
@@ -885,15 +885,15 @@ This command only writes to the dedicated "Mesa Assignments" calendar — never 
 
 - [ ] **Step 6: Update `README.md`**
 
-Add a "Calendar" section: one-time `gcloud auth application-default login --scopes=https://www.googleapis.com/auth/calendar`; then `/calendar-sync` (or `calendar_sync` tool). Note it's standalone (not part of `/course-scrape`), the calendar is agent-managed (don't hand-edit), `CALENDAR_REMINDERS` env tunes the popups (default `1440,120`), and the extra install: `cd scraper && uv pip install -r requirements.txt` now also pulls `google-api-python-client`.
+Add a "Calendar" section: one-time `gcloud auth application-default login --scopes=https://www.googleapis.com/auth/calendar`; then `/mesa:ares-brain-calendar-sync` (or `calendar_sync` tool). Note it's standalone (not part of `/mesa:ares-brain-course-scrape`), the calendar is agent-managed (don't hand-edit), `CALENDAR_REMINDERS` env tunes the popups (default `1440,120`), and the extra install: `cd scraper && uv pip install -r requirements.txt` now also pulls `google-api-python-client`.
 
 - [ ] **Step 7: Live run**
 
 ```bash
 gcloud auth application-default login --scopes=https://www.googleapis.com/auth/calendar   # user runs this
-cd ~/Documents/Projects/mesa/course-agent/scraper
-COURSE_AGENT_HOME=$(cd .. && pwd) uv run python lms_scrape.py calendar-sync --dry-run --json | python3 -m json.tool
-COURSE_AGENT_HOME=$(cd .. && pwd) uv run python lms_scrape.py calendar-sync --json | python3 -m json.tool
+cd ~/Documents/Projects/mesa/ares-brain/scraper
+ARES_BRAIN_HOME=$(cd .. && pwd) uv run python lms_scrape.py calendar-sync --dry-run --json | python3 -m json.tool
+ARES_BRAIN_HOME=$(cd .. && pwd) uv run python lms_scrape.py calendar-sync --json | python3 -m json.tool
 ```
 
 Then in Google Calendar: confirm a "Mesa Assignments" calendar appeared with the right events + reminder times. Re-run `calendar-sync` → everything `unchanged`. If a real bug surfaces (wrong times, TZ off, dup events), fix it in `calendar_sync.py` + add a regression test, re-run.

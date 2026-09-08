@@ -1,6 +1,6 @@
 ---
-name: ask
-description: Answer a question about one course, grounded in its material with source citations. Use for /ask.
+name: ares-brain-ask
+description: Answer a question about one course, grounded in its material with source citations. Use for /mesa:ares-brain-ask.
 ---
 
 # ask

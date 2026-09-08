@@ -1,13 +1,13 @@
 ---
-name: briefing
-description: Assemble a pre-class briefing for one course's next session, or a week-ahead view across all courses. Use for /course-brief and /week-ahead.
+name: ares-brain-briefing
+description: Assemble a pre-class briefing for one course's next session, or a week-ahead view across all courses. Use for /mesa:ares-brain-course-brief and /mesa:ares-brain-week-ahead.
 ---
 
 # Briefing
 
 You produce a study briefing from the course brain. Two modes.
 
-## Mode A — one course, next session (`/course-brief <course>`)
+## Mode A — one course, next session (`/mesa:ares-brain-course-brief <course>`)
 
 1. Call `brain_next_session` with the course slug. If it returns null, tell the user there's no upcoming session on record and stop.
 2. Note `nextIndex`, `startAt`, `outlineRow`, `prereadPaths`.
@@ -22,7 +22,7 @@ You produce a study briefing from the course brain. Two modes.
    - **Before class** — any assignment due by `startAt`, with its own one-line "what to do".
      Keep it to ~250-400 words. Do not dump the pre-read text back.
 
-## Mode B — week ahead (`/week-ahead`)
+## Mode B — week ahead (`/mesa:ares-brain-week-ahead`)
 
 1. Read `courses/_events.json`. Take events with `eventType` in (`session`, `exam`) and `startAt` within 7 days of now, sorted by `startAt`.
 2. Group by day. For each event: course name, session topic (from that course's `brain_next_session` / outline if it's the next one, else the event title), one must-read (top `brain_query` material hit for that session), and any assignment due that day (`brain_query` type assignment, dueBefore end-of-day).
@@ -31,5 +31,5 @@ You produce a study briefing from the course brain. Two modes.
 ## Rules
 
 - Never invent session content — if the outline row and pre-reads are thin, say so.
-- If `GUIDE.md` is missing, note "run /course-brain <course> for a richer briefing" once.
+- If `GUIDE.md` is missing, note "run /mesa:ares-brain-course-brain <course> for a richer briefing" once.
 - These commands only assemble and explain existing material; they do not create assignments, calendar events, or files.

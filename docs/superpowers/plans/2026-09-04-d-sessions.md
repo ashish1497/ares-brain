@@ -12,7 +12,7 @@
 
 - `scraper/calendar_sync.py` module-top imports: stdlib + `from paths import ...` ONLY. `google.*` lazy inside functions. NO `scrape_steps`. `test_calendar_sync_import_isolation` must stay green.
 - `.env` never read/printed.
-- `run()` / `reconcile` / `ensure_calendar` / `_service` / `do_auth` / MCP tool / `/calendar-sync` command / `courses/_calendar.json` state shape — UNCHANGED.
+- `run()` / `reconcile` / `ensure_calendar` / `_service` / `do_auth` / MCP tool / `/mesa:ares-brain-calendar-sync` command / `courses/_calendar.json` state shape — UNCHANGED.
 - Reconcile stays per-item try/except.
 - Branch `d-sessions` off `main` (already created). TDD. One task.
 
@@ -225,7 +225,7 @@ def canonical(body: dict) -> str:
         if e.get("room"):
             lines.append(f"Room: {e['room']}")
         lines.append(f"Type: {et}")
-        lines.append("Source: mesa-course-agent")
+        lines.append("Source: mesa")
         body = _event_body(e.get("title") or e["id"], start, "\n".join(lines),
                            sess_rem, end=end, location=e.get("room") or None)
         out[f"{et}:{e['id']}"] = {"body": body, "hash": _hash(body)}
@@ -255,11 +255,11 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 - [ ] **Step 8: Live run** (data already scraped at `courses/_events.json`)
 
 ```bash
-cd ~/Documents/Projects/mesa/course-agent/scraper
+cd ~/Documents/Projects/mesa/ares-brain/scraper
 H=$(cd .. && pwd)
-COURSE_AGENT_HOME=$H uv run python lms_scrape.py calendar-sync --dry-run --json | python3 -m json.tool
-COURSE_AGENT_HOME=$H uv run python lms_scrape.py calendar-sync --json | python3 -m json.tool
-COURSE_AGENT_HOME=$H uv run python lms_scrape.py calendar-sync --json | python3 -m json.tool   # 2nd: all unchanged
+ARES_BRAIN_HOME=$H uv run python lms_scrape.py calendar-sync --dry-run --json | python3 -m json.tool
+ARES_BRAIN_HOME=$H uv run python lms_scrape.py calendar-sync --json | python3 -m json.tool
+ARES_BRAIN_HOME=$H uv run python lms_scrape.py calendar-sync --json | python3 -m json.tool   # 2nd: all unchanged
 ```
 
 Expect 1st: `created` ~150 + `updated` ~7 (the canonical-hash change on existing events).

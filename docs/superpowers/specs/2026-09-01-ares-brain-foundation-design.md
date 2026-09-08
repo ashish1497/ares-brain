@@ -1,4 +1,4 @@
-# Mesa Course Agent — Foundation (Sub-project A) Design
+# Ares Brain — Foundation (Sub-project A) Design
 
 **Date:** 2026-09-01
 **Status:** Draft for review
@@ -29,23 +29,23 @@ Claude-Code-driven study agent covering ten objectives:
 
 Each sub-project gets its own spec → plan → implementation cycle.
 
-| #     | Sub-project                                                                   | Objectives                                         | Depends on |
-| ----- | ----------------------------------------------------------------------------- | -------------------------------------------------- | ---------- |
-| **A** | Repo + plugin skeleton + scraper + `ingest`/`transcribe` tools + drop folder  | 6, 7, 8 (raw material in, transcribed, normalized) | —          |
-| B     | Brain: markdown store + local embeddings + `brain_*` tools + `briefing` skill | 9, 2                                               | A          |
-| C     | Commands + skills: `ask`, `assignment-help`, `testprep`, `book-summary`       | 4, 5, 6                                            | B          |
-| D     | Calendar: OAuth + `calendar_sync` + assignment/event extraction               | 1, 3                                               | A          |
-| E     | `launchd` schedule + `mindset-digest` skill + `/course-daily` orchestration   | 10, 3-delivery                                     | B, D       |
+| #     | Sub-project                                                                                 | Objectives                                         | Depends on |
+| ----- | ------------------------------------------------------------------------------------------- | -------------------------------------------------- | ---------- |
+| **A** | Repo + plugin skeleton + scraper + `ingest`/`transcribe` tools + drop folder                | 6, 7, 8 (raw material in, transcribed, normalized) | —          |
+| B     | Brain: markdown store + local embeddings + `brain_*` tools + `ares-brain-briefing` skill    | 9, 2                                               | A          |
+| C     | Commands + skills: `ask`, `assignment-help`, `testprep`, `book-summary`                     | 4, 5, 6                                            | B          |
+| D     | Calendar: OAuth + `calendar_sync` + assignment/event extraction                             | 1, 3                                               | A          |
+| E     | `launchd` schedule + `mindset-digest` skill + `/mesa:ares-brain-course-daily` orchestration | 10, 3-delivery                                     | B, D       |
 
 **This document specifies Sub-project A only.** B–E are listed for context and
 will be re-brainstormed when reached.
 
 ### A is delivered in two phases
 
-| Phase                                        | Stages                                                                                             | Ship criterion                                                                                                                                                                  |
-| -------------------------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **A-scrape** (first)                         | A0 spike, A1 skeleton, A2 scraper, plus a `scrape` MCP tool + `/course-scrape` command             | Running `/course-scrape` pulls every course's assignments, attendance, outline, events, announcements, materials, and recordings to `courses/<Course>/raw/`. Real data on disk. |
-| **A-ingest** (after reviewing the real data) | A2-transcribe (Whisper), `transcribe` + `ingest` tools, `/course-ingest`, the `normalized/` schema | `normalized/*.md` produced for every source type; drop-folder contract works.                                                                                                   |
+| Phase                                        | Stages                                                                                                             | Ship criterion                                                                                                                                                                                  |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **A-scrape** (first)                         | A0 spike, A1 skeleton, A2 scraper, plus a `scrape` MCP tool + `/mesa:ares-brain-course-scrape` command             | Running `/mesa:ares-brain-course-scrape` pulls every course's assignments, attendance, outline, events, announcements, materials, and recordings to `courses/<Course>/raw/`. Real data on disk. |
+| **A-ingest** (after reviewing the real data) | A2-transcribe (Whisper), `transcribe` + `ingest` tools, `/mesa:ares-brain-course-ingest`, the `normalized/` schema | `normalized/*.md` produced for every source type; drop-folder contract works.                                                                                                                   |
 
 The `normalized/` schema (§5 A3) is **provisional** until real scraped data is
 inspected at the A-scrape/A-ingest boundary. Sub-project B does not start until
@@ -55,7 +55,7 @@ A-ingest ships.
 
 ## 2. Locked decisions (cross-cutting)
 
-- **Package form:** a Claude Code **plugin** (`mesa-course-agent`), installed via
+- **Package form:** a Claude Code **plugin** (`mesa`), installed via
   `/plugin install`. Ships slash commands, skills, and one bundled MCP server.
 - **Reasoning LLM:** Claude Code itself. No Anthropic API key, no SDK. MCP tools
   are deterministic and never call an LLM.
@@ -82,7 +82,7 @@ A-ingest ships.
 ## 3. Repository layout
 
 ```
-mesa-course-agent/
+mesa/
   .claude-plugin/
     plugin.json                 name, version, mcp server registration
   commands/
@@ -101,7 +101,7 @@ mesa-course-agent/
         transcribe.ts
         ingest.ts
       lib/
-        paths.ts                COURSE_AGENT_HOME resolution, course tree
+        paths.ts                ARES_BRAIN_HOME resolution, course tree
         subprocess.ts           spawn python sidecar, stream output
         frontmatter.ts          YAML frontmatter read/write
     test/
@@ -301,8 +301,8 @@ recordedAt?}` and body = segments with `[hh:mm:ss]` markers. Returns
 
 ### A4 — commands
 
-- `/course-scrape [course]` → calls `scrape` then reports the summary.
-- `/course-ingest [course]` → calls `transcribe` then `ingest`, reports counts.
+- `/mesa:ares-brain-course-scrape [course]` → calls `scrape` then reports the summary.
+- `/mesa:ares-brain-course-ingest [course]` → calls `transcribe` then `ingest`, reports counts.
 
 Thin wrappers; the real orchestration for the daily run is Sub-project E.
 
@@ -314,7 +314,7 @@ Returns:
 
 ```json
 {
-  "home": "/Users/.../course-agent",
+  "home": "/Users/.../ares-brain",
   "configLoaded": true,
   "tokenPresent": true,
   "tokenExpiresAt": "2026-09-30T...", // decoded from JWT exp, no secret echoed
@@ -351,7 +351,7 @@ attendance.
   signal in A/B is prereads carrying a `session` number.
 - Attendance data is still ingested (`type: attendance`) for the brain.
 
-Consumed by the `briefing` skill in Sub-project B, not used in A.
+Consumed by the `ares-brain-briefing` skill in Sub-project B, not used in A.
 
 ---
 
@@ -361,7 +361,7 @@ Consumed by the `briefing` skill in Sub-project B, not used in A.
   `scraper/tests/fixtures/` (scrubbed of PII where practical). `test_parse.py`
   asserts each normalizer produces the expected `raw/*.json` shape, offline, no
   token. CI never needs a live token.
-- **MCP tools:** `vitest`. Each test sets `COURSE_AGENT_HOME` to a temp dir with
+- **MCP tools:** `vitest`. Each test sets `ARES_BRAIN_HOME` to a temp dir with
   a fake course tree, runs the tool, asserts files created and JSON returned.
   `transcribe` uses a committed 10-second `.wav` fixture and the smallest Whisper
   model; assertion is "a non-empty transcript file with valid frontmatter", not

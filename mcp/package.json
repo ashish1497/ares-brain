@@ -1,10 +1,10 @@
 {
-  "name": "mesa-course-agent-mcp",
+  "name": "mesa-mcp",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "bin": {
-    "mesa-course-agent-mcp": "dist/index.js"
+    "mesa-mcp": "dist/index.js"
   },
   "scripts": {
     "build": "tsc",

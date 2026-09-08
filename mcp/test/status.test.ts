@@ -7,7 +7,7 @@ describe("status tool", () => {
   let home: string;
   beforeEach(() => {
     home = mkdtempSync(join(tmpdir(), "ca-"));
-    process.env.COURSE_AGENT_HOME = home;
+    process.env.ARES_BRAIN_HOME = home;
     mkdirSync(join(home, "courses", "business-frameworks", "raw"), { recursive: true });
     writeFileSync(join(home, "courses", "business-frameworks", "raw", "topics.json"), "[]");
     writeFileSync(

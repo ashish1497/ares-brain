@@ -7,7 +7,7 @@ describe("scrape tool", () => {
   let home: string;
   beforeEach(() => {
     home = mkdtempSync(join(tmpdir(), "ca-"));
-    process.env.COURSE_AGENT_HOME = home;
+    process.env.ARES_BRAIN_HOME = home;
   });
 
   it("reports a helpful error when the venv is missing", async () => {

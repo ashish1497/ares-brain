@@ -10,7 +10,7 @@ FIX = Path(__file__).parent / "fixtures" / "scrubbed" / "brain_corpus"
 
 @pytest.fixture
 def course(home):
-    """Copy the fixture corpus into a temp COURSE_AGENT_HOME and return the slug."""
+    """Copy the fixture corpus into a temp ARES_BRAIN_HOME and return the slug."""
     dst = home / "courses" / "course-one"
     dst.mkdir(parents=True)
     shutil.copytree(FIX / "course-one" / "normalized", dst / "normalized")

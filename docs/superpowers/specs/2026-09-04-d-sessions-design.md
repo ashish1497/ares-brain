@@ -18,7 +18,7 @@ Mon–Sat classes never reach the Mesa calendar. User wants the full class sched
   lazy inside functions. No `scrape_steps`. `test_calendar_sync_import_isolation` stays green.
 - `.env` never read/printed.
 - `run()` / `reconcile` / `ensure_calendar` / `_service` / `do_auth` / the MCP tool / the
-  `/calendar-sync` command / `courses/_calendar.json` state shape — UNCHANGED.
+  `/mesa:ares-brain-calendar-sync` command / `courses/_calendar.json` state shape — UNCHANGED.
 - Every reconcile item is per-item try/except; one bad event never aborts the run.
 
 ## Decisions (this revision)
@@ -47,7 +47,7 @@ Mon–Sat classes never reach the Mesa calendar. User wants the full class sched
    - `end = _parse(endAt) or start + timedelta(minutes=90)`.
    - description lines: `Course: <courseName|courseLabel|"Program">`, then `Instructor: …`,
      `Link: …`, `Room: …` (each only when the field is truthy), then `Type: <eventType>`,
-     `Source: mesa-course-agent`.
+     `Source: mesa`.
    - `body = _event_body(title, start, desc, _session_reminders(), end=end, location=room or None)`.
    - `out[f"{eventType}:{e['id']}"] = {"body": body, "hash": _hash(body)}`.
 5. **Module docstring line 1** — "assignment/exam deadlines" → "assignment / exam / class schedule".

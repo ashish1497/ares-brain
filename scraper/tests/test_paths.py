@@ -15,7 +15,7 @@ def test_slugify(name, expected):
 
 
 def test_dirs_are_under_home(tmp_path, monkeypatch):
-    monkeypatch.setenv("COURSE_AGENT_HOME", str(tmp_path))
+    monkeypatch.setenv("ARES_BRAIN_HOME", str(tmp_path))
     import importlib, paths
     importlib.reload(paths)
     assert paths.course_dir("x") == tmp_path / "courses" / "x"
