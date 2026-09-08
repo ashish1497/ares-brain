@@ -55,6 +55,7 @@ export const exam = (over: Partial<OverviewExam> = {}): OverviewExam => ({
   date: "2026-09-19",
   inDays: 11,
   courses: ["all"],
+  courseNames: ["all"],
   coverageSessions: null,
   brainReady: false,
   testprepExists: false,

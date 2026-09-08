@@ -116,6 +116,7 @@ export interface OverviewExam {
   date: string;
   inDays: number;
   courses: string[];
+  courseNames: string[];
   coverageSessions: string | null;
   brainReady: boolean;
   testprepExists: boolean;

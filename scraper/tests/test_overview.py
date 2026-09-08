@@ -95,6 +95,21 @@ def test_attendance_runway_ok():
     assert r["note"] == ""
 
 
+def test_attendance_runway_finished_course_ok():
+    # term over for this course (0 sessions left), sitting at 100% — no risk, no note
+    r = overview.attendance_runway({"attended": 2, "total": 2}, 0, 0, minimum=75)
+    assert r["state"] == "ok"
+    assert r["note"] == ""
+    assert r["atRisk"] is False
+
+
+def test_attendance_runway_finished_course_below_minimum():
+    r = overview.attendance_runway({"attended": 1, "total": 2}, 0, 0, minimum=75)
+    assert r["state"] == "risk"
+    assert r["atRisk"] is True
+    assert "finished at 50%" in r["note"]
+
+
 def test_attendance_runway_bad_values_default_to_zero():
     r = overview.attendance_runway({"attended": "n/a", "total": None},
                                    sessions_to_mid=0, sessions_to_end=2, minimum=75)

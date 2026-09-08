@@ -160,11 +160,15 @@ def attendance_runway(att: dict, sessions_to_mid: int, sessions_to_end: int,
 
     ``state`` is one of:
     - ``"risk"``  — even perfect attendance keeps the endterm figure below
-      ``minimum`` (unrecoverable).
+      ``minimum`` (unrecoverable), or the course is finished below ``minimum``.
     - ``"watch"`` — not risk, but at/below the line now, or one more miss drops
       below it.
-    - ``"ok"``    — comfortably clear.
+    - ``"ok"``    — comfortably clear (or finished at/above ``minimum``).
     ``atRisk`` mirrors ``state != "ok"`` for callers that only want a bool.
+
+    When ``sessions_to_end == 0`` the course is over: there are no sessions left
+    to model, so the one-miss projection is skipped and the state is decided
+    purely on ``now_pct`` vs ``minimum``.
     """
     try:
         a = int(att.get("attended") or 0)
@@ -185,7 +189,12 @@ def attendance_runway(att: dict, sessions_to_mid: int, sessions_to_end: int,
     floor = round(a / (t + sessions_to_end) * 100) if (t + sessions_to_end) else 0
     one_miss_pct = round(a / (t + 1) * 100)
 
-    if bc_end < minimum:
+    if sessions_to_end == 0:
+        if now_pct >= minimum:
+            state, note = "ok", ""
+        else:
+            state, note = "risk", f"finished at {now_pct:.0f}% — below {minimum}%"
+    elif bc_end < minimum:
         state = "risk"
         note = f"even perfect attendance stays below {minimum}%"
     elif now_pct <= minimum or one_miss_pct < minimum:
@@ -397,6 +406,7 @@ def build_overview(now: datetime | None = None) -> dict:
             "name": e.get("title"), "date": daily_brief._local_date(s_dt),
             "inDays": (s_dt.date() - now.date()).days,
             "courses": exam_courses,
+            "courseNames": [slugs.get(c, c) for c in exam_courses],
             "coverageSessions": None,
             "brainReady": (all(b["state"] == "ready" for b in brain_rows) if not cslug
                            else next((b["state"] == "ready" for b in brain_rows

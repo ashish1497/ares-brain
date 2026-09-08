@@ -16,8 +16,8 @@ test("renders classes, due items and the changed digest", () => {
       today={{
         classes: [
           {
-            start: "09:00",
-            end: "10:30",
+            start: "2026-09-09T09:30:00",
+            end: "2026-09-09T11:00:00",
             course: "Power of Communication",
             courseSlug: "power-of-communication",
             room: "R1",
@@ -41,7 +41,9 @@ test("renders classes, due items and the changed digest", () => {
       }}
     />,
   );
-  expect(screen.getByText(/09:00/)).toBeInTheDocument();
+  // formatted local time range, not the raw ISO datetime
+  expect(screen.getByText(/09:30–11:00/)).toBeInTheDocument();
+  expect(screen.queryByText(/2026-09-09T09:30/)).not.toBeInTheDocument();
   expect(screen.getByText(/R1/)).toBeInTheDocument();
   expect(screen.getByText(/Pitch 1 — Power of Communication · in 9h/)).toBeInTheDocument();
   expect(

@@ -6,8 +6,8 @@ import type { OverviewAssignment, OverviewGradePicture } from "../api";
 function rel(hoursAway: number | null): string {
   if (hoursAway == null) return "no due date";
   if (hoursAway < 0) return "overdue";
-  if (hoursAway < 48) return `in ${Math.round(hoursAway)}h`;
-  return `in ${Math.round(hoursAway / 24)}d`;
+  if (hoursAway < 48) return `due in ${Math.round(hoursAway)}h`;
+  return `due in ${Math.round(hoursAway / 24)}d`;
 }
 
 /**
@@ -37,7 +37,7 @@ export function AssignmentsCard({
               <span className="font-bold">{a.title}</span>
               <span className="opacity-70">{a.course}</span>
               <span className="opacity-70">
-                {a.weightPct != null ? `${a.weightPct}%` : "ungraded"} · due {rel(a.hoursAway)} ·{" "}
+                {a.weightPct != null ? `${a.weightPct}%` : "ungraded"} · {rel(a.hoursAway)} ·{" "}
                 {a.status}
               </span>
               <CopyButton value={a.helpCommand} label="Start" />

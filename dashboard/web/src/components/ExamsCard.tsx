@@ -24,7 +24,9 @@ export function ExamsCard({ exams }: { exams: OverviewExam[] }) {
                 {e.date} · {countdown(e.inDays)}
               </span>
               {e.coverageSessions && <span className="opacity-70">· {e.coverageSessions}</span>}
-              {e.courses.length > 0 && <span className="opacity-70">· {e.courses.join(", ")}</span>}
+              {(e.courseNames ?? e.courses).length > 0 && (
+                <span className="opacity-70">· {(e.courseNames ?? e.courses).join(", ")}</span>
+              )}
               <Badge variant={e.brainReady ? "ok" : "bad"}>
                 {e.brainReady ? "brain ready" : "brain not ready"}
               </Badge>

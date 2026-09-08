@@ -1,6 +1,14 @@
 import { Section } from "./Section";
 import type { OverviewToday } from "../api";
 
+/** ISO datetime → "09:30" (local, 24h). Falls back to the raw string if unparseable. */
+function fmtTime(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime())
+    ? iso
+    : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+}
+
 /** Today's classes (time · course · room · pre-read), what's due today/tomorrow, what changed. */
 export function TodayCard({ today }: { today: OverviewToday }) {
   const { classes, dueTodayOrTomorrow, changed } = today;
@@ -17,10 +25,11 @@ export function TodayCard({ today }: { today: OverviewToday }) {
               {classes.map((c, i) => (
                 <li key={i}>
                   <span className="font-bold">
-                    {c.start}–{c.end}
+                    {fmtTime(c.start)}–{fmtTime(c.end)}
                   </span>{" "}
                   · {c.course}
                   {c.room ? ` · ${c.room}` : ""}
+                  {c.instructor ? ` · ${c.instructor}` : ""}
                   {c.prereadPaths.length > 0 && (
                     <span className="opacity-70"> · pre-read: {c.prereadPaths.join(", ")}</span>
                   )}

@@ -4,6 +4,7 @@
   --color-edge: #0f8a5f;
   --color-paper: #eafff4;
   --color-card: #ffffff;
+  --color-ink: #10231b;
   --color-accent: #ff8a3d;
   --color-cta: #ffd23f;
   --color-ok: #7ee081;
@@ -11,17 +12,23 @@
   --color-bad: #ff6b6b;
   --radius-nb: 2px;
 }
+
+/* dark: override the RUNTIME css vars on :root — NOT inside @theme */
 @media (prefers-color-scheme: dark) {
-  @theme {
+  :root {
     --color-paper: #161d1a;
     --color-card: #1e2624;
+    --color-ink: #eafff4;
+    --color-edge: #12b876;
   }
 }
+
 :root {
   --nb-border: 3px;
   --nb-shadow: 4px 4px 0 var(--color-edge);
 }
 body {
   background: var(--color-paper);
+  color: var(--color-ink);
   color-scheme: light dark;
 }
