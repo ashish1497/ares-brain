@@ -25,8 +25,9 @@ export interface State {
  */
 export interface OverviewKpis {
   dueThisWeek: number;
-  nextExamInDays: number;
-  nextExamName: string;
+  /** null when no exam is on record ahead */
+  nextExamInDays: number | null;
+  nextExamName: string | null;
   /** mean avgCp across courses; null if all 0 */
   cpAvg: number | null;
   attendanceNow: number;
