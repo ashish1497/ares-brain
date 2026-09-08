@@ -62,3 +62,7 @@ T4: complete (05cb0d6). Glue: dashboard/ aggregator workspace, root dashboard sc
 T5: live run done. UI + job runner + SSE + guards (409/403) verified in browser. transcribe-url NOT verified e2e (yt-dlp cannot reach YouTube from this network). FINDING for fix wave: transcribe-url CLI exits 0 on {ok:false} -> dashboard shows failed transcribe as done. ALL 5 TASKS DONE. Ready for whole-branch review.
 Whole-branch review (opus): With fixes - no Critical, 4 Important. Fixed e3f9840 (CLI exit-code on failure; vite proxy changeOrigin - primary launch path was 403ing; ../. slug rejection; course-list refresh) + minors. Live-verified npm run dashboard proxy POST -> 202. pytest 202, server 28, web 7, check clean. MERGED.
 Deferred follow-ups: Tabler webfont ~4MB (subset later); dark mode not visually verified; .dark toggle + inbox _done/ move not built (spec extras).
+
+## G — outcome dashboard. Branch g-dashboard off main. Spec .../2026-09-08-outcome-dashboard-design.md, plan .../2026-09-08-outcome-dashboard.md (5 tasks).
+T1 overview.py+CLI  T2 /api/overview + transcribe job kind  T3 web React+neobrutalism.dev migration  T4 the 10 sections  T5 glue+live.
+T1: NOT started.
