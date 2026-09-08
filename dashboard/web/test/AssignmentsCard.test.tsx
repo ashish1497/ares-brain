@@ -31,8 +31,8 @@ test("a null weightPct shows `ungraded`", () => {
   expect(screen.getByText(/ungraded/)).toBeInTheDocument();
 });
 
-test("the copy button carries the assignment's helpCommand", () => {
-  const writeText = vi.fn();
+test("the copy button carries the assignment's helpCommand", async () => {
+  const writeText = vi.fn().mockResolvedValue(undefined);
   Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
   render(
     <AssignmentsCard
@@ -42,4 +42,5 @@ test("the copy button carries the assignment's helpCommand", () => {
   );
   fireEvent.click(screen.getByRole("button", { name: "Start" }));
   expect(writeText).toHaveBeenCalledWith('/mesa:ares-brain-assignment-help "C" "T"');
+  expect(await screen.findByText("copied — paste in Claude Code")).toBeInTheDocument();
 });

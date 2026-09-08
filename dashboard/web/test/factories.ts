@@ -1,4 +1,5 @@
 import type {
+  Overview,
   OverviewAssignment,
   OverviewAttendance,
   OverviewBrain,
@@ -99,5 +100,24 @@ export const gaps = (over: Partial<OverviewGaps> = {}): OverviewGaps => ({
   missingBooks: [],
   scrapeStale: false,
   attendanceStale: false,
+  ...over,
+});
+
+export const overview = (over: Partial<Overview> = {}): Overview => ({
+  generatedAt: "2026-09-08T06:00:00Z",
+  date: "2026-09-08",
+  scrapeAgeHours: 2,
+  term: "Term 1",
+  kpis: kpis(),
+  today: { classes: [], dueTodayOrTomorrow: [], changed: {} },
+  thisWeek: [],
+  assignments: [],
+  gradePicture: [],
+  exams: [],
+  attendance: [],
+  attendanceMin: 80,
+  brain: [],
+  chatUnlockAt: 5,
+  gaps: gaps(),
   ...over,
 });

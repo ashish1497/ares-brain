@@ -15,9 +15,13 @@ export function CopyButton({ value, label = "Copy" }: { value: string; label?: s
         variant="default"
         size="sm"
         onClick={() => {
-          navigator.clipboard?.writeText(value);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 2000);
+          navigator.clipboard
+            ?.writeText(value)
+            .then(() => {
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
+            })
+            .catch(() => {});
         }}
       >
         {label}

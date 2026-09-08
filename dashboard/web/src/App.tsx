@@ -12,17 +12,23 @@ import { BrainCard } from "./components/BrainCard";
 import { GapsCard } from "./components/GapsCard";
 import { ChatLockCard } from "./components/ChatLockCard";
 import { JobLog } from "./components/JobLog";
+import { Alert, AlertTitle, AlertDescription } from "./components/ui/alert";
+import { Button } from "./components/ui/button";
 
 export function App() {
   const [ov, setOv] = useState<Overview | null>(null);
+  const [err, setErr] = useState<string | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [lines, setLines] = useState<string[]>([]);
   const stop = useRef<(() => void) | undefined>(undefined);
 
   const refresh = () =>
     getOverview()
-      .then(setOv)
-      .catch(() => {});
+      .then((o) => {
+        setOv(o);
+        setErr(null);
+      })
+      .catch((e: unknown) => setErr(e instanceof Error ? e.message : String(e)));
   useEffect(() => {
     refresh();
     api.getState().then((s) => setJob(s.job));
@@ -52,6 +58,24 @@ export function App() {
     } else setLines((p) => [...p, `! ${r.error}`]);
   }
 
+  if (!ov && err)
+    return (
+      <div className="mx-auto max-w-4xl p-6">
+        <Alert variant="bad">
+          <AlertTitle>couldn't load overview</AlertTitle>
+          <AlertDescription>{err}</AlertDescription>
+          <Button
+            type="button"
+            variant="neutral"
+            size="sm"
+            className="mt-2"
+            onClick={() => refresh()}
+          >
+            Retry
+          </Button>
+        </Alert>
+      </div>
+    );
   if (!ov) return <div className="mx-auto max-w-4xl p-6">loading…</div>;
   return (
     <div className="mx-auto max-w-4xl p-4 sm:p-6">
@@ -63,7 +87,7 @@ export function App() {
       <ExamsCard exams={ov.exams} />
       <AttendanceCard rows={ov.attendance} min={ov.attendanceMin} />
       <BrainCard rows={ov.brain} busy={!!busy} onJob={onJob} />
-      <GapsCard gaps={ov.gaps} busy={!!busy} onJob={onJob} />
+      <GapsCard gaps={ov.gaps} ageHours={ov.scrapeAgeHours} busy={!!busy} onJob={onJob} />
       <ChatLockCard k={ov.kpis} unlockAt={ov.chatUnlockAt} />
       {(job || lines.length > 0) && <JobLog job={job} lines={lines} />}
     </div>
