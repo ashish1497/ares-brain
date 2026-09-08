@@ -1,0 +1,103 @@
+import type {
+  OverviewAssignment,
+  OverviewAttendance,
+  OverviewBrain,
+  OverviewExam,
+  OverviewGaps,
+  OverviewKpis,
+  OverviewWeekItem,
+} from "../src/api";
+
+export const kpis = (over: Partial<OverviewKpis> = {}): OverviewKpis => ({
+  dueThisWeek: 0,
+  nextExamInDays: null,
+  nextExamName: null,
+  cpAvg: null,
+  attendanceNow: 90,
+  attendanceBestCase: 95,
+  brainReady: 0,
+  courseCount: 17,
+  ...over,
+});
+
+export const weekItem = (over: Partial<OverviewWeekItem> = {}): OverviewWeekItem => ({
+  when: "2026-09-10",
+  kind: "class",
+  title: "Session",
+  course: "Course",
+  courseSlug: null,
+  weightPct: null,
+  status: null,
+  coverage: null,
+  action: null,
+  ...over,
+});
+
+export const assignment = (over: Partial<OverviewAssignment> = {}): OverviewAssignment => ({
+  id: "a1",
+  title: "Assignment",
+  course: "Course",
+  courseSlug: null,
+  weightPct: null,
+  dueAt: null,
+  hoursAway: null,
+  status: "not-started",
+  isClub: false,
+  submissionType: "file",
+  risk: 0,
+  helpCommand: "/mesa:ares-brain-assignment-help",
+  ...over,
+});
+
+export const exam = (over: Partial<OverviewExam> = {}): OverviewExam => ({
+  name: "Mid Term Exams",
+  date: "2026-09-19",
+  inDays: 11,
+  courses: ["all"],
+  coverageSessions: null,
+  brainReady: false,
+  testprepExists: false,
+  testprepCommand: "/mesa:ares-brain-testprep",
+  ...over,
+});
+
+export const attendance = (over: Partial<OverviewAttendance> = {}): OverviewAttendance => ({
+  course: "Course",
+  courseSlug: "course",
+  attended: 8,
+  conducted: 9,
+  nowPct: 88.8,
+  avgCp: 0,
+  sessionsLeftToMidterm: 4,
+  sessionsLeftToEndterm: 8,
+  bestCaseMidtermPct: 92,
+  bestCaseEndtermPct: 94,
+  floorEndtermPct: 47,
+  state: "ok",
+  atRisk: false,
+  note: "",
+  ...over,
+});
+
+export const brain = (over: Partial<OverviewBrain> = {}): OverviewBrain => ({
+  course: "Course",
+  courseSlug: "course",
+  state: "ready",
+  corpusBytes: 1000,
+  sourceCount: 5,
+  indexStale: false,
+  guideBuiltAt: "2026-09-01",
+  guideSourcesBehind: 0,
+  pendingTranscripts: 0,
+  reason: "up to date",
+  buildCommand: "/mesa:ares-brain-course-brain",
+  ...over,
+});
+
+export const gaps = (over: Partial<OverviewGaps> = {}): OverviewGaps => ({
+  pendingTranscripts: [],
+  missingBooks: [],
+  scrapeStale: false,
+  attendanceStale: false,
+  ...over,
+});
