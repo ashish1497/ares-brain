@@ -137,6 +137,20 @@ def test_cli_transcribe_reads_cached_index(home, monkeypatch):
     assert result == {"transcribed": [], "skipped": [], "failed": []}
 
 
+def test_cli_transcribe_url_dispatch(home, monkeypatch):
+    import json, importlib, paths, transcribe
+    (home / "courses").mkdir(parents=True, exist_ok=True)
+    (home / "courses" / "_index.json").write_text(json.dumps(
+        [{"id": "x", "name": "C", "slug": "c1"}]))
+    importlib.reload(paths); importlib.reload(transcribe)
+    monkeypatch.setattr(transcribe, "transcribe_url",
+                        lambda *a, **k: {"ok": True, "path": "transcripts/url-x.md"})
+    import lms_scrape
+    r = lms_scrape.run(["transcribe-url", "--course", "c1",
+                        "--url", "https://youtu.be/x", "--json"])
+    assert r["ok"] is True
+
+
 def test_cli_ingest_creates_inbox_and_normalizes(home):
     (home / "courses").mkdir(exist_ok=True)
     (home / "courses" / "_index.json").write_text(json.dumps(
