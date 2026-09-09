@@ -188,39 +188,51 @@ Transcription is never part of the daily run (too slow) — run `/mesa:ares-brai
 
 ## Dashboard
 
-A localhost web UI — one scrolling page that answers "where do I stand?" for the term.
-Not another LMS view: every section is derived from the scraped data and points at the
-next action.
+A local, read-only outcome dashboard over the scraped course data — a full-width
+tabbed app, not a report. It answers "where do I stand, and what needs me next?" —
+the landing view is **Today**.
 
 ```bash
 npm run dashboard          # dev — Vite on :5173 proxying the API on :4319
-npm run dashboard:build    # then: npm run --workspace ares-dashboard start  (serves :4319)
+npm run dashboard:build    # then: npm run --workspace ares-dashboard-server start  (serves :4319)
 ```
 
-Or `/mesa:ares-brain-dashboard` from Claude Code. Binds `127.0.0.1` only, no auth. One
-long job at a time. React + Vite, neubrutalist styling, follows the OS light/dark theme.
+Or `/mesa:ares-brain-dashboard` from Claude Code. The server binds `127.0.0.1` only
+and has no auth.
 
-**The sections**
+**The tabs**
 
-| Section                     | Answers                                                                                                                                                                                                                                                                                                           |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| KPI strip                   | due this week, next exam, CP average, attendance now → best case, brains ready. Tiles turn amber when a number needs attention.                                                                                                                                                                                   |
-| Today                       | classes with times/room/instructor, what's due today or tomorrow, what changed in the LMS since the last scrape.                                                                                                                                                                                                  |
-| This week                   | the next 7 days grouped by day — classes, assignment due dates, exams.                                                                                                                                                                                                                                            |
-| Assignments — by grade risk | every unsubmitted task, ordered by weight × urgency, each with its grade weight and a **Start** command. Below: per-course "% of grade still ahead".                                                                                                                                                              |
-| Exam prep                   | each exam, days out, whether its course brain is ready, whether a practice set exists.                                                                                                                                                                                                                            |
-| Attendance runway           | per course: attendance now, sessions left, best-case % to midterm / endterm, and a three-state flag — **on track** / **watch** (at the line, or one miss from it once ≥ 4 sessions held) / **at risk** (even perfect attendance can't recover 75%). Threshold is an assumption — set `ARES_BRAIN_ATTENDANCE_MIN`. |
-| Where you stand             | per course brain: ready / stale / not-built, why, and **Ingest** / **Build brain**.                                                                                                                                                                                                                               |
-| Needs your input            | recordings still to transcribe (**Transcribe all** pulls the scraped YouTube links), books mentioned in outlines but not added (drop the PDF right here), stale scrape (**Sync**).                                                                                                                                |
-| Chat                        | locked until `ARES_BRAIN_CHAT_UNLOCK` (default 15) course brains are ready — phase 2.                                                                                                                                                                                                                             |
+| Tab             | Answers                                                                                                                                                                                                                                            |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Today**       | what needs you in the next 24–48h: today's classes, what's due, what changed since the last sync.                                                                                                                                                  |
+| **Assignments** | everything unsubmitted, risk-ordered, plus the grade picture. Click a row for a focused page with the deadline, the scraped instructions, attached materials, the session it maps to, a copy-command to start it in Claude, and a local checklist. |
+| **Attendance**  | every course against the attendance minimum, with best-case and floor projections.                                                                                                                                                                 |
+| **Exams**       | what is scheduled, what it covers, whether the brain and a practice set are ready.                                                                                                                                                                 |
+| **Brain**       | per-course knowledge guides and what is blocking each.                                                                                                                                                                                             |
+| **Gaps**        | what the system is missing: untranscribed recordings, missing books, a stale scrape.                                                                                                                                                               |
 
-**Deterministic vs copy-command.** Buttons that do a bounded job — Sync, Ingest,
-Transcribe, upload — run it directly and stream the log. Anything that needs a
-Claude session — assignment help, `course-brain`, `testprep` — hands you the exact
-`/mesa:ares-brain-*` command to paste. The dashboard never drives Claude itself.
+**Deterministic jobs vs copy-command.** The dashboard splits work two ways.
+Deterministic jobs — `sync`, `ingest`, `transcribe`, `calendar-sync` — run on the
+server, kicked off from the Re-sync button or a per-row job button, and stream their
+log into the strip at the bottom right. Anything that needs judgement — `Start in
+Claude`, `Practice set`, `Brief me`, `Build guide` — is a yellow copy button that
+hands you the exact `/mesa:ares-brain-*` command to paste into a Claude Code session.
+The dashboard itself makes **no LLM calls** and never writes back to the LMS; the
+assignment checklist and the focused page's local status control live in
+`localStorage` only and are advisory.
 
-Env: `ARES_BRAIN_DASHBOARD_PORT` (4319), `ARES_BRAIN_ATTENDANCE_MIN` (75),
-`ARES_BRAIN_CHAT_UNLOCK` (15).
+**Themes.** A Settings panel (gear, top right) offers two themes — `Meadow` (green)
+and `Ultraviolet` (violet/cream) — each crossed with `System` / `Light` / `Dark`.
+The choice persists in `localStorage` (`ares.theme`, `ares.appearance`) and is applied
+to `<html>` via `data-theme` / `data-appearance`; a small inline script in
+`index.html` sets both before first paint, so there's no flash. The same panel lists
+the env vars below, read-only.
+
+**Refresh.** The **⟲ Re-sync** button in the summary bar, or press **`r`** when no
+input is focused.
+
+Env: `ARES_BRAIN_ATTENDANCE_MIN` (default 75), `ARES_BRAIN_CHAT_UNLOCK` (default 15),
+`ARES_BRAIN_DASHBOARD_PORT` (default 4319).
 
 ---
 

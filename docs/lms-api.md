@@ -544,3 +544,40 @@ verified in a browser (light + dark), real data (17 courses, 149 calendar events
 — same job runner + SSE as the F live run above, unchanged. `transcribe` (scraped
 YouTube links, no `--inbox`) is a new job kind but the same yt-dlp egress block
 applies on this machine.
+
+## G dashboard redesign — live run 2026-09-09
+
+Verified against the **production** build (`npm run --workspace ares-dashboard build` +
+`... server start`, served on `http://127.0.0.1:4319`, real `GET /api/overview`):
+
+- All six tabs render with live data; the focused assignment page opens from a row
+  click and from a pasted deep link (`#assignments/<courseSlug>/<id>`).
+- Both themes × both explicit appearances swap live from the Settings panel with no
+  reload — computed tokens confirmed as Meadow-light `edge #0f8a5f` / `paper #eafff4`,
+  Ultraviolet-light `edge #5b21b6` / `paper #faf3e0`, Ultraviolet-dark
+  `edge #a78bfa` / `paper #17121f` — and `localStorage` is written both times. The
+  anti-flash inline script survives the production build and is present in the
+  served HTML.
+- Contrast: all 28 spec §4 floors pass across the four theme × appearance
+  combinations (`ink` on `paper` 15.4–16.9:1, `ink` on `card` 14.6–16.8:1, black on
+  `cta`/`ok`/`soon`/`bad` 4.65–14.54:1, `edge` on `paper` 4.17–8.11:1), computed from
+  the shipped `index.css` values.
+- A `sync` job triggered from **Re-sync** ran end to end: status `running` → `done`,
+  exit code 0, 11 log lines captured server-side, `lastRuns.sync` recorded, and the
+  overview refreshed live mid-run (overall attendance moved 74% → 75% and the
+  summary chip followed).
+- Suites at this point: scraper pytest **246**, dashboard server vitest **39**,
+  dashboard web vitest **201**, root `npm run check` exit 0, and `npm ci` reifies
+  the lockfile from scratch.
+
+Recorded as **not** clean / worth knowing:
+
+- The scraper buffers its stdout, so a long `sync` shows an empty log pane for most
+  of its run and then delivers every line in one burst near the end. The stream
+  itself is fine (the SSE endpoint replays `job.log` on connect); this is
+  Python-side buffering, and running the child unbuffered (`-u` /
+  `PYTHONUNBUFFERED=1`) would make the strip genuinely live. Not changed here.
+- Reloading the browser during or after a job used to leave the log pane empty
+  forever because the client only attached the stream inside its own job-start
+  path; fixed in this task's commit 1.
+- TRANSCRIBE_RESULT_PENDING
