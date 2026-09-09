@@ -139,6 +139,19 @@ test("attendanceStale renders a muted note", () => {
   expect(screen.getByText(/attendance data is behind the calendar/)).toBeInTheDocument();
 });
 
+test("attendanceStale renders a Sync calendar button that calls onJob('calendar-sync')", () => {
+  const onJob = vi.fn();
+  render(<GapsTab {...baseProps({ gaps: gaps({ attendanceStale: true }) }, onJob)} />);
+  const btn = screen.getByRole("button", { name: "Sync calendar" });
+  fireEvent.click(btn);
+  expect(onJob).toHaveBeenCalledWith("calendar-sync");
+});
+
+test("busy disables the Sync calendar button", () => {
+  render(<GapsTab {...baseProps({ gaps: gaps({ attendanceStale: true }) })} busy={true} />);
+  expect(screen.getByRole("button", { name: "Sync calendar" })).toBeDisabled();
+});
+
 test("upload input calls upload(mentionedIn[0], 'book', files)", async () => {
   render(
     <GapsTab

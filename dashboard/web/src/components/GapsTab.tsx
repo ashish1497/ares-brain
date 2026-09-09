@@ -207,9 +207,20 @@ export function GapsTab({ ov, onJob, busy }: TabProps) {
             </div>
           )}
           {attendanceStale && (
-            <p className="mt-2 text-[13px] text-[color:var(--color-ink-muted)]">
-              attendance data is behind the calendar
-            </p>
+            <div className="mt-2 flex items-center justify-between gap-3">
+              <p className="text-[13px] text-[color:var(--color-ink-muted)]">
+                attendance data is behind the calendar
+              </p>
+              <Button
+                type="button"
+                variant="neutral"
+                size="sm"
+                disabled={busy}
+                onClick={() => onJob("calendar-sync")}
+              >
+                Sync calendar
+              </Button>
+            </div>
           )}
         </Card>
       )}
