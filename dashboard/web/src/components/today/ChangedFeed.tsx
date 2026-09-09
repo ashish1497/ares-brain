@@ -20,7 +20,9 @@ export function ChangedFeed({
   if (changed.length === 0) return null;
   return (
     <Card className="gap-0 md:p-6">
-      <SectionHeader>Since last scrape</SectionHeader>
+      <SectionHeader info="What changed on the LMS since the last sync.">
+        Since last scrape
+      </SectionHeader>
       <p className="mb-3 text-[13px] text-[color:var(--color-ink-muted)]">
         updated {fmtScrapeAge(scrapeAgeHours)}
       </p>

@@ -20,7 +20,7 @@ export function DueNow({
   const sorted = [...items].sort((a, b) => Number(a.submitted) - Number(b.submitted));
   return (
     <Card className="gap-0 md:p-6">
-      <SectionHeader>Due now</SectionHeader>
+      <SectionHeader info="Assignments due today or tomorrow.">Due now</SectionHeader>
       <div className="divide-y divide-[color:var(--color-rule)]">
         {sorted.map((item, i) => {
           const matched =

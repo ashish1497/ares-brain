@@ -6,7 +6,9 @@ import { Progress } from "../ui/progress";
 export function GradePicture({ rows }: { rows: OverviewGradePicture[] }) {
   return (
     <div>
-      <SectionHeader>Grade picture</SectionHeader>
+      <SectionHeader info="Filled = the share of your final grade already assessed. Hollow = the share still ahead of you.">
+        Grade picture
+      </SectionHeader>
       <div className="space-y-4">
         {rows.map((r) => (
           <div key={r.courseSlug}>

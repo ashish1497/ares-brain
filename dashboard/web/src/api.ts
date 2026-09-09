@@ -254,7 +254,11 @@ export async function upload(
   course: string,
   kind: "book" | "recording",
   files: FileList,
-): Promise<{ written: string[]; rejected: { name: string; reason: string }[] }> {
+): Promise<{
+  written: string[];
+  rejected: { name: string; reason: string }[];
+  error?: string;
+}> {
   const fd = new FormData();
   for (const f of Array.from(files)) fd.append("files", f);
   const r = await fetch(`/api/upload?course=${encodeURIComponent(course)}&kind=${kind}`, {

@@ -9,6 +9,9 @@ import type {
   OverviewExam,
   OverviewGaps,
   OverviewKpis,
+  OverviewMissingBook,
+  OverviewPendingTranscriptGroup,
+  OverviewPendingTranscriptItem,
   OverviewWeekItem,
 } from "../src/api";
 
@@ -142,6 +145,32 @@ export const brain = (over: Partial<OverviewBrain> = {}): OverviewBrain => ({
   pendingTranscripts: 0,
   reason: "up to date",
   buildCommand: "/mesa:ares-brain-course-brain",
+  ...over,
+});
+
+export const pendingTranscriptItem = (
+  over: Partial<OverviewPendingTranscriptItem> = {},
+): OverviewPendingTranscriptItem => ({
+  title: "Session recording",
+  recordedOn: "2026-09-01",
+  videoUrl: null,
+  ...over,
+});
+
+export const pendingTranscriptGroup = (
+  over: Partial<OverviewPendingTranscriptGroup> = {},
+): OverviewPendingTranscriptGroup => ({
+  course: "Course",
+  courseSlug: "course",
+  count: 1,
+  items: [pendingTranscriptItem()],
+  ...over,
+});
+
+export const missingBook = (over: Partial<OverviewMissingBook> = {}): OverviewMissingBook => ({
+  title: "Some Book",
+  author: "Some Author",
+  mentionedIn: ["course"],
   ...over,
 });
 

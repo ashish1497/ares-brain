@@ -74,7 +74,9 @@ function AssignmentsList({ ov, go }: Pick<TabProps, "ov" | "go">) {
 
   return (
     <Card className="gap-0 md:p-6">
-      <SectionHeader>Assignments</SectionHeader>
+      <SectionHeader info="Everything not yet submitted, ordered by risk.">
+        Assignments
+      </SectionHeader>
       {assignments.length === 0 ? (
         <p className="text-[13px] text-[color:var(--color-ink-muted)]">Nothing open.</p>
       ) : (
