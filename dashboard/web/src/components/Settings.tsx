@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Modal } from "./Modal";
+import { SectionHeader } from "./SectionHeader";
+import { Button } from "./ui/button";
 import { cn } from "../lib/utils";
 import { getThemePrefs, setThemePrefs, type Appearance, type ThemeName } from "../lib/theme";
 import type { Overview } from "../api";
@@ -24,10 +26,14 @@ export function Settings({
   open,
   onClose,
   ov,
+  onJob,
+  busy,
 }: {
   open: boolean;
   onClose: () => void;
   ov: Pick<Overview, "attendanceMin" | "chatUnlockAt">;
+  onJob: (kind: string) => void;
+  busy: boolean;
 }) {
   const [prefs, setPrefs] = useState(getThemePrefs);
 
@@ -103,6 +109,25 @@ export function Settings({
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="mb-6">
+        <SectionHeader rule={false}>Calendar</SectionHeader>
+        <p className="mb-2 text-[12px] text-[color:var(--color-ink-muted)]">
+          pushes assignment and exam deadlines to the &quot;Mesa Assignments&quot; Google Calendar
+        </p>
+        <Button
+          type="button"
+          variant="neutral"
+          size="sm"
+          disabled={busy}
+          onClick={() => {
+            onJob("calendar-sync");
+            onClose();
+          }}
+        >
+          Sync calendar
+        </Button>
       </div>
 
       <div>

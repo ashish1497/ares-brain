@@ -150,7 +150,13 @@ export function App() {
         </main>
         {(job || lines.length > 0) && <JobLog job={job} lines={lines} />}
       </div>
-      <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} ov={ov} />
+      <Settings
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        ov={ov}
+        onJob={onJob}
+        busy={!!busy}
+      />
     </>
   );
 }

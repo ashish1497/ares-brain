@@ -213,7 +213,8 @@ and has no auth.
 
 **Deterministic jobs vs copy-command.** The dashboard splits work two ways.
 Deterministic jobs — `sync`, `ingest`, `transcribe`, `calendar-sync` — run on the
-server, kicked off from the Re-sync button or a per-row job button, and stream their
+server, kicked off from the Re-sync button, a per-row job button, or (for
+`calendar-sync`) the Settings panel's Sync calendar button, and stream their
 log into the strip at the bottom right. Anything that needs judgement — `Start in
 Claude`, `Practice set`, `Brief me`, `Build guide` — is a yellow copy button that
 hands you the exact `/mesa:ares-brain-*` command to paste into a Claude Code session.
