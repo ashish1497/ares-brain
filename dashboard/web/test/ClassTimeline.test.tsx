@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { ClassTimeline } from "../src/components/today/ClassTimeline";
 import { todayClass } from "./factories";
 
@@ -69,6 +69,15 @@ test("the padding and positioning context live on the <li>, not the <ol> — so 
   const list = screen.getByRole("list");
   expect(list).not.toHaveClass("pl-4");
   expect(list.querySelector("li")).toHaveClass("pl-4", "relative");
+});
+
+test("the header carries an info tooltip, like its sibling Today cards", async () => {
+  render(<ClassTimeline classes={[todayClass()]} now={NOW} />);
+  const trigger = screen.getByRole("button", { name: "about Today" });
+  fireEvent.click(trigger);
+  expect(
+    screen.getByText("Every class you have today, in order, with the room and instructor."),
+  ).toBeInTheDocument();
 });
 
 test("empty list shows no classes today", () => {

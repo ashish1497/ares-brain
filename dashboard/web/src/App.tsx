@@ -61,7 +61,24 @@ export function App() {
       .catch((e: unknown) => setErr(e instanceof Error ? e.message : String(e)));
   useEffect(() => {
     refresh();
-    api.getState().then((s) => setJob(s.job));
+    api.getState().then((s) => {
+      setJob(s.job);
+      if (s.job) {
+        stop.current?.();
+        stop.current = api.streamLog(
+          s.job.id,
+          (l) => setLines((p) => [...p, l]),
+          () => {
+            api.getState().then((s2) => setJob(s2.job));
+            refresh();
+          },
+          () => {
+            api.getState().then((s2) => setJob(s2.job));
+          },
+        );
+      }
+    });
+    return () => stop.current?.();
   }, []);
   useEffect(() => {
     const t = setInterval(() => api.getState().then((s) => setJob(s.job)), 3000);

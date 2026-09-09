@@ -74,6 +74,39 @@ test("switching the hash renders another tab", async () => {
   );
 });
 
+test("a job already running at mount time re-attaches the log stream so its lines replay after a reload", async () => {
+  vi.mocked(api.getOverview).mockResolvedValue(overview());
+  vi.mocked(api.getState).mockResolvedValue({
+    job: {
+      id: "job-1",
+      kind: "sync",
+      status: "running",
+      startedAt: "2026-09-09T09:00:00",
+      log: [],
+    },
+    lastRuns: {},
+  });
+  vi.mocked(api.streamLog).mockImplementation((jobId, onLine) => {
+    expect(jobId).toBe("job-1");
+    onLine("line one");
+    onLine("line two");
+    return () => {};
+  });
+
+  render(<App />);
+
+  await screen.findByText("ARES BRAIN");
+  expect(api.streamLog).toHaveBeenCalledWith(
+    "job-1",
+    expect.any(Function),
+    expect.any(Function),
+    expect.any(Function),
+  );
+  await waitFor(() => {
+    expect(document.querySelector("pre")?.textContent).toBe("line one\nline two");
+  });
+});
+
 test("a later refresh failing after a good load shows a non-blocking stale banner, not the full-page error", async () => {
   vi.mocked(api.getOverview).mockResolvedValueOnce(overview());
   vi.mocked(api.getOverview).mockRejectedValueOnce(new Error("overview 503"));
