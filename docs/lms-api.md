@@ -507,13 +507,12 @@ skill steps good end to end.
 - Guards: 2nd job while running → **409**; `Host: evil.com` → **403**.
 - Page reload mid/after-job → poll picks up state, buttons re-enable (the T3 freeze fix).
 
-**Not verified — `transcribe-url` end to end.** yt-dlp cannot reach YouTube from this
-machine's network (every attempt, incl. the always-available "Me at the zoo" video,
-returns `{"ok": false, "error": "could not pull audio from the url"}`). The job
-runner + SSE + `transcribe_url` error handling all behave correctly; only the actual
-audio pull fails. On a machine with working yt-dlp egress this should transcribe;
-if not, yt-dlp now often needs a `--cookies-from-browser` / PO-token workaround
-(YouTube anti-bot) — a future `transcribe.py` option.
+**Not verified at the time — `transcribe-url` end to end.** Every attempt returned
+`{"ok": false, "error": "could not pull audio from the url"}`. This was misread as a
+network / egress problem; the real cause was `_pull_audio` shelling out to a bare
+`yt-dlp` binary that is not on PATH (see the 2026-09-09 note below). The job runner +
+SSE + `transcribe_url` error handling all behave correctly; the audio pull is now
+fixed by invoking `python -m yt_dlp`.
 
 **FINDING (fix before merge):** `lms_scrape.py transcribe-url` exits 0 even when
 `transcribe_url` returns `{"ok": false}`, so the dashboard shows the job as
@@ -542,8 +541,8 @@ verified in a browser (light + dark), real data (17 courses, 149 calendar events
 
 **Not re-verified this run:** the job actions (Sync / Ingest / Transcribe / upload)
 — same job runner + SSE as the F live run above, unchanged. `transcribe` (scraped
-YouTube links, no `--inbox`) is a new job kind but the same yt-dlp egress block
-applies on this machine.
+YouTube links, no `--inbox`) is a new job kind; its audio pull failed here for the
+`yt-dlp`-not-on-PATH reason fixed in the 2026-09-09 note below, not an egress block.
 
 ## G dashboard redesign — live run 2026-09-09
 
@@ -585,6 +584,19 @@ Recorded as **not** clean / worth knowing:
   surfaced as status `failed` with exit code 1 — but the transcription itself
   could not fetch the recording and returned
   `{"transcribed": [], "skipped": [], "failed": [{"status": "needs-manual"}]}`.
-  So the dashboard's job plumbing is verified end to end while `transcribe` itself
-  is still blocked on this machine (media egress), exactly as expected. The Gaps
-  tab reports the failure rather than hanging.
+  So the dashboard's job plumbing is verified end to end. The transcription failure
+  itself was later traced to the bare-`yt-dlp` bug (see the 2026-09-09 note below),
+  not media egress. The Gaps tab reports the failure rather than hanging.
+
+## Transcription — root cause found & fixed 2026-09-09
+
+The long-standing "yt-dlp cannot reach YouTube from this machine" note was a
+misdiagnosis. `_pull_audio` in `scraper/transcribe.py` invoked a bare `yt-dlp`,
+which is not on PATH (it lives at `scraper/.venv/bin/yt-dlp`) — the resulting
+`FileNotFoundError` was swallowed by a broad `except` and surfaced as
+`needs-manual` / "could not pull audio". Fixed by invoking `python -m yt_dlp`
+(the module in the sidecar venv) and logging yt-dlp's stderr on failure.
+Verified: yt-dlp pulls a full class recording (~66 MB) in ~11 s; `-x --audio-format m4a`
+extraction works; ffmpeg resolves. Transcription quality on the Hinglish lectures
+is a separate open question (whisper `small` default; `WHISPER_MODEL=large-v3`
+for better code-switch handling; a Gemini engine is a deferred option).

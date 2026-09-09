@@ -3,6 +3,7 @@ run faster-whisper. All recordings are YouTube links (see docs/lms-api.md)."""
 import hashlib
 import os
 import subprocess
+import sys
 import tempfile
 from datetime import date
 from pathlib import Path
@@ -30,11 +31,20 @@ def _pull_audio(url: str, dest_dir: Path) -> Path | None:
     out_tmpl = str(dest_dir / "%(id)s.%(ext)s")
     try:
         subprocess.run(
-            ["yt-dlp", "-x", "--audio-format", "m4a", "--no-playlist",
-             "-o", out_tmpl, url],
+            [sys.executable, "-m", "yt_dlp", "-x", "--audio-format", "m4a",
+             "--no-playlist", "-o", out_tmpl, url],
             check=True, capture_output=True, timeout=900,
         )
-    except Exception:  # noqa: BLE001 - never let audio pull abort transcription
+    except subprocess.CalledProcessError as e:
+        print(f"transcribe: yt-dlp failed for {url}: "
+              f"{e.stderr.decode(errors='replace')[-800:]}", file=sys.stderr)
+        return None
+    except subprocess.TimeoutExpired:
+        print(f"transcribe: yt-dlp timed out for {url}", file=sys.stderr)
+        return None
+    except Exception as e:  # noqa: BLE001 - never let audio pull abort transcription
+        print(f"transcribe: yt-dlp error for {url}: {type(e).__name__}: {e}",
+              file=sys.stderr)
         return None
     files = list(dest_dir.glob("*.m4a"))
     return files[0] if files else None

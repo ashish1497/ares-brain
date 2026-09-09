@@ -1,4 +1,6 @@
 import json
+import subprocess
+import sys
 from pathlib import Path
 import pytest
 import transcribe
@@ -16,6 +18,31 @@ def test_fmt_ts():
 def test_whisper_on_sample_wav():
     segs = transcribe._whisper(FIX / "sample.wav")
     assert isinstance(segs, list)  # a 440Hz tone yields few/no segments; just no crash
+
+
+def test_pull_audio_invokes_yt_dlp_module(monkeypatch, tmp_path):
+    recorded = {}
+
+    def fake_run(args, *a, **k):
+        recorded["cmd"] = args
+        return subprocess.CompletedProcess(args, 0, b"", b"")
+
+    monkeypatch.setattr(transcribe.subprocess, "run", fake_run)
+    transcribe._pull_audio("https://x/v", tmp_path)
+    cmd = recorded["cmd"]
+    assert cmd[:3] == [sys.executable, "-m", "yt_dlp"]
+    assert cmd[-1] == "https://x/v"
+
+
+def test_pull_audio_logs_and_returns_none_on_failure(monkeypatch, tmp_path, capsys):
+    def fake_run(args, *a, **k):
+        raise subprocess.CalledProcessError(1, "yt-dlp", stderr=b"ERROR: boom")
+
+    monkeypatch.setattr(transcribe.subprocess, "run", fake_run)
+    result = transcribe._pull_audio("https://x/v", tmp_path)
+    assert result is None
+    err = capsys.readouterr().err
+    assert "boom" in err or "yt-dlp failed" in err
 
 
 def test_step_transcribe_youtube_failure_is_recorded(home, monkeypatch):
