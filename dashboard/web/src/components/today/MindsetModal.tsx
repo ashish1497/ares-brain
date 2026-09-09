@@ -1,5 +1,5 @@
 import type { Overview, OverviewAttendance, OverviewBrain, OverviewClass } from "../../api";
-import { fmtTime } from "../../lib/format";
+import { fmtTime, reasonParts } from "../../lib/format";
 import { CopyButton } from "../CopyButton";
 import { MetaRow } from "../MetaRow";
 import { Modal } from "../Modal";
@@ -82,7 +82,9 @@ export function MindsetModal({
             {brainEntry && (
               <div className="flex items-center gap-2">
                 <StatePill state={BRAIN_PILL[brainEntry.state]}>{brainEntry.state}</StatePill>
-                <span className="text-[color:var(--color-ink-muted)]">{brainEntry.reason}</span>
+                <span className="text-[color:var(--color-ink-muted)]">
+                  <MetaRow items={reasonParts(brainEntry.reason)} />
+                </span>
               </div>
             )}
 

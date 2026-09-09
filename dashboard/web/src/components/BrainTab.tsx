@@ -1,5 +1,6 @@
 import type { TabProps } from "../lib/types";
 import type { OverviewBrain } from "../api";
+import { reasonParts } from "../lib/format";
 import { SectionHeader } from "./SectionHeader";
 import { MetaRow } from "./MetaRow";
 import { StatePill } from "./StatePill";
@@ -8,11 +9,6 @@ import { InfoTip } from "./InfoTip";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Progress } from "./ui/progress";
-
-/** Splits a `·`-joined reason string into MetaRow parts; a reason with no `·` renders unchanged. */
-function reasonParts(reason: string): string[] {
-  return reason.split("·").map((part) => part.trim());
-}
 
 const STATE_PILL: Record<OverviewBrain["state"], "ok" | "soon" | "bad"> = {
   ready: "ok",

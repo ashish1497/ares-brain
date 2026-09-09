@@ -76,6 +76,44 @@ test("brain and attendance blocks render when present, matched by courseSlug", (
   expect(screen.getByText("92%")).toBeInTheDocument();
 });
 
+test("a brain reason with a middot renders as separate MetaRow parts with no middot in the dialog", () => {
+  const cls = todayClass({ courseSlug: "finance" });
+  render(
+    <MindsetModal
+      cls={cls}
+      ov={overview({
+        brain: [
+          brain({
+            courseSlug: "finance",
+            state: "stale",
+            reason: "6 recordings to transcribe · guide 1 sources behind",
+          }),
+        ],
+      })}
+      onClose={vi.fn()}
+    />,
+  );
+  const dialog = screen.getByRole("dialog");
+  expect(screen.getByText("6 recordings to transcribe")).toBeInTheDocument();
+  expect(screen.getByText("guide 1 sources behind")).toBeInTheDocument();
+  expect(dialog.textContent).not.toContain("·");
+  expect(screen.getAllByRole("separator").length).toBeGreaterThanOrEqual(1);
+});
+
+test("a brain reason with no middot renders unchanged as a single item", () => {
+  const cls = todayClass({ courseSlug: "finance" });
+  render(
+    <MindsetModal
+      cls={cls}
+      ov={overview({
+        brain: [brain({ courseSlug: "finance", state: "ready", reason: "up to date" })],
+      })}
+      onClose={vi.fn()}
+    />,
+  );
+  expect(screen.getByText("up to date")).toBeInTheDocument();
+});
+
 test("meeting link renders only when set", () => {
   const withLink = todayClass({ meetingLink: "https://zoom.example/1" });
   const { rerender } = render(<MindsetModal cls={withLink} ov={overview()} onClose={vi.fn()} />);
