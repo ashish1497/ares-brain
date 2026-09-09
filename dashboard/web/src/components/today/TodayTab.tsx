@@ -27,7 +27,7 @@ export function TodayTab({ ov, go }: TabProps) {
   if (allEmpty) return <EmptyToday ov={ov} />;
   return (
     <div className="grid gap-6 lg:grid-cols-[1.15fr_1fr]">
-      <ClassTimeline classes={classes} />
+      <ClassTimeline ov={ov} />
       <div className="space-y-6">
         <DueNow items={dueTodayOrTomorrow} assignments={ov.assignments} go={go} />
         <ChangedFeed changed={changed} scrapeAgeHours={ov.scrapeAgeHours} />
