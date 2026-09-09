@@ -300,6 +300,81 @@ test("busy disables the Transcribe all button", () => {
   expect(screen.getByRole("button", { name: /Transcribe all/ })).toBeDisabled();
 });
 
+test("the recordings panel renders a course select listing course names", () => {
+  render(
+    <GapsTab
+      {...baseProps({
+        brain: [
+          brain({ course: "Zeta Course", courseSlug: "zeta" }),
+          brain({ course: "Alpha Course", courseSlug: "alpha" }),
+        ],
+      })}
+    />,
+  );
+  expect(screen.getByText("Your recordings")).toBeInTheDocument();
+  expect(screen.getByRole("option", { name: "Alpha Course" })).toBeInTheDocument();
+  expect(screen.getByRole("option", { name: "Zeta Course" })).toBeInTheDocument();
+});
+
+test("picking a course + selecting a recording calls upload(<that slug>, 'recording', files)", async () => {
+  render(
+    <GapsTab
+      {...baseProps({
+        brain: [
+          brain({ course: "Alpha Course", courseSlug: "alpha" }),
+          brain({ course: "Beta Course", courseSlug: "beta" }),
+        ],
+      })}
+    />,
+  );
+  fireEvent.change(screen.getByLabelText(/course for your recording/i), {
+    target: { value: "beta" },
+  });
+  const input = screen.getByLabelText("Upload a recording") as HTMLInputElement;
+  const file = new File(["x"], "class.m4a", { type: "audio/mp4" });
+  fireEvent.change(input, { target: { files: [file] } });
+  await waitFor(() => {
+    expect(api.upload).toHaveBeenCalledWith("beta", "recording", expect.anything());
+  });
+});
+
+test("Transcribe dropped recordings calls onJob('transcribe-inbox', {course})", () => {
+  const onJob = vi.fn();
+  render(
+    <GapsTab
+      {...baseProps({ brain: [brain({ course: "Alpha Course", courseSlug: "alpha" })] }, onJob)}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: /Transcribe dropped recordings/ }));
+  expect(onJob).toHaveBeenCalledWith("transcribe-inbox", { course: "alpha" });
+});
+
+test("a written recording result renders 'written: a.m4a'", async () => {
+  vi.mocked(api.upload).mockResolvedValue({ written: ["a.m4a"], rejected: [] });
+  render(
+    <GapsTab {...baseProps({ brain: [brain({ course: "Alpha Course", courseSlug: "alpha" })] })} />,
+  );
+  const input = screen.getByLabelText("Upload a recording") as HTMLInputElement;
+  fireEvent.change(input, { target: { files: [new File(["x"], "a.m4a")] } });
+  await waitFor(() => {
+    expect(screen.getByText(/written: a\.m4a/)).toBeInTheDocument();
+  });
+});
+
+test("with gaps fully empty, the empty note shows and the recordings panel is still present", () => {
+  render(
+    <GapsTab
+      {...baseProps({
+        brain: [brain({ course: "Alpha Course", courseSlug: "alpha" })],
+        gaps: gaps(),
+      })}
+    />,
+  );
+  expect(screen.getByText("Nothing outstanding.")).toBeInTheDocument();
+  expect(screen.getByText("Your recordings")).toBeInTheDocument();
+  expect(screen.getByLabelText("Upload a recording")).toBeInTheDocument();
+});
+
 test("book upload messages keyed by title survive a re-render with a reordered list", async () => {
   vi.mocked(api.upload).mockResolvedValue({ written: ["book-one.pdf"], rejected: [] });
   const props = baseProps({

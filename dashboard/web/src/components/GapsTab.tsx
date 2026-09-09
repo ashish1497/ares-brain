@@ -13,6 +13,27 @@ type UploadResult = {
   error?: string;
 };
 
+/** Renders an upload outcome the same way for every dropzone in this tab. */
+function ResultLine({ result }: { result: UploadResult }) {
+  return (
+    <p className="mt-2 text-[13px]">
+      {result.error ? (
+        <span>upload failed: {result.error}</span>
+      ) : (
+        <>
+          {result.written.length > 0 && <span>written: {result.written.join(", ")}</span>}
+          {result.rejected.length > 0 && (
+            <span>
+              {" "}
+              rejected: {result.rejected.map((r) => `${r.name} (${r.reason})`).join(", ")}
+            </span>
+          )}
+        </>
+      )}
+    </p>
+  );
+}
+
 function BookRow({
   book,
   courseName,
@@ -62,23 +83,7 @@ function BookRow({
           no matching course — drop the PDF into the course&apos;s inbox/books/ folder manually
         </p>
       )}
-      {result && (
-        <p className="mt-2 text-[13px]">
-          {result.error ? (
-            <span>upload failed: {result.error}</span>
-          ) : (
-            <>
-              {result.written.length > 0 && <span>written: {result.written.join(", ")}</span>}
-              {result.rejected.length > 0 && (
-                <span>
-                  {" "}
-                  rejected: {result.rejected.map((r) => `${r.name} (${r.reason})`).join(", ")}
-                </span>
-              )}
-            </>
-          )}
-        </p>
-      )}
+      {result && <ResultLine result={result} />}
     </div>
   );
 }
@@ -90,6 +95,26 @@ export function GapsTab({ ov, onJob, busy }: TabProps) {
 
   const courseNameBySlug = new Map(ov.brain.map((b) => [b.courseSlug, b.course]));
   const courseName = (slug: string) => courseNameBySlug.get(slug) ?? slug;
+
+  const recCourses = [...ov.brain].sort((a, b) => a.course.localeCompare(b.course));
+  const [recSlug, setRecSlug] = useState(() => recCourses[0]?.courseSlug ?? "");
+  const [recResults, setRecResults] = useState<Record<string, UploadResult>>({});
+
+  function handleRecordingUpload(slug: string, files: FileList) {
+    upload(slug, "recording", files)
+      .then((res) => {
+        const result: UploadResult = Array.isArray(res.written)
+          ? { written: res.written, rejected: res.rejected ?? [] }
+          : { written: [], rejected: [], error: res.error ?? "unknown error" };
+        setRecResults((rs) => ({ ...rs, [slug]: result }));
+      })
+      .catch((err) => {
+        setRecResults((rs) => ({
+          ...rs,
+          [slug]: { written: [], rejected: [], error: String(err) },
+        }));
+      });
+  }
 
   function handleUpload(book: OverviewMissingBook, files: FileList) {
     upload(book.mentionedIn[0], "book", files)
@@ -115,18 +140,15 @@ export function GapsTab({ ov, onJob, busy }: TabProps) {
   const showStale = scrapeStale || attendanceStale;
   const allEmpty = pendingTranscripts.length === 0 && missingBooks.length === 0 && !showStale;
 
-  if (allEmpty) {
-    return (
-      <Card className="gap-0 md:p-6">
-        <SectionHeader info="Everything the system is missing or waiting on.">Gaps</SectionHeader>
-        <p className="text-[13px] text-[color:var(--color-ink-muted)]">Nothing outstanding.</p>
-      </Card>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <SectionHeader info="Everything the system is missing or waiting on.">Gaps</SectionHeader>
+
+      {allEmpty && (
+        <Card className="gap-0 md:p-6">
+          <p className="text-[13px] text-[color:var(--color-ink-muted)]">Nothing outstanding.</p>
+        </Card>
+      )}
 
       {pendingTranscripts.length > 0 && (
         <Card className="gap-0 md:p-6">
@@ -224,6 +246,68 @@ export function GapsTab({ ov, onJob, busy }: TabProps) {
           )}
         </Card>
       )}
+
+      <Card className="gap-0 md:p-6">
+        <SectionHeader
+          rule={false}
+          info="Drop class audio or video you recorded yourself. Transcribe it locally into the course brain — no upload to YouTube, no network."
+        >
+          Your recordings
+        </SectionHeader>
+        <div className="flex flex-col gap-3">
+          <select
+            aria-label="Course for your recording"
+            className="rounded-nb border-[3px] border-edge bg-card p-2 text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-edge"
+            value={recSlug}
+            onChange={(e) => setRecSlug(e.target.value)}
+          >
+            {recCourses.map((c) => (
+              <option key={c.courseSlug} value={c.courseSlug}>
+                {c.course}
+              </option>
+            ))}
+          </select>
+          <label
+            className="block cursor-pointer rounded-nb border-[3px] border-dashed border-edge p-2 text-[13px] focus-within:ring-2 focus-within:ring-edge"
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              if (e.dataTransfer.files && e.dataTransfer.files.length > 0)
+                handleRecordingUpload(recSlug, e.dataTransfer.files);
+            }}
+          >
+            <span className="text-[color:var(--color-ink-muted)]">
+              drop a recording here (.m4a .mp3 .wav .mp4 .webm)
+            </span>
+            <input
+              type="file"
+              accept=".m4a,.mp3,.wav,.mp4,.webm"
+              multiple
+              aria-label="Upload a recording"
+              className="sr-only"
+              onChange={(e) => {
+                if (e.target.files && e.target.files.length > 0)
+                  handleRecordingUpload(recSlug, e.target.files);
+              }}
+            />
+          </label>
+          <p className="text-[13px] text-[color:var(--color-ink-muted)]">
+            or put files in courses/{recSlug}/inbox/recordings/
+          </p>
+          {recResults[recSlug] && <ResultLine result={recResults[recSlug]} />}
+          <div>
+            <Button
+              type="button"
+              variant="neutral"
+              size="sm"
+              disabled={busy}
+              onClick={() => onJob("transcribe-inbox", { course: recSlug })}
+            >
+              Transcribe dropped recordings
+            </Button>
+          </div>
+        </div>
+      </Card>
     </div>
   );
 }
