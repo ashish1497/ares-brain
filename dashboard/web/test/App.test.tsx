@@ -107,6 +107,18 @@ test("a job already running at mount time re-attaches the log stream so its line
   });
 });
 
+test("an attendance-stale-only state still shows a nonzero Gaps badge", async () => {
+  vi.mocked(api.getOverview).mockResolvedValue(
+    overview({
+      gaps: { pendingTranscripts: [], missingBooks: [], scrapeStale: false, attendanceStale: true },
+    }),
+  );
+
+  render(<App />);
+
+  expect(await screen.findByRole("button", { name: /Gaps/ })).toHaveTextContent("1");
+});
+
 test("a later refresh failing after a good load shows a non-blocking stale banner, not the full-page error", async () => {
   vi.mocked(api.getOverview).mockResolvedValueOnce(overview());
   vi.mocked(api.getOverview).mockRejectedValueOnce(new Error("overview 503"));

@@ -128,6 +128,12 @@ test("meeting link renders only when set", () => {
   expect(screen.queryByRole("link", { name: "Join meeting" })).not.toBeInTheDocument();
 });
 
+test("a non-http(s) meetingLink (e.g. javascript:) never renders a Join meeting link", () => {
+  const cls = todayClass({ meetingLink: "javascript:alert(1)" });
+  render(<MindsetModal cls={cls} ov={overview()} onClose={vi.fn()} />);
+  expect(screen.queryByRole("link", { name: "Join meeting" })).not.toBeInTheDocument();
+});
+
 test("the copy button carries exactly the course-brief command", async () => {
   const writeText = stubClipboard();
   const cls = todayClass({ course: "Corp Finance" });

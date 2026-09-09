@@ -1,6 +1,6 @@
 import type { TabProps } from "../lib/types";
 import type { OverviewExam } from "../api";
-import { fmtDate, countdown } from "../lib/format";
+import { fmtDate } from "../lib/format";
 import { SectionHeader } from "./SectionHeader";
 import { MetaRow } from "./MetaRow";
 import { StatePill } from "./StatePill";
@@ -49,7 +49,7 @@ function ExamCard({ e }: { e: OverviewExam }) {
     <Card className="gap-0 md:p-6">
       <CardTitle className="mb-4 text-[15px]">{e.name ?? "Exam"}</CardTitle>
       <div className="mb-3">
-        <MetaRow items={[fmtDate(e.date), countdown(e.date)]} />
+        <MetaRow items={[fmtDate(e.date), `in ${e.inDays} day${e.inDays === 1 ? "" : "s"}`]} />
       </div>
       <p className="mb-3 text-[13px] text-[color:var(--color-ink-muted)]">{scope}</p>
       <div className="mb-4 flex flex-wrap items-center gap-2">

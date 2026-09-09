@@ -27,9 +27,15 @@ beforeEach(async () => {
   _resetForTest();
   server = createServer();
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
-  base = `http://127.0.0.1:${(server.address() as any).port}`;
+  const port = (server.address() as any).port;
+  base = `http://127.0.0.1:${port}`;
+  // GET /api/jobs/:id/log is now behind the same-origin Host guard (see M3 of the final
+  // fix wave) — the guard checks against ARES_BRAIN_DASHBOARD_PORT, so it must match the
+  // ephemeral port this server actually bound to, or every request here 403s.
+  process.env.ARES_BRAIN_DASHBOARD_PORT = String(port);
 });
 afterEach(() => {
+  delete process.env.ARES_BRAIN_DASHBOARD_PORT;
   (server as any).closeAllConnections?.();
   return new Promise<void>((r) => server.close(() => r()));
 });

@@ -60,9 +60,9 @@ export function fmtScrapeAge(hours: number): string {
   return `${Math.round(hours)}h ago`;
 }
 
-/** ISO datetime → "2d 4h" countdown, or "overdue" once it has passed. */
+/** ISO datetime or `YYYY-MM-DD` → "2d 4h" countdown, or "overdue" once it has passed. */
 export function countdown(iso: string): string {
-  const d = new Date(iso);
+  const d = parseYmdOrIso(iso);
   if (Number.isNaN(d.getTime())) return iso;
   const diffMs = d.getTime() - Date.now();
   if (diffMs <= 0) return "overdue";

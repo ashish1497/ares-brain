@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import { cn } from "../lib/utils";
 import { getThemePrefs, setThemePrefs, type Appearance, type ThemeName } from "../lib/theme";
+import type { Overview } from "../api";
 
 const SWATCHES: { theme: ThemeName; label: string; colors: string[] }[] = [
   { theme: "meadow", label: "Meadow", colors: ["#0f8a5f", "#eafff4", "#ffffff", "#ffd23f"] },
@@ -15,7 +16,15 @@ const APPEARANCES: { value: Appearance; label: string }[] = [
 ];
 
 /** Settings panel: theme swatches, appearance segmented control, read-only env values. */
-export function Settings({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function Settings({
+  open,
+  onClose,
+  ov,
+}: {
+  open: boolean;
+  onClose: () => void;
+  ov: Pick<Overview, "attendanceMin" | "chatUnlockAt">;
+}) {
   const [prefs, setPrefs] = useState(getThemePrefs);
 
   useEffect(() => {
@@ -121,8 +130,8 @@ export function Settings({ open, onClose }: { open: boolean; onClose: () => void
             Environment
           </div>
           <ul className="flex flex-col gap-1 text-[12px] text-[color:var(--color-ink-muted)]">
-            <li>attendance minimum 75% (set via ARES_BRAIN_ATTENDANCE_MIN)</li>
-            <li>chat unlock 15 (set via ARES_BRAIN_CHAT_UNLOCK)</li>
+            <li>attendance minimum {ov.attendanceMin}% (set via ARES_BRAIN_ATTENDANCE_MIN)</li>
+            <li>chat unlock {ov.chatUnlockAt} (set via ARES_BRAIN_CHAT_UNLOCK)</li>
             <li>port 4319</li>
           </ul>
         </div>

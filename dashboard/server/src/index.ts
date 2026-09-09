@@ -96,8 +96,11 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
 
   if (match("GET", "/api/courses", method, url)) return json(res, 200, readCourses());
 
-  if (match("GET", "/api/state", method, url))
+  if (match("GET", "/api/state", method, url)) {
+    const bad = guardOrigin(req);
+    if (bad) return json(res, 403, { error: bad });
     return json(res, 200, { job: currentJob(), lastRuns: lastRunMap() });
+  }
 
   if (match("GET", "/api/overview", method, url)) {
     const bad = guardOrigin(req);
@@ -134,6 +137,8 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
 
   const logParams = match("GET", "/api/jobs/:id/log", method, url);
   if (logParams) {
+    const bad = guardOrigin(req);
+    if (bad) return json(res, 403, { error: bad });
     const job = currentJob();
     if (!job || job.id !== logParams.id) return json(res, 404, { error: "no such job" });
     res.writeHead(200, {

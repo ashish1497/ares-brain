@@ -4,6 +4,7 @@ import { getOverview, type Job, type Overview } from "./api";
 import { Header } from "./components/Header";
 import { Tabs } from "./components/Tabs";
 import { Settings } from "./components/Settings";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { JobLog } from "./components/JobLog";
 import { Button } from "./components/ui/button";
 import { useHashRoute } from "./lib/useHashRoute";
@@ -119,7 +120,8 @@ export function App() {
     gaps:
       ov.gaps.pendingTranscripts.length +
       ov.gaps.missingBooks.length +
-      (ov.gaps.scrapeStale ? 1 : 0),
+      (ov.gaps.scrapeStale ? 1 : 0) +
+      (ov.gaps.attendanceStale ? 1 : 0),
   };
 
   const active = TAB_IDS.includes(tab) ? tab : "today";
@@ -137,16 +139,18 @@ export function App() {
       <div className="mx-auto max-w-[1400px] px-4 pb-8 md:px-8">
         {err && ov && <StaleBanner onRetry={refresh} />}
         <main className="py-6">
-          {active === "today" && <TodayTab {...tabProps} />}
-          {active === "assignments" && <AssignmentsTab {...tabProps} />}
-          {active === "attendance" && <AttendanceTab {...tabProps} />}
-          {active === "exams" && <ExamsTab {...tabProps} />}
-          {active === "brain" && <BrainTab {...tabProps} />}
-          {active === "gaps" && <GapsTab {...tabProps} />}
+          <ErrorBoundary>
+            {active === "today" && <TodayTab {...tabProps} />}
+            {active === "assignments" && <AssignmentsTab {...tabProps} />}
+            {active === "attendance" && <AttendanceTab {...tabProps} />}
+            {active === "exams" && <ExamsTab {...tabProps} />}
+            {active === "brain" && <BrainTab {...tabProps} />}
+            {active === "gaps" && <GapsTab {...tabProps} />}
+          </ErrorBoundary>
         </main>
         {(job || lines.length > 0) && <JobLog job={job} lines={lines} />}
       </div>
-      <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} ov={ov} />
     </>
   );
 }

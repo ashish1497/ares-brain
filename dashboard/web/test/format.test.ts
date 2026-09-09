@@ -76,6 +76,23 @@ test("countdown reports a future ISO instant as 'Nd Nh'", () => {
   }
 });
 
+test("countdown parses a date-only YYYY-MM-DD as local midnight, not UTC", () => {
+  const original = process.env.TZ;
+  process.env.TZ = "Asia/Calcutta";
+  vi.useFakeTimers();
+  // Local midnight on the 9th (Asia/Calcutta, UTC+5:30) is 2026-09-08T18:30:00Z — earlier
+  // than the naive UTC-midnight reading of "2026-09-09" (2026-09-09T00:00:00Z). At this
+  // system time the local-midnight parse must already report "overdue"; the old
+  // UTC-parsing bug would instead still show hours remaining until the (later) UTC anchor.
+  vi.setSystemTime(new Date("2026-09-08T20:00:00Z"));
+  try {
+    expect(countdown("2026-09-09")).toBe("overdue");
+  } finally {
+    vi.useRealTimers();
+    process.env.TZ = original;
+  }
+});
+
 test("countdown reports a past ISO instant as 'overdue'", () => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-09-09T00:00:00Z"));

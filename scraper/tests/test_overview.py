@@ -426,3 +426,42 @@ def test_today_changed_is_name_resolved_list(corpus):
     assert entry["courseName"] == "Power of Communication"
     assert entry["courseName"] != entry["courseSlug"]
     assert isinstance(entry["counts"], dict) and entry["counts"]
+
+
+# --- Part C: final fix wave --------------------------------------------------
+
+def test_assignment_title_falls_back_when_title_and_id_missing(corpus):
+    raw = corpus / "courses" / "comm" / "raw" / "assignments.json"
+    data = json.loads(raw.read_text())
+    data.append({"id": None, "courseName": "Power of Communication", "title": ""})
+    raw.write_text(json.dumps(data))
+    o = overview.build_overview(now=NOW)  # must not raise (join() over a None title)
+    untitled = [a for a in o["assignments"] if a["title"] == "Untitled"]
+    assert untitled
+    gp = next(g for g in o["gradePicture"] if g["courseSlug"] == "comm")
+    assert "Untitled" in gp["summary"] or "still ahead" in gp["summary"]
+
+
+def test_this_week_exam_title_falls_back_when_name_missing(corpus):
+    ev = json.loads((corpus / "courses" / "_events.json").read_text())
+    ev["events"].append({
+        "id": "ex-untitled", "eventType": "exam", "title": None,
+        "courseSlug": "comm", "courseName": "Power of Communication",
+        "startAt": "2026-09-15T04:00:00.000Z", "endAt": "2026-09-15T05:00:00.000Z"})
+    (corpus / "courses" / "_events.json").write_text(json.dumps(ev))
+    o = overview.build_overview(now=NOW)
+    tw = [w for w in o["thisWeek"] if w["kind"] == "exam" and w["title"] == "Untitled"]
+    assert tw
+
+
+def test_exam_brain_ready_false_when_no_courses(corpus):
+    (corpus / "courses" / "_index.json").write_text("[]")
+    ev = json.loads((corpus / "courses" / "_events.json").read_text())
+    ev["events"].append({
+        "id": "ex-all", "eventType": "exam", "title": "All Courses Exam",
+        "courseSlug": None, "startAt": "2026-09-19T04:00:00.000Z",
+        "endAt": "2026-09-19T05:00:00.000Z"})
+    (corpus / "courses" / "_events.json").write_text(json.dumps(ev))
+    o = overview.build_overview(now=NOW)
+    ex = next(e for e in o["exams"] if e["name"] == "All Courses Exam")
+    assert ex["brainReady"] is False

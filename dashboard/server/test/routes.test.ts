@@ -6,7 +6,7 @@ vi.mock("../src/lib/python.js", () => ({
 }));
 
 import { createServer } from "../src/index.js";
-import { _resetForTest } from "../src/lib/jobs.js";
+import { startJob, _resetForTest } from "../src/lib/jobs.js";
 import { request as httpRequest, type Server } from "node:http";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -87,6 +87,17 @@ describe("routes", () => {
 
   it("rejects GET /api/overview with a foreign Host", async () => {
     const res = await raw("/api/overview", { headers: { host: "evil.example" } });
+    expect(res.status).toBe(403);
+  });
+
+  it("rejects GET /api/state with a foreign Host", async () => {
+    const res = await raw("/api/state", { headers: { host: "evil.example" } });
+    expect(res.status).toBe(403);
+  });
+
+  it("rejects GET /api/jobs/:id/log with a foreign Host", async () => {
+    const job = startJob({ kind: "sync" });
+    const res = await raw(`/api/jobs/${job.id}/log`, { headers: { host: "evil.example" } });
     expect(res.status).toBe(403);
   });
 

@@ -424,7 +424,7 @@ def build_overview(now: datetime | None = None) -> dict:
         if status == "not-started" and hours is not None and hours <= 24:
             risk = max(risk, 0.5)
         row = {
-            "id": a.get("id"), "title": a.get("title") or a.get("id"),
+            "id": a.get("id"), "title": a.get("title") or a.get("id") or "Untitled",
             "course": course_label, "courseSlug": cslug, "weightPct": w,
             "dueAt": due.astimezone().isoformat() if due else None,
             "hoursAway": hours, "status": status, "isClub": is_club,
@@ -519,7 +519,8 @@ def build_overview(now: datetime | None = None) -> dict:
             "courses": exam_courses,
             "courseNames": [slugs.get(c, c) for c in exam_courses],
             "coverageSessions": None,
-            "brainReady": (all(b["state"] == "ready" for b in brain_rows) if not cslug
+            "brainReady": (bool(brain_rows) and all(b["state"] == "ready" for b in brain_rows)
+                           if not cslug
                            else next((b["state"] == "ready" for b in brain_rows
                                       if b["courseSlug"] == cslug), False)),
             "testprepExists": bool(tp_slugs) and all(
@@ -591,7 +592,7 @@ def build_overview(now: datetime | None = None) -> dict:
     for e in exam_rows:
         if 0 <= e["inDays"] <= 7:
             this_week.append({
-                "when": e["date"], "kind": "exam", "title": e["name"],
+                "when": e["date"], "kind": "exam", "title": e["name"] or "Untitled",
                 "course": "Program", "courseSlug": None, "weightPct": None,
                 "status": None, "coverage": e["coverageSessions"],
                 "action": {"label": "Practice", "type": "copy", "value": e["testprepCommand"]},

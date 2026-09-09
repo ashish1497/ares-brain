@@ -19,7 +19,7 @@ const baseProps = (over: Partial<TabProps["ov"]> = {}): TabProps => ({
   params: [],
 });
 
-test("the countdown renders", () => {
+test("the days-away chip renders the server's inDays, not a recomputed countdown", () => {
   render(
     <ExamsTab
       {...baseProps({
@@ -27,7 +27,18 @@ test("the countdown renders", () => {
       })}
     />,
   );
-  expect(screen.getByText("2d 0h")).toBeInTheDocument();
+  expect(screen.getByText("in 2 days")).toBeInTheDocument();
+});
+
+test("inDays: 1 is singular", () => {
+  render(
+    <ExamsTab
+      {...baseProps({
+        exams: [exam({ name: "Midterm", date: "2026-09-10T10:00:00", inDays: 1 })],
+      })}
+    />,
+  );
+  expect(screen.getByText("in 1 day")).toBeInTheDocument();
 });
 
 test("a course-scoped exam's practice-set button carries the interpolated command, no literal <course>", async () => {

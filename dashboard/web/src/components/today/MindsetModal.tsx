@@ -97,7 +97,7 @@ export function MindsetModal({
               </div>
             )}
 
-            {cls.meetingLink && (
+            {cls.meetingLink && /^https?:/.test(cls.meetingLink) && (
               <a
                 href={cls.meetingLink}
                 target="_blank"
