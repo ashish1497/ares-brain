@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-03
 **Status:** Draft for review
-**Scope:** Sub-project B of the mesa-course-agent project. Follows A-scrape + A-ingest (both shipped, merged to `main` @ `3ca485f`). Makes the `normalized/` corpus queryable and course-aware, and delivers objective 2 (pre-class briefing) and objective 9 (per-course "brain"). No calendar, no scheduling.
+**Scope:** Sub-project B of the mesa project. Follows A-scrape + A-ingest (both shipped, merged to `main` @ `3ca485f`). Makes the `normalized/` corpus queryable and course-aware, and delivers objective 2 (pre-class briefing) and objective 9 (per-course "brain"). No calendar, no scheduling.
 
 ---
 
@@ -14,7 +14,7 @@ Sub-project B turns that corpus into:
 
 - a searchable index (structured filter + full-text) — **no embeddings yet**;
 - a Claude-generated per-course `GUIDE.md` plus a hand-editable `course.md`;
-- the pre-class briefing: `/course-brief <course>` (one session, deep) and `/week-ahead` (all courses, next 7 days).
+- the pre-class briefing: `/mesa:ares-brain-course-brief <course>` (one session, deep) and `/mesa:ares-brain-week-ahead` (all courses, next 7 days).
 
 ### What B is NOT
 
@@ -25,7 +25,7 @@ No embeddings / vector index (deferred — see §7). No Google Calendar, no OAut
 - Python sidecar (`scraper/`, `uv` venv, Python 3.12) does deterministic work; TypeScript MCP tools (`mcp/`, `@modelcontextprotocol/sdk@1.30.0`, low-level `Server`) drive it; slash commands + skills do the reasoning.
 - `.env` is a real secret — never read into logs, printed, or committed. B does not need `.env` (works entirely off `courses/` on disk).
 - `courses/` is gitignored. `mcp/dist/`, `mcp/node_modules/`, `scraper/.venv/`, raw `scraper/tests/fixtures/*` (except `scrubbed/`) not committed. Committed fixtures carry no real PII.
-- `COURSE_AGENT_HOME` overrides the data-tree root; resolve through `paths.py` (`HOME`, `course_dir`, `courses_root`, `global_file`, `ensure`, `slugify`) / `mcp/src/config.ts`.
+- `ARES_BRAIN_HOME` overrides the data-tree root; resolve through `paths.py` (`HOME`, `course_dir`, `courses_root`, `global_file`, `ensure`, `slugify`) / `mcp/src/config.ts`.
 - Every step idempotent + resumable; one failure never aborts a run. All JSON writes via `scrape_steps._write_json`.
 
 ---
@@ -36,8 +36,8 @@ No embeddings / vector index (deferred — see §7). No Google Calendar, no OAut
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Retrieval mechanism        | SQLite **FTS5** full-text + frontmatter-column filter over `normalized/*.md`. Embeddings deferred until a single course's corpus exceeds **150 KB of body text** — at which point `brain_status` flags it and a later phase adds `transformers.js` embeddings. Not built now.                                                                                                        |
 | Per-course "brain" content | `courses/<slug>/brain/`: `index.sqlite` (FTS), `GUIDE.md` (Claude-generated overview), `course.md` (hand-editable focus notes), `_brain.json` (metadata).                                                                                                                                                                                                                            |
-| Who generates `GUIDE.md`   | Claude Code, via a `brain-build` skill, on demand. `brain_status` reports staleness ("guide is N sources behind"). No API key, no cost when idle.                                                                                                                                                                                                                                    |
-| Briefing outputs           | Both: `/course-brief <course>` (next session of one course, deep) **and** `/week-ahead` (every session/exam in the next 7 days across all courses, shallower). Shared `briefing` skill. `/week-ahead`'s assembler is reused by sub-project E's daily digest later.                                                                                                                   |
+| Who generates `GUIDE.md`   | Claude Code, via a `ares-brain-brain-build` skill, on demand. `brain_status` reports staleness ("guide is N sources behind"). No API key, no cost when idle.                                                                                                                                                                                                                         |
+| Briefing outputs           | Both: `/mesa:ares-brain-course-brief <course>` (next session of one course, deep) **and** `/mesa:ares-brain-week-ahead` (every session/exam in the next 7 days across all courses, shallower). Shared `ares-brain-briefing` skill. `/mesa:ares-brain-week-ahead`'s assembler is reused by sub-project E's daily digest later.                                                        |
 | Next-session detection     | Current session № = `courses/_attendance.json` `byCourse[slug].sessionsConducted` (which A-ingest derived from attendance `total`, i.e. classes conducted — not personal attendance). Next session = earliest `courses/_events.json` event with `eventType == "session"`, `courseSlug == slug`, `startAt` in the future. Fallback: next `outline` row by date if events are missing. |
 | Outline parsing            | The outline sheet's column schema is unvalidated (carried open item from A). `brain.py` parses the outline `normalized` doc's markdown table: if it has columns matching `/session/i`, `/date/i`, `/topic/i` (case-insensitive, any order), extract structured rows; else expose the raw table only. Briefing uses structured rows when available.                                   |
 
@@ -139,9 +139,9 @@ MCP tools remain deterministic — none call an LLM.
 
 ## 6. Skills & commands
 
-### `brain-build` skill (`skills/brain-build/SKILL.md`)
+### `ares-brain-brain-build` skill (`skills/brain-build/SKILL.md`)
 
-Trigger: `/course-brain <course>` command, or when `brain_status` shows `guideSourcesBehind` high.
+Trigger: `/mesa:ares-brain-course-brain <course>` command, or when `brain_status` shows `guideSourcesBehind` high.
 
 Steps the skill instructs Claude Code to follow:
 
@@ -167,7 +167,7 @@ On first run for a course, also write a `brain/course.md` template:
 ## Things to remember
 ```
 
-### `briefing` skill (`skills/briefing/SKILL.md`)
+### `ares-brain-briefing` skill (`skills/briefing/SKILL.md`)
 
 Shared logic for both commands. Given a course + a session (or a date window):
 
@@ -175,17 +175,17 @@ Shared logic for both commands. Given a course + a session (or a date window):
 2. Read those pre-reads in full; `brain_query(course, sessionMax=nextIndex)` for related earlier material; read `brain/GUIDE.md` + `brain/course.md`.
 3. Write the brief: **What this session covers**, **Read first** (ordered, with why), **Questions to hold while reading**, **How it connects** to prior sessions, **Prep checklist** (any assignment due before/at the session).
 
-### `/course-brief <course>` command
+### `/mesa:ares-brain-course-brief <course>` command
 
 Invokes `briefing` for the next session of one course. Deep. Output to stdout (Claude Code renders it) — no file written unless the user asks.
 
-### `/week-ahead` command
+### `/mesa:ares-brain-week-ahead` command
 
 Invokes `briefing` in "week" mode: every `courses/_events.json` event with `eventType in ("session","exam")` and `startAt` within 7 days. For each, a 3-5 line summary (course, session topic, one must-read, any assignment due). Groups by day. This assembler is what sub-project E's daily digest will call.
 
-### `/course-brain <course>` command
+### `/mesa:ares-brain-course-brain <course>` command
 
-Invokes the `brain-build` skill for one course.
+Invokes the `ares-brain-brain-build` skill for one course.
 
 ---
 
@@ -201,10 +201,10 @@ Not built in B. The trigger to add them (a later mini-phase): `brain_status` rep
 
 - **`brain.py`:** a committed fixture `normalized/` tree (5-6 synthetic docs — one per type, invented content, one with a markdown outline table, one "long" doc). Tests: `build_index` creates the table + `_brain.json`; `query` column filters (type, session range, due_before); `query` FTS ranking (a doc containing the search term ranks above one that doesn't); `query(slug=None)` spans courses; a malformed-frontmatter doc is still indexed; `next_session` with events present, with only an outline, with neither; `parse_outline` structured vs unstructured.
 - **Index freshness:** build, assert `indexStale` false; touch a normalized file, assert `indexStale` true; rebuild, false again. A rebuild with nothing changed does not bump `indexBuiltAt` beyond a no-op (or does — but must be idempotent in output).
-- **MCP tools:** temp `COURSE_AGENT_HOME`, seed a fake brain tree, stub the python spawn, assert argv + result parsing (mirror `scrape`/`ingest` tool tests). One test that `brain_query` auto-builds a missing index.
+- **MCP tools:** temp `ARES_BRAIN_HOME`, seed a fake brain tree, stub the python spawn, assert argv + result parsing (mirror `scrape`/`ingest` tool tests). One test that `brain_query` auto-builds a missing index.
 - **`_run_all` wiring:** `brain-index` runs after `ingest`, failure → `errors` entry, doesn't abort.
 - **Skills:** no automated test (they're Claude-Code-executed) — the live run is the check.
-- **Live run** (final task): `brain-index` all courses; `brain_query` a few real questions; run `/course-brain business-frameworks-with-pranjal-bangani` and `/course-brief` for one course and `/week-ahead`; eyeball GUIDE.md quality and the briefs. Record in `docs/lms-api.md`.
+- **Live run** (final task): `brain-index` all courses; `brain_query` a few real questions; run `/mesa:ares-brain-course-brain business-frameworks-with-pranjal-bangani` and `/mesa:ares-brain-course-brief` for one course and `/mesa:ares-brain-week-ahead`; eyeball GUIDE.md quality and the briefs. Record in `docs/lms-api.md`.
 
 ---
 
@@ -213,8 +213,8 @@ Not built in B. The trigger to add them (a later mini-phase): `brain_status` rep
 1. `brain.py` FTS `build_index` + `query` + `brain-index`/`brain-query` subcommands + `brain_query` MCP tool.
 2. `next_session` + `parse_outline` + `next-session` subcommand + `brain_next_session` MCP tool.
 3. `brain_status` (staleness + `embeddingsRecommended`) + `brain-status` subcommand + `brain_status` MCP tool + `status` tool `brains` field.
-4. `briefing` skill + `/course-brief` + `/week-ahead` commands.
-5. `brain-build` skill + `course.md` template + `brain-mark-guide` subcommand + `/course-brain` command.
+4. `ares-brain-briefing` skill + `/mesa:ares-brain-course-brief` + `/mesa:ares-brain-week-ahead` commands.
+5. `ares-brain-brain-build` skill + `course.md` template + `brain-mark-guide` subcommand + `/mesa:ares-brain-course-brain` command.
 6. `_run_all` wiring + README + live run + findings.
 
 ---

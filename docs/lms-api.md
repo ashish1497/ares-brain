@@ -285,7 +285,7 @@ recording. Do NOT run `transcribe` for all 16 courses in one pass.
 **Design change (after measuring ~19 min/recording):** `lms_scrape.py all` no
 longer runs `step_transcribe` — the `all` pipeline is scrape steps → `ingest`
 only. Transcription is available solely via the standalone `transcribe`
-subcommand / `transcribe` MCP tool / `/course-ingest` command. `ingest` still
+subcommand / `transcribe` MCP tool / `/mesa:ares-brain-course-ingest` command. `ingest` still
 normalizes any transcript `.md` files already on disk under `transcripts/`.
 
 ## B (brain) live run — 2026-09-03
@@ -346,8 +346,8 @@ courses will need either session tagging at ingest time or a smarter outline
 parser (future work).
 
 No crashes, no wrong next-session results. `brain-status` fields all populate
-correctly against the real corpus. GUIDE.md quality and the `/course-brain` /
-`/course-brief` / `/week-ahead` skill flows need a human Claude Code session to
+correctly against the real corpus. GUIDE.md quality and the `/mesa:ares-brain-course-brain` /
+`/mesa:ares-brain-course-brief` / `/mesa:ares-brain-week-ahead` skill flows need a human Claude Code session to
 verify (skills cannot be executed from a subagent).
 
 ## D (calendar) live run — 2026-09-03
@@ -382,14 +382,14 @@ Verbatim output:
 - **Human step required** before a real sync:
   `gcloud auth application-default login --scopes=https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/calendar`
   then re-run `calendar-sync --dry-run` to get the actual create/update/delete plan,
-  and `/calendar-sync` (non-dry-run) with the user watching to write the calendar.
+  and `/mesa:ares-brain-calendar-sync` (non-dry-run) with the user watching to write the calendar.
 - Idempotency check, reminder-time verification, and `calendars().insert`
   propagation-delay observations are pending that scoped login.
 
 ## C (task commands) live run — 2026-09-03
 
-- **CLI parts exercised** (skill-driven `/ask` `/assignment-help` `/testprep`
-  `/book-summary` require a human Claude Code session and were not run here):
+- **CLI parts exercised** (skill-driven `/mesa:ares-brain-ask` `/mesa:ares-brain-assignment-help` `/mesa:ares-brain-testprep`
+  `/mesa:ares-brain-book-summary` require a human Claude Code session and were not run here):
   `ingest --course <slug>`, `brain-index --course <slug>`,
   `brain-query --params '{"course":"<slug>","type":"book-summary"}'`.
 - **`_normalize_study_book_summaries` round-trip** (course
@@ -397,7 +397,7 @@ Verbatim output:
   1. Hand-created `courses/<slug>/study/book-test-summary.md`
      (`type: book-summary`, `title: Book Test Summary`).
   2. `ingest` → `{"normalized": 1, ...}`, produced
-     `normalized/book-summary-book-test-summary.md` (title from frontmatter →
+     `normalized/mesa:ares-brain-book-summary-book-test-summary.md` (title from frontmatter →
      stable filename).
   3. `brain-index` → `indexed: 16`; `brain-query type:book-summary` returned the
      doc with its snippet.
@@ -413,7 +413,7 @@ User swapped in a Desktop-type `client_secret.json`, ran `calendar-auth` — bro
 consent succeeded, `token.json` written (mode 600, 727 bytes, authorized-user JSON).
 `run_local_server(port=0)` worked; no `run_console()` fallback needed.
 
-Live `calendar-sync` results (`COURSE_AGENT_HOME` = repo root):
+Live `calendar-sync` results (`ARES_BRAIN_HOME` = repo root):
 
 - `--dry-run`: `status:ok`, calendar auto-created, `created:7`, 0 errors.
 - 1st real run: `created:7`, `errors:[]`. `calendarId` =
@@ -454,11 +454,11 @@ Most sessions have no `meetingLink` so no Link line.
   "Session N" in their titles so `prereadPaths: []` (known B-brain limitation).
 - Digest (`daily/2026-09-04.md`) + `osascript` notification hand-generated from that
   data (skill steps 3-5) — format confirmed, notification fired.
-- **NOT yet verified end-to-end:** `/course-daily` via `claude -p` and the launchd job.
-  The `mesa-course-agent` plugin is not installed on this machine, so `claude -p
-/course-daily` can't resolve the skill/tools yet. User must `/plugin install <repo>`
-  (after `cd mcp && npm install && npm run build`), then `/daily-setup`, then
-  `launchctl start co.mesa.course-agent.daily` and check `daily/_launchd.log` for any
+- **NOT yet verified end-to-end:** `/mesa:ares-brain-course-daily` via `claude -p` and the launchd job.
+  The `mesa` plugin is not installed on this machine, so `claude -p
+/mesa:ares-brain-course-daily` can't resolve the skill/tools yet. User must `/plugin install <repo>`
+  (after `cd mcp && npm install && npm run build`), then `/mesa:ares-brain-daily-setup`, then
+  `launchctl start co.mesa.ares-brain.daily` and check `daily/_launchd.log` for any
   tool-permission prompt — widen `--allowedTools` in the plist if so and record the
   final string here.
 
@@ -468,17 +468,17 @@ Plugin install (no `/plugin` TUI needed — run in a shell):
 
 - added `.claude-plugin/marketplace.json` (local single-plugin marketplace).
 - `cd mcp && npm install && npm run build`
-- from the repo's PARENT dir: `claude plugin marketplace add ./course-agent`
-- `claude plugin install mesa-course-agent@mesa-course-agent-local`
+- from the repo's PARENT dir: `claude plugin marketplace add ./ares-brain`
+- `claude plugin install mesa@mesa-local`
 - it's a CACHE COPY, not a live link. After a repo change:
-  `claude plugin uninstall mesa-course-agent@mesa-course-agent-local && claude plugin marketplace update mesa-course-agent-local && claude plugin install mesa-course-agent@mesa-course-agent-local`
+  `claude plugin uninstall mesa@mesa-local && claude plugin marketplace update mesa-local && claude plugin install mesa@mesa-local`
 
 launchd `ProgramArguments` corrections found by live testing:
 
-- `-p` arg must be the NAMESPACED command: `/mesa-course-agent:course-daily`
-  (bare `/course-daily` → "Unknown skill: course-daily").
-- MCP tool allowlist entries are `mcp__plugin_mesa-course-agent_mesa-course-agent__<tool>`
-  (NOT `mcp__mesa-course-agent__<tool>`).
+- `-p` arg must be the NAMESPACED command: `/mesa:ares-brain-course-daily`
+  (bare `/mesa:ares-brain-course-daily` → "Unknown skill: course-daily").
+- MCP tool allowlist entries are `mcp__plugin_mesa_mesa__<tool>`
+  (NOT `mcp__mesa__<tool>`).
 - add `--permission-mode acceptEdits`.
 - load with `launchctl bootstrap gui/$(id -u) <plist>` / `bootout` (not deprecated `load`).
 
@@ -487,10 +487,104 @@ CLI, v2.1.98), a SEPARATE install from the desktop app (v2.1.260) and NOT logged
 job exits 1 with "Not logged in · Please run /login". No `~/.claude/.credentials.json`,
 no keychain entry. Fix: run `claude setup-token` once in Terminal.app (long-lived token
 for automation, needs the Claude subscription). Then re-kick
-`launchctl kickstart -k gui/$(id -u)/co.mesa.course-agent.daily`.
+`launchctl kickstart -k gui/$(id -u)/co.mesa.ares-brain.daily`.
 
 Verified working by hand this session (plugin loaded in an interactive Claude Code):
-`/mesa-course-agent:course-daily` → scrape (17 courses, 0 err) → calendar-sync
+`/mesa:ares-brain-course-daily` → scrape (17 courses, 0 err) → calendar-sync
 (deleted 1 past class, unchanged 148) → `daily_brief` tool → `daily/2026-09-04.md`
 (4 classes, Selling session-5 pre-read matched, nothing due 72h) → notification. All 5
 skill steps good end to end.
+
+## F dashboard — live run 2026-09-08
+
+`npm run --workspace ares-dashboard start` on `127.0.0.1:4319`, verified in a browser:
+
+- UI renders (dark mode, Tabler icons, course picker populated from `_index.json`,
+  4 cards, job-log strip, "Chat — phase 2").
+- `POST /api/jobs {kind:"ingest",course:"ai-and-its-application"}` → 202, job spawned
+  `lms_scrape.py ingest --course …`, stdout streamed over SSE to `event: end`,
+  state → `status:"done" exitCode:0` (22 skipped, 0 errors).
+- Guards: 2nd job while running → **409**; `Host: evil.com` → **403**.
+- Page reload mid/after-job → poll picks up state, buttons re-enable (the T3 freeze fix).
+
+**Not verified — `transcribe-url` end to end.** yt-dlp cannot reach YouTube from this
+machine's network (every attempt, incl. the always-available "Me at the zoo" video,
+returns `{"ok": false, "error": "could not pull audio from the url"}`). The job
+runner + SSE + `transcribe_url` error handling all behave correctly; only the actual
+audio pull fails. On a machine with working yt-dlp egress this should transcribe;
+if not, yt-dlp now often needs a `--cookies-from-browser` / PO-token workaround
+(YouTube anti-bot) — a future `transcribe.py` option.
+
+**FINDING (fix before merge):** `lms_scrape.py transcribe-url` exits 0 even when
+`transcribe_url` returns `{"ok": false}`, so the dashboard shows the job as
+`done`/green. The CLI dispatch should `sys.exit(1)` on `ok is False` → job runner
+marks it `failed`.
+
+## G outcome dashboard — live run 2026-09-09
+
+`npm run --workspace ares-dashboard build` then `... start` on `127.0.0.1:4319`,
+verified in a browser (light + dark), real data (17 courses, 149 calendar events):
+
+- `GET /api/overview` → 200, full shape. All 10 sections render: KPI strip, Today
+  (5 classes with formatted times, 3 due today/tomorrow, 8 changed courses), This
+  week (grouped by day, past days filtered), Assignments by grade risk (4, each
+  with a Start command + per-course "% ahead"), Exam prep (5 exams, course names
+  resolved, brain-ready + practice-set badges), Attendance runway (9 courses,
+  three-state flags), Where you stand (17 brains: 2 ready / 8 stale / 7 not-built),
+  Needs your input (9 transcribe groups), Chat (locked, 2/17, unlocks at 15).
+- Theme: follows `prefers-color-scheme`; palette B (green edge, mint/near-black
+  paper). Fixed a Tailwind v4 bug — `@theme` nested in `@media` flattens and the
+  dark tokens leaked into light mode.
+- Attendance runway math checked against `_attendance.json`: e.g. Power of
+  Communication 5/7 = 71% → watch; Crafting Marketing 1/5 = 20%, best case 60% →
+  at risk; Entrepreneurship 2/2 = 100% early → on track (one-miss projection is
+  suppressed below 4 sessions held).
+
+**Not re-verified this run:** the job actions (Sync / Ingest / Transcribe / upload)
+— same job runner + SSE as the F live run above, unchanged. `transcribe` (scraped
+YouTube links, no `--inbox`) is a new job kind but the same yt-dlp egress block
+applies on this machine.
+
+## G dashboard redesign — live run 2026-09-09
+
+Verified against the **production** build (`npm run --workspace ares-dashboard build` +
+`... server start`, served on `http://127.0.0.1:4319`, real `GET /api/overview`):
+
+- All six tabs render with live data; the focused assignment page opens from a row
+  click and from a pasted deep link (`#assignments/<courseSlug>/<id>`).
+- Both themes × both explicit appearances swap live from the Settings panel with no
+  reload — computed tokens confirmed as Meadow-light `edge #0f8a5f` / `paper #eafff4`,
+  Ultraviolet-light `edge #5b21b6` / `paper #faf3e0`, Ultraviolet-dark
+  `edge #a78bfa` / `paper #17121f` — and `localStorage` is written both times. The
+  anti-flash inline script survives the production build and is present in the
+  served HTML.
+- Contrast: all 28 spec §4 floors pass across the four theme × appearance
+  combinations (`ink` on `paper` 15.4–16.9:1, `ink` on `card` 14.6–16.8:1, black on
+  `cta`/`ok`/`soon`/`bad` 4.65–14.54:1, `edge` on `paper` 4.17–8.11:1), computed from
+  the shipped `index.css` values.
+- A `sync` job triggered from **Re-sync** ran end to end: status `running` → `done`,
+  exit code 0, 11 log lines captured server-side, `lastRuns.sync` recorded, and the
+  overview refreshed live mid-run (overall attendance moved 74% → 75% and the
+  summary chip followed).
+- Suites at this point: scraper pytest **246**, dashboard server vitest **39**,
+  dashboard web vitest **201**, root `npm run check` exit 0, and `npm ci` reifies
+  the lockfile from scratch.
+
+Recorded as **not** clean / worth knowing:
+
+- The scraper buffers its stdout, so a long `sync` shows an empty log pane for most
+  of its run and then delivers every line in one burst near the end. The stream
+  itself is fine (the SSE endpoint replays `job.log` on connect); this is
+  Python-side buffering, and running the child unbuffered (`-u` /
+  `PYTHONUNBUFFERED=1`) would make the strip genuinely live. Not changed here.
+- Reloading the browser during or after a job used to leave the log pane empty
+  forever because the client only attached the stream inside its own job-start
+  path; fixed in this task's commit 1.
+- A `transcribe` job dispatched from the **Gaps** tab exercised the whole job path
+  correctly — accepted, run, `lastRuns.transcribe` recorded, and the failure
+  surfaced as status `failed` with exit code 1 — but the transcription itself
+  could not fetch the recording and returned
+  `{"transcribed": [], "skipped": [], "failed": [{"status": "needs-manual"}]}`.
+  So the dashboard's job plumbing is verified end to end while `transcribe` itself
+  is still blocked on this machine (media egress), exactly as expected. The Gaps
+  tab reports the failure rather than hanging.

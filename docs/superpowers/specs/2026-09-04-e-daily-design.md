@@ -8,30 +8,30 @@ macOS notification. Plus the deterministic data layer the digest is built from.
 
 ## Locked decisions (from the 2026-09-01 foundation brainstorm, still binding)
 
-- launchd runs `claude -p "/course-daily"` at 06:00 local. Digest = `daily/<date>.md`
+- launchd runs `claude -p "/mesa:ares-brain-course-daily"` at 06:00 local. Digest = `daily/<date>.md`
   - `osascript` notification.
 - Python sidecar does the deterministic work; the skill does synthesis. MCP tools
   never call an LLM.
 - `daily/` is gitignored (already).
 - Transcription is NOT in the daily run (too slow — ~19 min/recording). Manual via
-  `/course-ingest` only. `lms_scrape.py all` already excludes it.
+  `/mesa:ares-brain-course-ingest` only. `lms_scrape.py all` already excludes it.
 
 ## Decisions (this sub-project)
 
 | Question              | Decision                                                                                                                                                                                     |
 | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Digest sections       | (1) Today's classes + pre-reads, (2) assignments due within 72h, (3) what changed since the last scrape, (4) a mindset line grounded in the actual day.                                      |
-| Digest generation     | `launchd → claude -p "/course-daily"`. The skill runs the deterministic steps then synthesizes the prose.                                                                                    |
+| Digest generation     | `launchd → claude -p "/mesa:ares-brain-course-daily"`. The skill runs the deterministic steps then synthesizes the prose.                                                                    |
 | Notification          | One-line summary (`3 classes · 1 due tomorrow · 2 new announcements`); clicking opens the digest file.                                                                                       |
 | Headless permissions  | The plist passes a scoped `--allowedTools` allowlist — the job cannot act outside it. No `--dangerously-skip-permissions`.                                                                   |
-| launchd install       | A `/daily-setup` command writes + loads the plist; `/daily-uninstall` unloads + removes it.                                                                                                  |
+| launchd install       | A `/mesa:ares-brain-daily-setup` command writes + loads the plist; `/mesa:ares-brain-daily-uninstall` unloads + removes it.                                                                  |
 | "What changed" source | Derived from existing state — normalized docs whose frontmatter `updatedAt` is within `--changed-since-hours` (default 26). No new state file. First-ever run flags everything (documented). |
 
 ## Architecture
 
 ```
 launchd (06:00)
-  └─ claude -p "/course-daily"  --allowedTools <scoped>  (cwd = repo root)
+  └─ claude -p "/mesa:ares-brain-course-daily"  --allowedTools <scoped>  (cwd = repo root)
        skill course-daily:
          1. Bash: lms_scrape.py all         → scrape + ingest + brain-index
               (on non-zero exit: note it, keep going with existing data)
@@ -99,12 +99,12 @@ or `mesa_api`.)
 `lms_scrape.py daily-brief --json [...]`. Returns `{ ok, brief } | { ok:false, error }`.
 Registered in `mcp/src/index.ts` `tools`. No LLM. Follows `brain_get.ts` shape.
 
-### Skill — `skills/course-daily/SKILL.md` + `commands/course-daily.md`
+### Skill — `skills/mesa:ares-brain-course-daily/SKILL.md` + `commands/mesa:ares-brain-course-daily.md`
 
 Steps, in order, each tolerant of the previous failing:
 
 1. `Bash`: `cd scraper && uv run python lms_scrape.py all --json` (from repo root, no
-   `COURSE_AGENT_HOME` — inherits the default). Capture the JSON. Non-zero exit or an
+   `ARES_BRAIN_HOME` — inherits the default). Capture the JSON. Non-zero exit or an
    `errors` array → remember it for the digest's top banner; **do not abort**.
 2. `Bash`: `cd scraper && uv run python lms_scrape.py calendar-sync --json`. Same tolerance.
 3. Tool `daily_brief`.
@@ -130,12 +130,12 @@ baseline recorded_`.
 The skill does its own date math for the filename (local date). It reads normalized
 titles via `Read` on the paths `daily_brief` returns.
 
-### Commands — `/daily-setup`, `/daily-uninstall`
+### Commands — `/mesa:ares-brain-daily-setup`, `/mesa:ares-brain-daily-uninstall`
 
-`commands/daily-setup.md`: instruct Claude to
+`commands/mesa:ares-brain-daily-setup.md`: instruct Claude to
 
 - resolve the repo root (`git rev-parse --show-toplevel`) and the `claude` binary path (`which claude`);
-- write `~/Library/LaunchAgents/co.mesa.course-agent.daily.plist` from the template below,
+- write `~/Library/LaunchAgents/co.mesa.ares-brain.daily.plist` from the template below,
   substituting `<REPO>` and `<CLAUDE>`;
 - `launchctl unload` (ignore error) then `launchctl load` it;
 - print the plist path, the schedule, and how to check logs (`daily/_launchd.log`).
@@ -146,13 +146,13 @@ Plist template:
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-  <key>Label</key><string>co.mesa.course-agent.daily</string>
+  <key>Label</key><string>co.mesa.ares-brain.daily</string>
   <key>WorkingDirectory</key><string><REPO></string>
   <key>ProgramArguments</key><array>
     <string><CLAUDE></string>
-    <string>-p</string><string>/course-daily</string>
+    <string>-p</string><string>/mesa:ares-brain-course-daily</string>
     <string>--allowedTools</string>
-    <string>Bash(cd:*),Bash(uv run python lms_scrape.py:*),Bash(osascript:*),Write(daily/**),Read(courses/**),mcp__mesa-course-agent__daily_brief,mcp__mesa-course-agent__calendar_sync,mcp__mesa-course-agent__scrape,mcp__mesa-course-agent__ingest</string>
+    <string>Bash(cd:*),Bash(uv run python lms_scrape.py:*),Bash(osascript:*),Write(daily/**),Read(courses/**),mcp__mesa__daily_brief,mcp__mesa__calendar_sync,mcp__mesa__scrape,mcp__mesa__ingest</string>
   </array>
   <key>StartCalendarInterval</key><dict><key>Hour</key><integer>6</integer><key>Minute</key><integer>0</integer></dict>
   <key>StandardOutPath</key><string><REPO>/daily/_launchd.log</string>
@@ -161,7 +161,7 @@ Plist template:
 </dict></plist>
 ```
 
-`commands/daily-uninstall.md`: `launchctl unload ~/Library/LaunchAgents/co.mesa.course-agent.daily.plist` then `rm` it.
+`commands/mesa:ares-brain-daily-uninstall.md`: `launchctl unload ~/Library/LaunchAgents/co.mesa.ares-brain.daily.plist` then `rm` it.
 
 > The exact `--allowedTools` string is validated in the live run — if `claude -p` still
 > prompts, widen it minimally and record the final value in `docs/lms-api.md`.
@@ -183,7 +183,7 @@ Plist template:
 - One bad course dir (no `assignments.json`, malformed frontmatter) → still returns, other
   courses intact.
 - CLI `daily-brief --json` → parses, has the keys.
-- MCP `daily_brief` tool — temp `COURSE_AGENT_HOME`, stub spawn, assert argv + parse (mirror
+- MCP `daily_brief` tool — temp `ARES_BRAIN_HOME`, stub spawn, assert argv + parse (mirror
   `brain_get.test.ts`).
 - Skill + commands: no unit test (Claude-executed). Live run is the check.
 - Import isolation: a `test_daily_brief_import_isolation` mirroring the calendar/brain ones —
@@ -193,9 +193,9 @@ Plist template:
 
 1. `cd scraper && uv run python lms_scrape.py daily-brief --json | python3 -m json.tool` —
    eyeball today's classes, due list, changed counts.
-2. `/course-daily` interactively once — confirm `daily/<today>.md` is written with all four
+2. `/mesa:ares-brain-course-daily` interactively once — confirm `daily/<today>.md` is written with all four
    sections and a grounded mindset line, and the notification fires.
-3. `/daily-setup`, then `launchctl start co.mesa.course-agent.daily` to force a run now;
+3. `/mesa:ares-brain-daily-setup`, then `launchctl start co.mesa.ares-brain.daily` to force a run now;
    check `daily/_launchd.log` for permission prompts; confirm a fresh digest + notification.
 4. Record the working `--allowedTools` string and any launchd quirks in `docs/lms-api.md`.
 
@@ -203,8 +203,8 @@ Plist template:
 
 1. `daily_brief.py` + CLI + import-isolation test.
 2. `daily_brief` MCP tool + registration.
-3. `course-daily` skill + `/course-daily` command.
-4. `/daily-setup` + `/daily-uninstall` commands + plist template.
+3. `ares-brain-course-daily` skill + `/mesa:ares-brain-course-daily` command.
+4. `/mesa:ares-brain-daily-setup` + `/mesa:ares-brain-daily-uninstall` commands + plist template.
 5. Live run + `docs/lms-api.md` + README "Daily job" section.
 
 Subagent-driven, TDD.

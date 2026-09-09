@@ -138,6 +138,7 @@ def _assignments_due(now: datetime, within_hours: int) -> list[dict]:
         if due is None or not (now < due <= horizon):
             continue
         out.append({
+            "id": a.get("id"),
             "title": a.get("title") or a.get("id"),
             "course": course,
             "dueAt": due.astimezone().isoformat(),

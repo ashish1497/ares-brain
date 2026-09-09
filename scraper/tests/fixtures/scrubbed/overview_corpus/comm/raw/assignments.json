@@ -1,0 +1,26 @@
+[
+  {
+    "id": "a-pitch1",
+    "courseName": "Power of Communication",
+    "title": "Pitch 1",
+    "dueAt": "2026-09-11T18:00:00.000Z",
+    "submissionType": "file",
+    "mySubmissionStatus": null
+  },
+  {
+    "id": "a-pitch2",
+    "courseName": "Power of Communication",
+    "title": "Pitch 2",
+    "dueAt": "2026-09-18T18:00:00.000Z",
+    "submissionType": "file",
+    "mySubmissionStatus": null
+  },
+  {
+    "id": "a-refl",
+    "courseName": "Power of Communication",
+    "title": "Session 1 Reflection",
+    "dueAt": "2026-08-20T18:00:00.000Z",
+    "submissionType": "any",
+    "mySubmissionStatus": "submitted"
+  }
+]

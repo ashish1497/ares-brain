@@ -11,7 +11,7 @@ NOW = datetime(2026, 9, 10, tzinfo=timezone.utc)
 
 @pytest.fixture
 def corpus(home):
-    """Lay the fixture corpus into a temp COURSE_AGENT_HOME."""
+    """Lay the fixture corpus into a temp ARES_BRAIN_HOME."""
     dst = home / "courses"
     shutil.rmtree(dst)
     shutil.copytree(FIX, dst)

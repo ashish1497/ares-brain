@@ -47,7 +47,7 @@ function decodeExp(jwt: string): string | null {
 export const statusTool = {
   name: "status",
   description:
-    "Report course-agent config, token expiry, python sidecar health, and per-course file counts.",
+    "Report ares-brain config, token expiry, python sidecar health, and per-course file counts.",
   inputSchema: { type: "object", properties: {} } as const,
   async handler(_args: Record<string, unknown> = {}): Promise<StatusResult> {
     let configLoaded = true;
