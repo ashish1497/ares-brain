@@ -45,5 +45,6 @@ test("the panel gets the card treatment (border, shadow, bg-card)", () => {
     "border-edge",
     "bg-card",
     "shadow-[var(--nb-shadow)]",
+    "gap-0",
   );
 });

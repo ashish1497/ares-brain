@@ -19,7 +19,7 @@ export function DueNow({
   if (items.length === 0) return null;
   const sorted = [...items].sort((a, b) => Number(a.submitted) - Number(b.submitted));
   return (
-    <Card className="md:p-6">
+    <Card className="gap-0 md:p-6">
       <SectionHeader>Due now</SectionHeader>
       <div className="divide-y divide-[color:var(--color-rule)]">
         {sorted.map((item, i) => {

@@ -24,14 +24,14 @@ export function ClassTimeline({
 }) {
   if (classes.length === 0) {
     return (
-      <Card className="md:p-6">
+      <Card className="gap-0 md:p-6">
         <SectionHeader>Today</SectionHeader>
         <p className="text-[13px] text-[color:var(--color-ink-muted)]">no classes today</p>
       </Card>
     );
   }
   return (
-    <Card className="md:p-6">
+    <Card className="gap-0 md:p-6">
       <SectionHeader>Today</SectionHeader>
       <ol className="space-y-4 border-l-[3px] border-edge">
         {classes.map((cls, i) => {

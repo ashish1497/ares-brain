@@ -69,6 +69,7 @@ test("EmptyToday carries the same card-primitive class contract as the other pan
     "border-edge",
     "bg-card",
     "shadow-[var(--nb-shadow)]",
+    "gap-0",
   );
 });
 

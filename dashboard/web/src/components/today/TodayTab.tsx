@@ -9,7 +9,7 @@ import { DueNow } from "./DueNow";
 function EmptyToday({ ov }: { ov: TabProps["ov"] }) {
   const nextClass = ov.thisWeek.find((w) => w.kind === "class" && w.when > ov.date);
   return (
-    <Card className="md:p-6">
+    <Card className="gap-0 md:p-6">
       <p className="font-bold">Nothing needs you today.</p>
       {nextClass && (
         <p className="mt-2 text-[13px] text-[color:var(--color-ink-muted)]">
