@@ -493,6 +493,7 @@ def build_overview(now: datetime | None = None) -> dict:
             "indexStale": bs.get("indexStale"), "guideBuiltAt": guide_built,
             "guideSourcesBehind": behind, "pendingTranscripts": pend["count"],
             "reason": " \u00b7 ".join(reasons) or "up to date",
+            "reasonParts": reasons or ["up to date"],
             "buildCommand": f'/mesa:ares-brain-course-brain "{_q(name)}"',
         })
         if pend["count"]:

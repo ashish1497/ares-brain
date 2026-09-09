@@ -41,6 +41,20 @@ test("all three empty renders the single EmptyToday panel and none of the three"
   expect(screen.queryByText("Since last scrape")).not.toBeInTheDocument();
 });
 
+test("classes present but due-now and changed both empty renders a calm right-column panel, not dead space", () => {
+  render(
+    <TodayTab
+      {...baseProps({
+        today: { classes: [todayClass()], dueTodayOrTomorrow: [], changed: [] },
+      })}
+    />,
+  );
+  expect(screen.getByText("Today")).toBeInTheDocument(); // ClassTimeline still renders
+  expect(screen.queryByText("Due now")).not.toBeInTheDocument();
+  expect(screen.queryByText("Since last scrape")).not.toBeInTheDocument();
+  expect(screen.getByText("Nothing due, nothing changed since the last sync.")).toBeInTheDocument();
+});
+
 test("the next-class line appears from a thisWeek class entry", () => {
   render(
     <TodayTab

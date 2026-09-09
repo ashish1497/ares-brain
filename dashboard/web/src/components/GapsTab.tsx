@@ -107,6 +107,11 @@ export function GapsTab({ ov, onJob, busy }: TabProps) {
       });
   }
 
+  // Spec §4: cta (yellow) is the single primary action per view — a button set is only a
+  // cta when there is exactly one of it (same rule the Exams tab already follows).
+  const transcribeVariant = pendingTranscripts.length === 1 ? "default" : "neutral";
+  const scrapeAgeDays = Math.round(ov.scrapeAgeHours / 24);
+
   const showStale = scrapeStale || attendanceStale;
   const allEmpty = pendingTranscripts.length === 0 && missingBooks.length === 0 && !showStale;
 
@@ -133,7 +138,7 @@ export function GapsTab({ ov, onJob, busy }: TabProps) {
                   <MetaRow items={[`${g.count} recordings`, g.course]} />
                   <Button
                     type="button"
-                    variant="default"
+                    variant={transcribeVariant}
                     size="sm"
                     disabled={busy}
                     onClick={() => onJob("transcribe", { course: g.courseSlug })}
@@ -188,7 +193,7 @@ export function GapsTab({ ov, onJob, busy }: TabProps) {
           {scrapeStale && (
             <div className="flex items-center justify-between gap-3">
               <span className="text-[13px]">
-                scrape is {Math.round(ov.scrapeAgeHours / 24)} days old
+                scrape is {scrapeAgeDays} day{scrapeAgeDays === 1 ? "" : "s"} old
               </span>
               <Button
                 type="button"

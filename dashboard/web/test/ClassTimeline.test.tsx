@@ -82,6 +82,15 @@ test("the pre-read chip appears only when prereadPaths is non-empty", () => {
   expect(screen.queryByText("pre-read")).not.toBeInTheDocument();
 });
 
+test("the pre-read chip does not use bg-accent + text-black (fails contrast at 11px)", () => {
+  render(
+    <ClassTimeline ov={withClasses([todayClass({ prereadPaths: ["outline.md"] })])} now={NOW} />,
+  );
+  const chip = screen.getByText("pre-read");
+  expect(chip.className).not.toContain("bg-accent");
+  expect(chip.className).not.toContain("text-black");
+});
+
 test("the padding and positioning context live on the <li>, not the <ol> — so the dot resolves against the rail", () => {
   const { container } = render(<ClassTimeline ov={withClasses([todayClass()])} now={NOW} />);
   // scoped to <ol> specifically — the day summary above it also renders a <ul> "list"

@@ -144,6 +144,7 @@ export const brain = (over: Partial<OverviewBrain> = {}): OverviewBrain => ({
   guideSourcesBehind: 0,
   pendingTranscripts: 0,
   reason: "up to date",
+  reasonParts: ["up to date"],
   buildCommand: "/mesa:ares-brain-course-brain",
   ...over,
 });

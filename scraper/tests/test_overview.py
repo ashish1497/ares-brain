@@ -465,3 +465,10 @@ def test_exam_brain_ready_false_when_no_courses(corpus):
     o = overview.build_overview(now=NOW)
     ex = next(e for e in o["exams"] if e["name"] == "All Courses Exam")
     assert ex["brainReady"] is False
+
+
+def test_brain_reason_parts_emitted_as_array(corpus):
+    o = overview.build_overview(now=NOW)
+    comm = next(b for b in o["brain"] if b["courseSlug"] == "comm")
+    assert isinstance(comm["reasonParts"], list) and comm["reasonParts"]
+    assert comm["reason"] == " · ".join(comm["reasonParts"])

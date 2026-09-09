@@ -5,6 +5,11 @@ beforeEach(() => {
   localStorage.clear();
 });
 
+test("the add-step input carries an accessible label", () => {
+  render(<AssignmentChecklist id="a1" />);
+  expect(screen.getByLabelText("Add a checklist step")).toBeInTheDocument();
+});
+
 test("adding an item persists to localStorage['ares.checklist.<id>']", () => {
   render(<AssignmentChecklist id="a1" />);
   fireEvent.change(screen.getByPlaceholderText("Add a step"), { target: { value: "Read spec" } });

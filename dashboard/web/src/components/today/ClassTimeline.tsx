@@ -65,7 +65,7 @@ export function ClassTimeline({ ov, now = new Date() }: { ov: Overview; now?: Da
                     {cls.prereadPaths.length > 0 && (
                       <span
                         title={cls.prereadPaths.join(", ")}
-                        className="mt-1 inline-block rounded-nb border-[3px] border-edge bg-accent px-2 py-0.5 text-[11px] font-bold uppercase text-black"
+                        className="mt-1 inline-block rounded-nb border-[3px] border-edge bg-card px-2 py-0.5 text-[11px] font-bold uppercase text-[color:var(--color-accent)]"
                       >
                         pre-read
                       </span>

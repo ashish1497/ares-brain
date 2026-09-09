@@ -25,7 +25,8 @@ function AssignmentRow({ a, go }: { a: OverviewAssignment; go: (hash: string) =>
     <div className="flex w-full items-center justify-between gap-3 py-3 text-left">
       <div className="flex items-center gap-3">
         <span
-          aria-hidden
+          role="img"
+          aria-label={a.status}
           className={cn(
             "size-4 shrink-0 rounded-nb border-[3px] border-edge",
             STATUS_FILL[a.status],
@@ -99,9 +100,11 @@ function AssignmentsList({ ov, go }: Pick<TabProps, "ov" | "go">) {
           </ul>
         </>
       )}
-      <div className="mt-6 border-t border-[color:var(--color-rule)] pt-6">
-        <GradePicture rows={gradePicture} />
-      </div>
+      {gradePicture.length > 0 && (
+        <div className="mt-6 border-t border-[color:var(--color-rule)] pt-6">
+          <GradePicture rows={gradePicture} />
+        </div>
+      )}
     </Card>
   );
 }

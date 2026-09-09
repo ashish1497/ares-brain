@@ -20,17 +20,36 @@ function EmptyToday({ ov }: { ov: TabProps["ov"] }) {
   );
 }
 
+/** Both-empty calm panel for the right column: shown when there's nothing due and
+ * nothing changed, so classes-present days don't render a lopsided grid with dead space. */
+function CalmRightColumn() {
+  return (
+    <Card className="gap-0 md:p-6">
+      <p className="text-[13px] text-[color:var(--color-ink-muted)]">
+        Nothing due, nothing changed since the last sync.
+      </p>
+    </Card>
+  );
+}
+
 /** Today — the landing/eagle view: class timeline, due-now, and the since-last-scrape feed. */
 export function TodayTab({ ov, go }: TabProps) {
   const { classes, dueTodayOrTomorrow, changed } = ov.today;
   const allEmpty = classes.length === 0 && dueTodayOrTomorrow.length === 0 && changed.length === 0;
   if (allEmpty) return <EmptyToday ov={ov} />;
+  const rightEmpty = dueTodayOrTomorrow.length === 0 && changed.length === 0;
   return (
     <div className="grid gap-6 lg:grid-cols-[1.15fr_1fr]">
       <ClassTimeline ov={ov} />
       <div className="space-y-6">
-        <DueNow items={dueTodayOrTomorrow} assignments={ov.assignments} go={go} />
-        <ChangedFeed changed={changed} scrapeAgeHours={ov.scrapeAgeHours} />
+        {rightEmpty ? (
+          <CalmRightColumn />
+        ) : (
+          <>
+            <DueNow items={dueTodayOrTomorrow} assignments={ov.assignments} go={go} />
+            <ChangedFeed changed={changed} scrapeAgeHours={ov.scrapeAgeHours} />
+          </>
+        )}
       </div>
     </div>
   );

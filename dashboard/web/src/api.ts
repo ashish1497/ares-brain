@@ -178,6 +178,7 @@ export interface OverviewBrain {
   guideSourcesBehind: number;
   pendingTranscripts: number;
   reason: string;
+  reasonParts: string[];
   buildCommand: string;
 }
 

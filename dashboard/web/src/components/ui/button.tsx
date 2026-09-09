@@ -9,8 +9,6 @@ export const buttonVariants = cva(
       variant: {
         default:
           "bg-cta text-black shadow-[var(--nb-shadow)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none",
-        accent:
-          "bg-accent text-black shadow-[var(--nb-shadow)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none",
         neutral:
           "bg-card text-inherit shadow-[var(--nb-shadow)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none",
         ghost: "border-transparent hover:bg-card",

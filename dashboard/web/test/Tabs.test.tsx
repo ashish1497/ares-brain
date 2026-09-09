@@ -43,3 +43,10 @@ test("a count badge renders when counts.gaps is nonzero and not when zero", () =
   expect(screen.getByRole("button", { name: /Gaps/ })).toHaveTextContent("Gaps");
   expect(screen.getByRole("button", { name: /Gaps/ }).textContent).toBe("Gaps");
 });
+
+test("the count badge does not use edge as a fill or paper as text (contrast floor)", () => {
+  render(<Tabs active="today" counts={{ assignments: 0, gaps: 9 }} onSelect={vi.fn()} />);
+  const badge = screen.getByText("9");
+  expect(badge.className).not.toContain("bg-edge");
+  expect(badge.className).not.toContain("text-paper");
+});

@@ -4,11 +4,6 @@ function parseYmdOrIso(isoOrYmd: string): Date {
   return new Date(isYmd ? `${isoOrYmd}T00:00` : isoOrYmd);
 }
 
-/** Splits a `·`-joined reason string into MetaRow parts; a reason with no `·` renders unchanged. */
-export function reasonParts(reason: string): string[] {
-  return reason.split("·").map((part) => part.trim());
-}
-
 /** ISO datetime → "09:30" (local, 24h). Falls back to the raw string if unparseable. */
 export function fmtTime(iso: string): string {
   const d = new Date(iso);

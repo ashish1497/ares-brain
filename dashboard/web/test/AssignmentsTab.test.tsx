@@ -173,13 +173,57 @@ test("the status square is size-4 (not size-3) so its fill core is legible", () 
       })}
     />,
   );
-  const square = container.querySelector("[aria-hidden]");
+  const square = container.querySelector('[role="img"]');
   expect(square).toHaveClass("size-4");
   expect(square).not.toHaveClass("size-3");
+});
+
+test("the status square carries an accessible role and label instead of being aria-hidden", () => {
+  const { container } = render(
+    <AssignmentsTab
+      {...baseProps({
+        assignments: [assignment({ id: "a1", courseSlug: "c1", title: "Row", status: "draft" })],
+      })}
+    />,
+  );
+  const square = container.querySelector('[role="img"]');
+  expect(square).not.toBeNull();
+  expect(square).toHaveAttribute("aria-label", "draft");
+  expect(square).not.toHaveAttribute("aria-hidden");
+});
+
+test("STATUS_FILL maps not-started/draft/submitted to bad/soon/ok", () => {
+  const { container } = render(
+    <AssignmentsTab
+      {...baseProps({
+        assignments: [
+          assignment({ id: "a1", courseSlug: "c1", title: "A", status: "not-started" }),
+          assignment({ id: "a2", courseSlug: "c1", title: "B", status: "draft" }),
+          assignment({ id: "a3", courseSlug: "c1", title: "C", status: "submitted" }),
+        ],
+      })}
+    />,
+  );
+  const squares = container.querySelectorAll('[role="img"]');
+  expect(squares[0]).toHaveClass("bg-bad");
+  expect(squares[1]).toHaveClass("bg-soon");
+  expect(squares[2]).toHaveClass("bg-ok");
 });
 
 test("the list Card takes gap-0 so child margins don't double-count against the flex gap", () => {
   const { container } = render(<AssignmentsTab {...baseProps({ assignments: [] })} />);
   const card = container.querySelector('[data-slot="card"]');
   expect(card).toHaveClass("gap-0");
+});
+
+test("an empty gradePicture renders no Grade picture header or rule, even with assignments present", () => {
+  render(
+    <AssignmentsTab
+      {...baseProps({
+        assignments: [assignment({ id: "a1", courseSlug: "c1", title: "Row" })],
+        gradePicture: [],
+      })}
+    />,
+  );
+  expect(screen.queryByText("Grade picture")).not.toBeInTheDocument();
 });

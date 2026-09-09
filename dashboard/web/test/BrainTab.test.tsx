@@ -67,6 +67,34 @@ test("busy disables the Ingest button", () => {
   expect(screen.getByRole("button", { name: /Ingest/ })).toBeDisabled();
 });
 
+test("a single Ingest button is the cta (bg-cta); many Ingest buttons are all neutral", () => {
+  const { rerender } = render(
+    <BrainTab
+      {...baseProps({
+        brain: [brain({ course: "Not Built", courseSlug: "nb1", state: "not-built" })],
+      })}
+    />,
+  );
+  expect(screen.getByRole("button", { name: /Ingest/ }).className).toContain("bg-cta");
+
+  rerender(
+    <BrainTab
+      {...baseProps({
+        brain: [
+          brain({ course: "Not Built", courseSlug: "nb1", state: "not-built" }),
+          brain({ course: "Stale One", courseSlug: "s1", state: "stale" }),
+        ],
+      })}
+    />,
+  );
+  const buttons = screen.getAllByRole("button", { name: /Ingest/ });
+  expect(buttons).toHaveLength(2);
+  for (const btn of buttons) {
+    expect(btn.className).not.toContain("bg-cta");
+    expect(btn.className).toContain("bg-card");
+  }
+});
+
 test("corpus renders — when corpusBytes is null", () => {
   render(
     <BrainTab
@@ -136,7 +164,7 @@ test("progress value is right and does not blow up when chatUnlockAt is 0", () =
   expect(Number(bar.getAttribute("aria-valuenow"))).toBe(0);
 });
 
-test("a reason with a middot renders as MetaRow parts with no middot in the output", () => {
+test("a multi-part reasonParts renders as MetaRow parts with no middot in the output", () => {
   const { container } = render(
     <BrainTab
       {...baseProps({
@@ -144,7 +172,7 @@ test("a reason with a middot renders as MetaRow parts with no middot in the outp
           brain({
             course: "C",
             courseSlug: "c",
-            reason: "6 recordings to transcribe · guide 1 sources behind",
+            reasonParts: ["6 recordings to transcribe", "guide 1 sources behind"],
           }),
         ],
       })}
@@ -155,11 +183,11 @@ test("a reason with a middot renders as MetaRow parts with no middot in the outp
   expect(container.textContent).not.toContain("·");
 });
 
-test("a reason with no middot renders unchanged as a single item", () => {
+test("a single-part reasonParts renders unchanged as a single item", () => {
   render(
     <BrainTab
       {...baseProps({
-        brain: [brain({ course: "C", courseSlug: "c", reason: "up to date" })],
+        brain: [brain({ course: "C", courseSlug: "c", reasonParts: ["up to date"] })],
       })}
     />,
   );

@@ -66,7 +66,9 @@ test("brain and attendance blocks render when present, matched by courseSlug", (
     <MindsetModal
       cls={cls}
       ov={overview({
-        brain: [brain({ courseSlug: "finance", state: "stale", reason: "2 sources behind" })],
+        brain: [
+          brain({ courseSlug: "finance", state: "stale", reasonParts: ["2 sources behind"] }),
+        ],
         attendance: [attendance({ courseSlug: "finance", nowPct: 92, state: "ok" })],
       })}
       onClose={vi.fn()}
@@ -76,7 +78,7 @@ test("brain and attendance blocks render when present, matched by courseSlug", (
   expect(screen.getByText("92%")).toBeInTheDocument();
 });
 
-test("a brain reason with a middot renders as separate MetaRow parts with no middot in the dialog", () => {
+test("a multi-part brain reasonParts renders as separate MetaRow parts with no middot in the dialog", () => {
   const cls = todayClass({ courseSlug: "finance" });
   render(
     <MindsetModal
@@ -86,7 +88,7 @@ test("a brain reason with a middot renders as separate MetaRow parts with no mid
           brain({
             courseSlug: "finance",
             state: "stale",
-            reason: "6 recordings to transcribe · guide 1 sources behind",
+            reasonParts: ["6 recordings to transcribe", "guide 1 sources behind"],
           }),
         ],
       })}
@@ -100,13 +102,13 @@ test("a brain reason with a middot renders as separate MetaRow parts with no mid
   expect(screen.getAllByRole("separator").length).toBeGreaterThanOrEqual(1);
 });
 
-test("a brain reason with no middot renders unchanged as a single item", () => {
+test("a single-part brain reasonParts renders unchanged as a single item", () => {
   const cls = todayClass({ courseSlug: "finance" });
   render(
     <MindsetModal
       cls={cls}
       ov={overview({
-        brain: [brain({ courseSlug: "finance", state: "ready", reason: "up to date" })],
+        brain: [brain({ courseSlug: "finance", state: "ready", reasonParts: ["up to date"] })],
       })}
       onClose={vi.fn()}
     />,

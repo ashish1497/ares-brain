@@ -40,7 +40,9 @@ export function Tabs({
             >
               {t.label}
               {count > 0 && (
-                <span className="rounded-nb bg-edge px-1 text-[11px] text-paper">{count}</span>
+                <span className="rounded-nb border-[3px] border-edge bg-card px-1 text-[11px] text-[color:var(--color-ink)]">
+                  {count}
+                </span>
               )}
             </button>
           );

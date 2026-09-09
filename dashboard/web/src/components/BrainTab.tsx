@@ -1,6 +1,5 @@
 import type { TabProps } from "../lib/types";
 import type { OverviewBrain } from "../api";
-import { reasonParts } from "../lib/format";
 import { SectionHeader } from "./SectionHeader";
 import { MetaRow } from "./MetaRow";
 import { StatePill } from "./StatePill";
@@ -26,6 +25,10 @@ export function BrainTab({ ov, onJob, busy }: TabProps) {
   const { brainReady, courseCount } = ov.kpis;
   const pct = ov.chatUnlockAt > 0 ? Math.round((brainReady / ov.chatUnlockAt) * 100) : 0;
   const sorted = [...ov.brain].sort((a, b) => stateRank(a.state) - stateRank(b.state));
+  // Spec §4: cta (yellow) is the single primary action per view — a button set is only a
+  // cta when there is exactly one of it (same rule the Exams tab already follows).
+  const ingestCount = sorted.filter((b) => b.state !== "ready").length;
+  const ingestVariant = ingestCount === 1 ? "default" : "neutral";
 
   return (
     <Card className="gap-0 md:p-6">
@@ -83,7 +86,7 @@ export function BrainTab({ ov, onJob, busy }: TabProps) {
                     <StatePill state={STATE_PILL[b.state]}>{b.state}</StatePill>
                   </td>
                   <td className="py-3 pr-3 text-[color:var(--color-ink-muted)]">
-                    <MetaRow items={reasonParts(b.reason)} />
+                    <MetaRow items={b.reasonParts} />
                   </td>
                   <td className="py-3 pr-3">
                     {!b.corpusBytes
@@ -97,7 +100,7 @@ export function BrainTab({ ov, onJob, busy }: TabProps) {
                       {b.state !== "ready" && (
                         <Button
                           type="button"
-                          variant="default"
+                          variant={ingestVariant}
                           size="sm"
                           disabled={busy}
                           onClick={() => onJob("ingest", { course: b.courseSlug })}

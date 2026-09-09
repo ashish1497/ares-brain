@@ -55,6 +55,38 @@ test("clicking Transcribe calls onJob('transcribe', {course})", () => {
   expect(onJob).toHaveBeenCalledWith("transcribe", { course: "a" });
 });
 
+test("a single Transcribe all button is the cta (bg-cta); many are all neutral", () => {
+  const { rerender } = render(
+    <GapsTab
+      {...baseProps({
+        gaps: gaps({
+          pendingTranscripts: [pendingTranscriptGroup({ course: "Course A", courseSlug: "a" })],
+        }),
+      })}
+    />,
+  );
+  expect(screen.getByRole("button", { name: /Transcribe all/ }).className).toContain("bg-cta");
+
+  rerender(
+    <GapsTab
+      {...baseProps({
+        gaps: gaps({
+          pendingTranscripts: [
+            pendingTranscriptGroup({ course: "Course A", courseSlug: "a" }),
+            pendingTranscriptGroup({ course: "Course B", courseSlug: "b" }),
+          ],
+        }),
+      })}
+    />,
+  );
+  const buttons = screen.getAllByRole("button", { name: /Transcribe all/ });
+  expect(buttons).toHaveLength(2);
+  for (const btn of buttons) {
+    expect(btn.className).not.toContain("bg-cta");
+    expect(btn.className).toContain("bg-card");
+  }
+});
+
 test("scrapeStale: false hides the stale section", () => {
   render(
     <GapsTab
@@ -81,6 +113,19 @@ test("stale section shows when scrapeStale: true", () => {
   );
   expect(screen.getByText(/scrape is 3 days old/)).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /Re-sync/ })).toBeInTheDocument();
+});
+
+test("stale section pluralizes singular correctly (1 day old, not 1 days old)", () => {
+  render(
+    <GapsTab
+      {...baseProps({
+        scrapeAgeHours: 24,
+        gaps: gaps({ scrapeStale: true }),
+      })}
+    />,
+  );
+  expect(screen.getByText(/scrape is 1 day old/)).toBeInTheDocument();
+  expect(screen.queryByText(/1 days old/)).not.toBeInTheDocument();
 });
 
 test("attendanceStale renders a muted note", () => {

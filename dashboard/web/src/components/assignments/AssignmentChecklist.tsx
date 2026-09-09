@@ -107,6 +107,7 @@ export function AssignmentChecklist({ id }: { id: string }) {
           if (e.key === "Enter") add();
         }}
         placeholder="Add a step"
+        aria-label="Add a checklist step"
         className="w-full rounded-nb border-[3px] border-edge bg-card px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-edge"
       />
       {saveFailed && (
