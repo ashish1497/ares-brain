@@ -580,4 +580,11 @@ Recorded as **not** clean / worth knowing:
 - Reloading the browser during or after a job used to leave the log pane empty
   forever because the client only attached the stream inside its own job-start
   path; fixed in this task's commit 1.
-- TRANSCRIBE_RESULT_PENDING
+- A `transcribe` job dispatched from the **Gaps** tab exercised the whole job path
+  correctly — accepted, run, `lastRuns.transcribe` recorded, and the failure
+  surfaced as status `failed` with exit code 1 — but the transcription itself
+  could not fetch the recording and returned
+  `{"transcribed": [], "skipped": [], "failed": [{"status": "needs-manual"}]}`.
+  So the dashboard's job plumbing is verified end to end while `transcribe` itself
+  is still blocked on this machine (media egress), exactly as expected. The Gaps
+  tab reports the failure rather than hanging.
