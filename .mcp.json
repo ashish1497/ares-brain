@@ -1,0 +1,6 @@
+{
+  "mesa": {
+    "command": "node",
+    "args": ["${ARES_BRAIN_HOME}/mcp/dist/index.js"]
+  }
+}

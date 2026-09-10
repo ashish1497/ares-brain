@@ -1,0 +1,26 @@
+{
+  "name": "mesa",
+  "version": "0.1.0+codex.20260910131430",
+  "description": "Turns Mesa LMS coursework into a grounded study agent with course search, briefings, assignment guidance, test prep, and calendar sync.",
+  "author": {
+    "name": "Ashish Bajaj"
+  },
+  "license": "MIT",
+  "keywords": ["mesa", "lms", "study", "coursework", "sales"],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Mesa Study Brain",
+    "shortDescription": "Grounded study tools for Mesa LMS",
+    "longDescription": "Search course material, understand assignments, prepare for tests, and build daily study briefings from your local Mesa LMS corpus.",
+    "developerName": "Ashish Bajaj",
+    "category": "Education",
+    "capabilities": ["Read", "Write"],
+    "defaultPrompt": [
+      "What is due next across my courses?",
+      "Help me prepare for my next Art of Selling class.",
+      "Search my course material for this concept."
+    ],
+    "brandColor": "#0F766E"
+  }
+}

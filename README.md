@@ -1,6 +1,6 @@
 # Ares Brain
 
-A Claude Code **plugin** that turns Mesa LMS ("Nexus") coursework into a study agent:
+A Claude Code and Codex **plugin** that turns Mesa LMS ("Nexus") coursework into a study agent:
 scrape every course onto disk, normalize it, build a per-course searchable "brain",
 sync deadlines + the class schedule to Google Calendar, and produce briefings,
 assignment help, test-prep, book summaries, and a daily morning digest.
@@ -23,6 +23,26 @@ orchestrate the tools and do the writing. **No MCP tool ever calls an LLM.**
 ---
 
 ## Install
+
+### Codex
+
+This repo now includes the portable Codex manifest (`.codex-plugin/plugin.json`) and MCP
+configuration (`.mcp.json`). From the repository root:
+
+```bash
+export ARES_BRAIN_HOME="$PWD"
+codex plugin marketplace add .
+codex plugin add mesa@mesa-local
+```
+
+Start a new Codex thread after installation. Skills are invoked as `$ares-brain-ask`,
+`$ares-brain-course-daily`, `$ares-brain-assignment-help`, and so on. The same local `courses/`
+corpus and MCP tools are used by Claude and Codex; no second scrape or database is created.
+Keep `ARES_BRAIN_HOME` set in the shell that launches Codex so cached plugin code still points at
+this checkout's corpus and `scraper/.venv`.
+
+Codex support is intentionally additive: the existing Claude marketplace and `/mesa:*` commands
+remain unchanged.
 
 ### 1. Python sidecar
 

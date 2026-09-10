@@ -27,5 +27,7 @@ export function loadApiConfig(): ApiConfig {
 }
 
 export function repoRootPath(): string {
-  return repoRoot;
+  // Installed Codex/Claude plugin bundles may run from a cache directory.
+  // Keep the user's checked-out corpus and Python sidecar as the source of truth.
+  return process.env.ARES_BRAIN_HOME || repoRoot;
 }
