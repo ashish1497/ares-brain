@@ -53,8 +53,8 @@ export function App() {
   const stop = useRef<(() => void) | undefined>(undefined);
   const { tab, params, go } = useHashRoute();
 
-  const refresh = () =>
-    getOverview()
+  const refresh = (fresh = false) =>
+    getOverview(fresh)
       .then((o) => {
         setOv(o);
         setErr("");
@@ -83,6 +83,10 @@ export function App() {
   }, []);
   useEffect(() => {
     const t = setInterval(() => api.getState().then((s) => setJob(s.job)), 3000);
+    return () => clearInterval(t);
+  }, []);
+  useEffect(() => {
+    const t = setInterval(() => refresh(false), 20_000);
     return () => clearInterval(t);
   }, []);
   const busy = job?.status === "running";
@@ -133,6 +137,7 @@ export function App() {
         ov={ov}
         busy={!!busy}
         onResync={() => onJob("sync")}
+        onRefresh={() => refresh(true)}
         onOpenSettings={() => setSettingsOpen(true)}
       />
       <Tabs active={active} counts={counts} onSelect={(t) => go(t)} />

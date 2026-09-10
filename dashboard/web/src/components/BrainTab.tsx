@@ -97,6 +97,13 @@ export function BrainTab({ ov, onJob, busy }: TabProps) {
                   </td>
                   <td className="py-3 pr-3">
                     <div className="flex flex-wrap items-center gap-2">
+                      {b.guideState !== "current" && (
+                        <span className="text-[12px] text-[color:var(--color-ink-muted)]">
+                          {b.guideState === "missing"
+                            ? "no guide yet"
+                            : `guide ${b.guideSourcesBehind} sources behind — rebuild for a sharper digest`}
+                        </span>
+                      )}
                       {b.state !== "ready" && (
                         <Button
                           type="button"

@@ -15,9 +15,19 @@ import paths
 import scrape_steps
 
 
+def _write_overview_cache() -> None:
+    """Best-effort refresh of courses/_overview.json after a corpus-changing job."""
+    try:
+        import overview as _ov
+        _ov.write_cache()
+    except Exception as exc:  # noqa: BLE001
+        print(f"overview cache: {exc}", file=sys.stderr)
+
+
 def _run_all(args) -> dict:
     client = mesa_api.client_from_env()
     cfg = mesa_api.load_config()
+    print("[all] scraping courses", file=sys.stderr, flush=True)
     try:
         full_index = scrape_steps.step_courses(client, cfg)
     except Exception as exc:  # noqa: BLE001
@@ -38,6 +48,7 @@ def _run_all(args) -> dict:
     errors: list[str] = []
     topics_by_slug: dict[str, list | None] = {}
     for course in scope_index:
+        print(f"[all] {course['slug']} topics", file=sys.stderr, flush=True)
         try:
             topics_by_slug[course["slug"]] = scrape_steps.step_topics(
                 client, cfg, course, args.force)
@@ -47,6 +58,7 @@ def _run_all(args) -> dict:
             # so a transient topics failure can't overwrite a good manifest.
             topics_by_slug[course["slug"]] = None
 
+    print("[all] rollups", file=sys.stderr, flush=True)
     try:
         a_summary = scrape_steps.step_assignments(client, cfg, full_index)
     except Exception as exc:  # noqa: BLE001
@@ -78,6 +90,7 @@ def _run_all(args) -> dict:
                 errors.append(f"{course['slug']} {step.__name__}: {exc}")
                 print(f"  {course['slug']}: ERROR {exc}")
 
+    print("[all] ingest", file=sys.stderr, flush=True)
     try:
         import ingest as _i
         _i.ensure_inbox_skeleton(full_index)
@@ -87,6 +100,7 @@ def _run_all(args) -> dict:
         errors.append(f"ingest: {exc}")
         i_result = {"perCourse": {}}
 
+    print("[all] brain-index", file=sys.stderr, flush=True)
     try:
         import brain as _b
     except Exception as exc:  # noqa: BLE001
@@ -209,6 +223,7 @@ def run(argv: list[str]) -> dict | None:
         index = json.loads(scrape_steps.global_file("_index.json").read_text())
         _i.ensure_inbox_skeleton(index)
         result = _i.step_ingest(index, args.course)
+        _write_overview_cache()
         print(json.dumps(result) if args.json else json.dumps(result, indent=1))
         return result
     if args.cmd == "brain-index":
@@ -216,6 +231,7 @@ def run(argv: list[str]) -> dict | None:
         index = json.loads(scrape_steps.global_file("_index.json").read_text())
         slugs = [args.course] if args.course else [c["slug"] for c in index]
         result = {s: _b.build_index(s, args.force) for s in slugs}
+        _write_overview_cache()
         print(json.dumps(result) if args.json else json.dumps(result, indent=1))
         return result
     if args.cmd == "brain-query":
@@ -278,11 +294,16 @@ def run(argv: list[str]) -> dict | None:
     if args.cmd == "overview":
         import overview as _ov
         result = _ov.build_overview()
+        try:
+            _ov.write_cache()
+        except Exception as exc:  # noqa: BLE001
+            print(f"overview cache: {exc}", file=sys.stderr)
         print(json.dumps(result) if args.json else json.dumps(result, indent=1))
         return result
     if args.cmd == "calendar-sync":
         import calendar_sync as _cs
         result = _cs.run(dry_run=args.dry_run)
+        _write_overview_cache()
         print(json.dumps(result) if args.json else json.dumps(result, indent=1))
         return result
     if args.cmd == "calendar-auth":
@@ -291,6 +312,7 @@ def run(argv: list[str]) -> dict | None:
         print(json.dumps(r, indent=1))
         return r
     summary = _run_all(args)
+    _write_overview_cache()
     print(json.dumps(summary) if getattr(args, "json", False)
           else json.dumps(summary, indent=1))
     return summary

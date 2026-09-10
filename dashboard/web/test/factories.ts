@@ -137,6 +137,7 @@ export const brain = (over: Partial<OverviewBrain> = {}): OverviewBrain => ({
   course: "Course",
   courseSlug: "course",
   state: "ready",
+  guideState: "current",
   corpusBytes: 1000,
   sourceCount: 5,
   indexStale: false,

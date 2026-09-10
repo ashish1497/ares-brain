@@ -171,6 +171,7 @@ export interface OverviewBrain {
   course: string;
   courseSlug: string;
   state: "ready" | "stale" | "not-built";
+  guideState: "missing" | "behind" | "current";
   corpusBytes: number | null;
   sourceCount: number | null;
   indexStale: boolean | null;
@@ -231,8 +232,8 @@ const j = (r: Response) => r.json();
 export const getCourses = (): Promise<Course[]> => fetch("/api/courses").then(j);
 export const getState = (): Promise<State> => fetch("/api/state").then(j);
 
-export const getOverview = (): Promise<Overview> =>
-  fetch("/api/overview").then((r) => {
+export const getOverview = (fresh = false): Promise<Overview> =>
+  fetch("/api/overview" + (fresh ? "?fresh=1" : "")).then((r) => {
     if (!r.ok) throw new Error(`overview ${r.status}`);
     return r.json();
   });

@@ -13,7 +13,7 @@ vi.mock("../src/lib/repo.js", () => ({
 
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { runPythonJSON } from "../src/lib/python.js";
+import { runPythonJSON, runPython } from "../src/lib/python.js";
 
 const spawnMock = vi.mocked(spawn);
 const existsMock = vi.mocked(existsSync);
@@ -75,5 +75,24 @@ describe("runPythonJSON", () => {
     const r = await runPythonJSON(["overview", "--json"]);
     expect(r.ok).toBe(false);
     expect(spawnMock).not.toHaveBeenCalled();
+  });
+
+  it("spawns Python with PYTHONUNBUFFERED=1 so stdout streams unbuffered", async () => {
+    const child = fakeChild();
+    const p = runPythonJSON(["overview", "--json"]);
+    child.emit("close", 0);
+    await p;
+    const opts = spawnMock.mock.calls[0][2] as { env: Record<string, string> };
+    expect(opts.env.PYTHONUNBUFFERED).toBe("1");
+  });
+});
+
+describe("runPython", () => {
+  it("spawns Python with PYTHONUNBUFFERED=1", () => {
+    const child = fakeChild();
+    runPython(["all"], () => {});
+    child.emit("close", 0);
+    const opts = spawnMock.mock.calls[0][2] as { env: Record<string, string> };
+    expect(opts.env.PYTHONUNBUFFERED).toBe("1");
   });
 });

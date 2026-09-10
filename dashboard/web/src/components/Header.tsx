@@ -32,11 +32,13 @@ export function Header({
   ov,
   busy,
   onResync,
+  onRefresh,
   onOpenSettings,
 }: {
   ov: Overview;
   busy: boolean;
   onResync: () => void;
+  onRefresh: () => void;
   onOpenSettings: () => void;
 }) {
   const { kpis } = ov;
@@ -80,8 +82,17 @@ export function Header({
         </div>
         <div className="ml-auto flex items-center gap-3">
           <span className="hidden text-[12px] text-[color:var(--color-ink-muted)] sm:inline">
-            updated {relTime(ov.generatedAt)}
+            digest · {relTime(ov.generatedAt)}
           </span>
+          <Button
+            type="button"
+            variant="neutral"
+            size="icon"
+            onClick={onRefresh}
+            aria-label="Refresh digest"
+          >
+            ⟳
+          </Button>
           <Button type="button" variant="default" disabled={busy} onClick={onResync}>
             {busy ? "syncing…" : "⟲ Re-sync"}
           </Button>

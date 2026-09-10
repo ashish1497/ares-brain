@@ -16,7 +16,7 @@ export function runPython(
   }
   const child = spawn(py, ["lms_scrape.py", ...args], {
     cwd: join(repoRoot(), "scraper"),
-    env: { ...process.env, ARES_BRAIN_HOME: repoRoot() },
+    env: { ...process.env, ARES_BRAIN_HOME: repoRoot(), PYTHONUNBUFFERED: "1" },
   });
   let buf = "";
   const pump = (chunk: Buffer) => {
@@ -49,7 +49,7 @@ export function runPythonJSON(
   return new Promise((resolve) => {
     const child = spawn(py, ["lms_scrape.py", ...args], {
       cwd: join(repoRoot(), "scraper"),
-      env: { ...process.env, ARES_BRAIN_HOME: repoRoot() },
+      env: { ...process.env, ARES_BRAIN_HOME: repoRoot(), PYTHONUNBUFFERED: "1" },
     });
     let out = "";
     let err = "";

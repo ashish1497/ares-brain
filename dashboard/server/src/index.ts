@@ -1,5 +1,5 @@
 import { createServer as httpCreate, type IncomingMessage, type ServerResponse } from "node:http";
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { extname, join, sep } from "node:path";
 import { match } from "./lib/router.js";
@@ -27,6 +27,7 @@ const KINDS: JobKind[] = [
   "transcribe-inbox",
 ];
 const WEB_DIST = join(repoRoot(), "dashboard", "web", "dist");
+const OVERVIEW_CACHE_MAX_AGE_MS = 120_000;
 const MIME: Record<string, string> = {
   ".html": "text/html",
   ".js": "text/javascript",
@@ -105,6 +106,19 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   if (match("GET", "/api/overview", method, url)) {
     const bad = guardOrigin(req);
     if (bad) return json(res, 403, { error: bad });
+    const fresh = new URL(url, "http://x").searchParams.get("fresh") === "1";
+    if (!fresh) {
+      try {
+        const cacheFile = join(repoRoot(), "courses", "_overview.json");
+        const age = Date.now() - (await stat(cacheFile)).mtimeMs;
+        if (age < OVERVIEW_CACHE_MAX_AGE_MS) {
+          const cached = JSON.parse(await readFile(cacheFile, "utf8"));
+          return json(res, 200, cached);
+        }
+      } catch {
+        /* missing / stale / malformed cache → fall through to a fresh spawn */
+      }
+    }
     const r = await runPythonJSON(["overview", "--json"]);
     return r.ok ? json(res, 200, r.data) : json(res, 503, { error: r.error });
   }

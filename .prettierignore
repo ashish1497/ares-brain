@@ -1,5 +1,6 @@
 # build output & deps
 mcp/dist/
+plugins/*/mcp/dist/
 dashboard/**/dist/
 **/node_modules/
 scraper/.venv/

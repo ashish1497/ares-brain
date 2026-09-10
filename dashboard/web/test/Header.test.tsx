@@ -8,6 +8,7 @@ test("renders the four stat chips", () => {
       ov={overview({ kpis: kpis({ dueThisWeek: 2, nextExamInDays: 6, brainReady: 2 }) })}
       busy={false}
       onResync={vi.fn()}
+      onRefresh={vi.fn()}
       onOpenSettings={vi.fn()}
     />,
   );
@@ -25,6 +26,7 @@ test("the exam chip is soon-tinted when nextExamInDays is within a week", () => 
       ov={overview({ kpis: kpis({ nextExamInDays: 6 }) })}
       busy={false}
       onResync={vi.fn()}
+      onRefresh={vi.fn()}
       onOpenSettings={vi.fn()}
     />,
   );
@@ -37,6 +39,7 @@ test("the exam chip is not tinted when nextExamInDays is null", () => {
       ov={overview({ kpis: kpis({ nextExamInDays: null }) })}
       busy={false}
       onResync={vi.fn()}
+      onRefresh={vi.fn()}
       onOpenSettings={vi.fn()}
     />,
   );
@@ -49,6 +52,7 @@ test("a tinted chip's label does not carry the ink-muted color class (would be i
       ov={overview({ kpis: kpis({ nextExamInDays: 6 }) })}
       busy={false}
       onResync={vi.fn()}
+      onRefresh={vi.fn()}
       onOpenSettings={vi.fn()}
     />,
   );
@@ -62,6 +66,7 @@ test("an untinted chip's label still carries the ink-muted color class", () => {
       ov={overview({ kpis: kpis({ nextExamInDays: null }) })}
       busy={false}
       onResync={vi.fn()}
+      onRefresh={vi.fn()}
       onOpenSettings={vi.fn()}
     />,
   );
@@ -70,35 +75,69 @@ test("an untinted chip's label still carries the ink-muted color class", () => {
 });
 
 test("Re-sync is disabled and reads syncing… when busy", () => {
-  render(<Header ov={overview()} busy onResync={vi.fn()} onOpenSettings={vi.fn()} />);
+  render(
+    <Header ov={overview()} busy onResync={vi.fn()} onRefresh={vi.fn()} onOpenSettings={vi.fn()} />,
+  );
   const btn = screen.getByRole("button", { name: "syncing…" });
   expect(btn).toBeDisabled();
 });
 
 test("clicking Re-sync calls onResync", () => {
   const onResync = vi.fn();
-  render(<Header ov={overview()} busy={false} onResync={onResync} onOpenSettings={vi.fn()} />);
+  render(
+    <Header
+      ov={overview()}
+      busy={false}
+      onResync={onResync}
+      onRefresh={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />,
+  );
   fireEvent.click(screen.getByRole("button", { name: "⟲ Re-sync" }));
   expect(onResync).toHaveBeenCalledTimes(1);
 });
 
 test("the 'r' key calls onResync when no input is focused and not busy", () => {
   const onResync = vi.fn();
-  render(<Header ov={overview()} busy={false} onResync={onResync} onOpenSettings={vi.fn()} />);
+  render(
+    <Header
+      ov={overview()}
+      busy={false}
+      onResync={onResync}
+      onRefresh={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />,
+  );
   fireEvent.keyDown(document, { key: "r" });
   expect(onResync).toHaveBeenCalledTimes(1);
 });
 
 test("the 'r' key does nothing when busy", () => {
   const onResync = vi.fn();
-  render(<Header ov={overview()} busy onResync={onResync} onOpenSettings={vi.fn()} />);
+  render(
+    <Header
+      ov={overview()}
+      busy
+      onResync={onResync}
+      onRefresh={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />,
+  );
   fireEvent.keyDown(document, { key: "r" });
   expect(onResync).not.toHaveBeenCalled();
 });
 
 test("the 'r' key does nothing when a modifier is held (Cmd/Ctrl+R reload shortcut)", () => {
   const onResync = vi.fn();
-  render(<Header ov={overview()} busy={false} onResync={onResync} onOpenSettings={vi.fn()} />);
+  render(
+    <Header
+      ov={overview()}
+      busy={false}
+      onResync={onResync}
+      onRefresh={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />,
+  );
   fireEvent.keyDown(document, { key: "r", metaKey: true });
   fireEvent.keyDown(document, { key: "r", ctrlKey: true });
   fireEvent.keyDown(document, { key: "r", altKey: true });
@@ -110,7 +149,13 @@ test("the 'r' key does nothing when an input is focused", () => {
   render(
     <div>
       <input aria-label="search" />
-      <Header ov={overview()} busy={false} onResync={onResync} onOpenSettings={vi.fn()} />
+      <Header
+        ov={overview()}
+        busy={false}
+        onResync={onResync}
+        onRefresh={vi.fn()}
+        onOpenSettings={vi.fn()}
+      />
     </div>,
   );
   screen.getByLabelText("search").focus();
@@ -119,7 +164,15 @@ test("the 'r' key does nothing when an input is focused", () => {
 });
 
 test("the sticky bar is full-bleed while its content is capped at 1400px", () => {
-  render(<Header ov={overview()} busy={false} onResync={vi.fn()} onOpenSettings={vi.fn()} />);
+  render(
+    <Header
+      ov={overview()}
+      busy={false}
+      onResync={vi.fn()}
+      onRefresh={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />,
+  );
   const header = screen.getByText("ARES BRAIN").closest("header")!;
   expect(header).not.toHaveClass("max-w-[1400px]");
   const inner = header.querySelector(":scope > div")!;
@@ -127,10 +180,47 @@ test("the sticky bar is full-bleed while its content is capped at 1400px", () =>
   expect(inner).toHaveClass("max-w-[1400px]");
 });
 
+test("renders the digest freshness text and a refresh button that calls onRefresh", () => {
+  const onRefresh = vi.fn();
+  render(
+    <Header
+      ov={overview()}
+      busy={false}
+      onResync={vi.fn()}
+      onRefresh={onRefresh}
+      onOpenSettings={vi.fn()}
+    />,
+  );
+  expect(screen.getByText(/^digest ·/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Refresh digest" }));
+  expect(onRefresh).toHaveBeenCalledTimes(1);
+});
+
+test("the refresh button is distinct from Re-sync", () => {
+  render(
+    <Header
+      ov={overview()}
+      busy={false}
+      onResync={vi.fn()}
+      onRefresh={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />,
+  );
+  expect(screen.getByRole("button", { name: "Refresh digest" })).not.toBe(
+    screen.getByRole("button", { name: "⟲ Re-sync" }),
+  );
+});
+
 test("clicking the gear opens Settings", () => {
   const onOpenSettings = vi.fn();
   render(
-    <Header ov={overview()} busy={false} onResync={vi.fn()} onOpenSettings={onOpenSettings} />,
+    <Header
+      ov={overview()}
+      busy={false}
+      onResync={vi.fn()}
+      onRefresh={vi.fn()}
+      onOpenSettings={onOpenSettings}
+    />,
   );
   fireEvent.click(screen.getByRole("button", { name: "Settings" }));
   expect(onOpenSettings).toHaveBeenCalledTimes(1);

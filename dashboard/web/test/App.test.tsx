@@ -119,6 +119,29 @@ test("an attendance-stale-only state still shows a nonzero Gaps badge", async ()
   expect(await screen.findByRole("button", { name: /Gaps/ })).toHaveTextContent("1");
 });
 
+test("the overview is re-polled every 20s", async () => {
+  vi.useFakeTimers();
+  try {
+    vi.mocked(api.getOverview).mockResolvedValue(overview());
+    render(<App />);
+    await vi.waitFor(() => expect(api.getOverview).toHaveBeenCalled());
+    const before = vi.mocked(api.getOverview).mock.calls.length;
+    await vi.advanceTimersByTimeAsync(20_000);
+    expect(vi.mocked(api.getOverview).mock.calls.length).toBeGreaterThan(before);
+    expect(vi.mocked(api.getOverview)).toHaveBeenLastCalledWith(false);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test("the manual refresh control fetches a fresh overview", async () => {
+  vi.mocked(api.getOverview).mockResolvedValue(overview());
+  render(<App />);
+  await screen.findByText("ARES BRAIN");
+  fireEvent.click(screen.getByRole("button", { name: "Refresh digest" }));
+  await waitFor(() => expect(api.getOverview).toHaveBeenLastCalledWith(true));
+});
+
 test("a later refresh failing after a good load shows a non-blocking stale banner, not the full-page error", async () => {
   vi.mocked(api.getOverview).mockResolvedValueOnce(overview());
   vi.mocked(api.getOverview).mockRejectedValueOnce(new Error("overview 503"));

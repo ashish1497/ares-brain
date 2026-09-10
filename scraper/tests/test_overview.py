@@ -194,8 +194,75 @@ def test_attendance_block(corpus):
 def test_brain_state(corpus):
     o = overview.build_overview(now=NOW)
     st = {b["courseSlug"]: b["state"] for b in o["brain"]}
-    assert st["comm"] == "stale"        # 2 pending transcripts (rec-b, rec-c)
-    assert st["sell"] == "not-built"    # no brain/_brain.json
+    # build_overview indexes the corpus as a side effect — both courses end up
+    # indexed & queryable, so both are "ready" (the honest bar). GUIDE freshness
+    # and pending transcripts are soft flags now, not state downgrades.
+    assert st["comm"] == "ready"
+    assert st["sell"] == "ready"
+    comm = next(b for b in o["brain"] if b["courseSlug"] == "comm")
+    assert comm["guideState"] == "current"      # guideBuiltAt set, 0 behind
+    assert comm["pendingTranscripts"] == 2      # soft note, no longer downgrades state
+    sell = next(b for b in o["brain"] if b["courseSlug"] == "sell")
+    assert sell["guideState"] == "missing"      # no GUIDE yet, still "ready"
+    assert o["kpis"]["brainReady"] == 2
+
+
+def _patch_status(monkeypatch, by_slug):
+    import brain as _b
+    base = dict(corpusBytes=4000, sourceCount=3, indexBuiltAt="2026-09-01T00:00:00Z",
+                indexStale=False, guideBuiltAt="2026-09-01T00:00:00Z",
+                guideSourcesBehind=0, embeddingsRecommended=False, studyArtifacts=0)
+    monkeypatch.setattr(_b, "brain_status",
+                        lambda s: {**base, **by_slug.get(s, {})})
+
+
+def test_brain_ready_when_index_current_even_if_guide_behind(corpus, monkeypatch):
+    _patch_status(monkeypatch, {"comm": {"guideSourcesBehind": 7},
+                                "sell": {"indexStale": True}})
+    o = overview.build_overview(now=NOW)
+    b = {x["courseSlug"]: x for x in o["brain"]}
+    assert b["comm"]["state"] == "ready"
+    assert b["comm"]["guideState"] == "behind"
+    assert b["sell"]["state"] == "stale"
+    assert b["sell"]["guideState"] == "current"
+    assert o["kpis"]["brainReady"] == 1          # comm counts, sell does not
+
+
+def test_brain_guide_missing_but_corpus_present_is_ready(corpus, monkeypatch):
+    _patch_status(monkeypatch, {"comm": {"guideBuiltAt": None},
+                                "sell": {"guideBuiltAt": None}})
+    o = overview.build_overview(now=NOW)
+    b = {x["courseSlug"]: x for x in o["brain"]}
+    assert b["comm"]["state"] == "ready"
+    assert b["comm"]["guideState"] == "missing"
+    assert o["kpis"]["brainReady"] == 2
+
+
+def test_brain_not_built_when_no_corpus_or_no_index(corpus, monkeypatch):
+    _patch_status(monkeypatch, {"comm": {"corpusBytes": 0},
+                                "sell": {"indexBuiltAt": None}})
+    o = overview.build_overview(now=NOW)
+    st = {x["courseSlug"]: x["state"] for x in o["brain"]}
+    assert st["comm"] == "not-built" and st["sell"] == "not-built"
+
+
+def test_write_cache_writes_valid_json(corpus):
+    from paths import global_file
+    overview.write_cache(now=NOW)
+    p = global_file("_overview.json")
+    assert p.exists()
+    data = json.loads(p.read_text())
+    for k in ("generatedAt", "kpis", "brain", "gaps", "assignments"):
+        assert k in data
+    # a second call overwrites cleanly
+    overview.write_cache(now=NOW)
+    assert json.loads(global_file("_overview.json").read_text())["kpis"]
+
+
+def test_write_cache_never_raises(monkeypatch):
+    monkeypatch.setattr(overview, "build_overview",
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
+    overview.write_cache()   # must not raise
 
 
 def test_gaps_pending_transcripts(corpus):

@@ -2,6 +2,7 @@
 week, assignment risk, exams, attendance runway, brain readiness, gaps. Pure —
 reads courses/ off disk, no LMS auth, no LLM. Mirrors daily_brief.py."""
 import html as _htmllib
+import json
 import os
 import re
 import sys
@@ -472,23 +473,33 @@ def build_overview(now: datetime | None = None) -> dict:
         pend = _safe(lambda s=s: _pending_transcripts(s), {"count": 0, "items": []})
         guide_built = bs.get("guideBuiltAt")
         behind = bs.get("guideSourcesBehind") or 0
-        if guide_built is None:
+        # State keys off the index only \u2014 an indexed, current corpus is "ready" and
+        # queryable. GUIDE staleness and pending transcripts are soft notes, not
+        # state-downgrading (they used to re-lock chat on every ingest).
+        if not bs.get("corpusBytes") or bs.get("indexBuiltAt") is None:
             state = "not-built"
-        elif bs.get("indexStale") or behind or pend["count"]:
+        elif bs.get("indexStale"):
             state = "stale"
         else:
             state = "ready"
         if state == "ready":
             ready_ct += 1
+        if guide_built is None:
+            guide_state = "missing"
+        elif behind:
+            guide_state = "behind"
+        else:
+            guide_state = "current"
         reasons = []
         if pend["count"]:
             reasons.append(f"{pend['count']} recordings to transcribe")
         if behind:
             reasons.append(f"guide {behind} sources behind")
         if guide_built is None:
-            reasons = ["guide never built"]
+            reasons = ["guide never built"] + reasons
         brain_rows.append({
             "course": name, "courseSlug": s, "state": state,
+            "guideState": guide_state,
             "corpusBytes": bs.get("corpusBytes"), "sourceCount": bs.get("sourceCount"),
             "indexStale": bs.get("indexStale"), "guideBuiltAt": guide_built,
             "guideSourcesBehind": behind, "pendingTranscripts": pend["count"],
@@ -650,3 +661,20 @@ def build_overview(now: datetime | None = None) -> dict:
             "attendanceStale": _att_stale(),
         },
     }
+
+
+def write_cache(now: datetime | None = None) -> None:
+    """Atomically refresh ``courses/_overview.json`` from ``build_overview``.
+
+    Best-effort: any failure is logged to stderr and swallowed so a job that
+    calls this never fails on the cache write. ``build_overview`` stays pure.
+    """
+    try:
+        data = build_overview(now)
+        dest = global_file("_overview.json")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        tmp = dest.with_name(f"{dest.name}.{os.getpid()}.tmp")
+        tmp.write_text(json.dumps(data))
+        os.replace(tmp, dest)
+    except Exception as exc:  # noqa: BLE001
+        print(f"overview: write_cache failed: {exc}", file=sys.stderr)

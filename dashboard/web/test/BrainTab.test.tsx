@@ -194,6 +194,50 @@ test("a single-part reasonParts renders unchanged as a single item", () => {
   expect(screen.getByText("up to date")).toBeInTheDocument();
 });
 
+test("a ready row whose guide is behind shows a soft rebuild note, not a downgraded pill", () => {
+  render(
+    <BrainTab
+      {...baseProps({
+        brain: [
+          brain({
+            course: "Behind",
+            courseSlug: "bh1",
+            state: "ready",
+            guideState: "behind",
+            guideSourcesBehind: 7,
+          }),
+        ],
+      })}
+    />,
+  );
+  expect(screen.getByText(/guide 7 sources behind — rebuild/)).toBeInTheDocument();
+  expect(screen.getByText("ready")).toBeInTheDocument();
+});
+
+test("a ready row with no guide shows 'no guide yet'", () => {
+  render(
+    <BrainTab
+      {...baseProps({
+        brain: [
+          brain({ course: "NoGuide", courseSlug: "ng1", state: "ready", guideState: "missing" }),
+        ],
+      })}
+    />,
+  );
+  expect(screen.getByText("no guide yet")).toBeInTheDocument();
+});
+
+test("a current-guide row shows no soft note", () => {
+  render(
+    <BrainTab
+      {...baseProps({
+        brain: [brain({ course: "OK", courseSlug: "ok1", state: "ready", guideState: "current" })],
+      })}
+    />,
+  );
+  expect(screen.queryByText(/no guide yet|sources behind — rebuild/)).not.toBeInTheDocument();
+});
+
 test("the State column header carries an InfoTip with the exact copy", () => {
   render(<BrainTab {...baseProps({ brain: [brain({ course: "C", courseSlug: "c" })] })} />);
   const stateHeader = screen.getByRole("columnheader", { name: /^State/ });
