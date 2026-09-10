@@ -128,11 +128,13 @@ def run(argv: list[str]) -> dict | None:
     t = sub.add_parser("transcribe")
     t.add_argument("--course")
     t.add_argument("--inbox", action="store_true")
+    t.add_argument("--engine", choices=["whisper", "gemini"], default="whisper")
     t.add_argument("--json", action="store_true")
     tu = sub.add_parser("transcribe-url")
     tu.add_argument("--course", required=True)
     tu.add_argument("--url", required=True)
     tu.add_argument("--title")
+    tu.add_argument("--engine", choices=["whisper", "gemini"], default="whisper")
     tu.add_argument("--json", action="store_true")
     i = sub.add_parser("ingest")
     i.add_argument("--course")
@@ -192,12 +194,14 @@ def run(argv: list[str]) -> dict | None:
         import transcribe as _t
         _idx_file = scrape_steps.global_file("_index.json")
         index = json.loads(_idx_file.read_text()) if _idx_file.exists() else []
-        result = _t.step_transcribe(index, args.course, inbox_only=args.inbox)
+        result = _t.step_transcribe(index, args.course, inbox_only=args.inbox,
+                                    engine=args.engine)
         print(json.dumps(result) if args.json else json.dumps(result, indent=1))
         return result
     if args.cmd == "transcribe-url":
         import transcribe as _t
-        result = _t.transcribe_url(args.course, args.url, args.title)
+        result = _t.transcribe_url(args.course, args.url, args.title,
+                                   engine=args.engine)
         print(json.dumps(result) if args.json else json.dumps(result, indent=1))
         return result
     if args.cmd == "ingest":

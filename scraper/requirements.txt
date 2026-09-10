@@ -8,6 +8,7 @@ openpyxl>=3.1.5
 markdownify>=0.13.1
 yt-dlp>=2024.8.6
 faster-whisper>=1.0.3
+google-genai>=1.0.0
 pyyaml>=6.0
 google-api-python-client>=2.100.0
 google-auth>=2.30.0

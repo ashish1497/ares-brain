@@ -348,7 +348,7 @@ def test_cli_transcribe_inbox_without_index(home, monkeypatch):
     importlib.reload(paths); importlib.reload(transcribe)
     monkeypatch.setattr(
         transcribe, "step_transcribe",
-        lambda index, course, inbox_only: {"transcribed": [], "skipped": [], "failed": []})
+        lambda index, course, inbox_only, engine="whisper": {"transcribed": [], "skipped": [], "failed": []})
     import lms_scrape
     result = lms_scrape.run(["transcribe", "--inbox", "--json"])
     assert result == {"transcribed": [], "skipped": [], "failed": []}
