@@ -90,6 +90,20 @@ describe("routes", () => {
     expect(res.status).toBe(403);
   });
 
+  it("GET /api/daily-brief returns date + morning/evening (null when unwritten)", async () => {
+    const res = await fetch(`${base}/api/daily-brief`);
+    expect(res.status).toBe(200);
+    const j = await res.json();
+    expect(j).toHaveProperty("date");
+    expect(j).toHaveProperty("morning");
+    expect(j).toHaveProperty("evening");
+  });
+
+  it("rejects GET /api/daily-brief with a foreign Host", async () => {
+    const res = await raw("/api/daily-brief", { headers: { host: "evil.example" } });
+    expect(res.status).toBe(403);
+  });
+
   it("rejects GET /api/state with a foreign Host", async () => {
     const res = await raw("/api/state", { headers: { host: "evil.example" } });
     expect(res.status).toBe(403);

@@ -49,10 +49,19 @@ Structure:
 
 > ⚠️ <only if step 1/2 failed or brief.scrapeStale> — one line, what to run by hand.
 
+## Missed
+- **<title>** — <course> — was due <relative, e.g. "6h ago"> — not submitted   ← from brief.overdue
+_(section omitted entirely when brief.overdue is empty)_
+
 ## Today's classes
 - **HH:MM–HH:MM** <course> — <room> (<instructor>)
   - pre-read: [<title>](courses/<courseSlug>/<prereadPath>)
   - _no pre-reads found_        ← when prereadPaths is empty
+  - **Mindset:** <1–2 sentences, specific to THIS class — what today's session/topic
+    is, what the pre-read sets up, and one concrete thing to walk in ready to do
+    (a question to ask, a point to bring up, a concept to have skimmed). Never a
+    generic "stay focused" line — ground it in the actual session title / pre-read
+    content you just read.
 _no classes today_             ← when classesToday is empty
 
 ## Due soon
@@ -63,15 +72,22 @@ _nothing due in the next 72h_  ← when empty
 - <course>: <n> materials, <m> announcements   ← from brief.changed
 _nothing new since the last scrape_            ← when brief.changed is empty
 
-## Mindset
-<2–4 sentences. Grounded in TODAY: how many classes, whether an exam is within a
-week, the nearest deadline, what changed. Calm and specific — the register of the
-"Power of Communication" course, not hype. No generic affirmations.>
+## Today, overall
+<1–2 sentences. Day-level framing only — total load, whether an exam is within a
+week, the nearest deadline. Per-class thinking already happened above; don't repeat
+it here. Calm and specific — the register of the "Power of Communication" course,
+not hype. No generic affirmations.>
 ```
+
+Each class's Mindset line is the point of this section — it is what makes the
+brief worth more than the raw schedule. If a class has no pre-read and no
+session-title signal, say plainly there's not enough to ground a mindset line on
+rather than inventing one.
 
 ## 5. Notify
 
 Run: `osascript -e 'display notification "<summary>" with title "Mesa — morning brief"'`
 
 `<summary>` = `<N> classes · <M> due soon · <K> changes`
-(prefix `scrape failed — ` when step 1 failed). Keep it under ~100 chars.
+(prefix `<P> missed · ` when brief.overdue is non-empty; prefix `scrape failed — `
+when step 1 failed). Keep it under ~100 chars.

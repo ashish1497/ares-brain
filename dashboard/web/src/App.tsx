@@ -14,6 +14,7 @@ import { AttendanceTab } from "./components/AttendanceTab";
 import { ExamsTab } from "./components/ExamsTab";
 import { BrainTab } from "./components/BrainTab";
 import { GapsTab } from "./components/GapsTab";
+import { OutreachAgentPage } from "./components/outreach/OutreachAgentPage";
 
 const TAB_IDS = ["today", "assignments", "attendance", "exams", "brain", "gaps"];
 
@@ -52,6 +53,10 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const stop = useRef<(() => void) | undefined>(undefined);
   const { tab, params, go } = useHashRoute();
+
+  // A genuinely separate page — not one of the six dashboard tabs, and not
+  // gated on the overview load (it needs none of that data).
+  if (tab === "outreach-agent") return <OutreachAgentPage go={go} />;
 
   const refresh = (fresh = false) =>
     getOverview(fresh)
@@ -139,6 +144,7 @@ export function App() {
         onResync={() => onJob("sync")}
         onRefresh={() => refresh(true)}
         onOpenSettings={() => setSettingsOpen(true)}
+        onOutreach={() => go("outreach-agent")}
       />
       <Tabs active={active} counts={counts} onSelect={(t) => go(t)} />
       <div className="mx-auto max-w-[1400px] px-4 pb-8 md:px-8">

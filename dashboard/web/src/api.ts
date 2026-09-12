@@ -238,6 +238,18 @@ export const getOverview = (fresh = false): Promise<Overview> =>
     return r.json();
   });
 
+export interface DailyBrief {
+  date: string;
+  morning: string | null;
+  evening: string | null;
+}
+
+export const getDailyBrief = (): Promise<DailyBrief> =>
+  fetch("/api/daily-brief").then((r) => {
+    if (!r.ok) throw new Error(`daily-brief ${r.status}`);
+    return r.json();
+  });
+
 export async function startJob(body: {
   kind: string;
   course?: string;
@@ -269,6 +281,86 @@ export async function upload(
   });
   return r.json();
 }
+
+// ---------------------------------------------------------------------------
+// Outreach agent — Art of Selling. Five independently regenerable sections;
+// no "personalization pack" object, each section is its own piece of state.
+// ---------------------------------------------------------------------------
+
+export type OutreachSection = "icp" | "industry" | "company" | "people" | "outreach";
+export const OUTREACH_SECTION_ORDER: OutreachSection[] = [
+  "icp",
+  "industry",
+  "company",
+  "people",
+  "outreach",
+];
+
+export type VerifiableSection = "company" | "people";
+
+export interface OutreachState {
+  myCompany: string;
+  whatIDo: string;
+  targetAccount: string | null;
+  sections: Record<OutreachSection, Record<string, unknown> | null>;
+  edited: Record<OutreachSection, boolean>;
+  verification: Partial<Record<OutreachSection, Record<string, unknown> | null>>;
+  doNotUse: string[];
+}
+
+async function outreachPost<T>(path: string, body: unknown): Promise<T> {
+  const r = await fetch(path, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || `request failed (${r.status})`);
+  return data as T;
+}
+
+export const startOutreachSession = (myCompany: string, whatIDo: string) =>
+  outreachPost<{ sessionId: string; state: OutreachState }>("/api/outreach/session", {
+    myCompany,
+    whatIDo,
+  });
+
+export const updateOutreachCompanyInfo = (sessionId: string, myCompany: string, whatIDo: string) =>
+  outreachPost<{ state: OutreachState }>("/api/outreach/company-info", {
+    sessionId,
+    myCompany,
+    whatIDo,
+  });
+
+export const setOutreachTarget = (sessionId: string, targetAccount: string) =>
+  outreachPost<{ state: OutreachState }>("/api/outreach/target", { sessionId, targetAccount });
+
+export const editOutreachSection = (
+  sessionId: string,
+  section: OutreachSection,
+  content: Record<string, unknown>,
+) => outreachPost<{ state: OutreachState }>("/api/outreach/edit", { sessionId, section, content });
+
+export const runOutreachSection = (sessionId: string, section: OutreachSection) =>
+  outreachPost<{
+    section: OutreachSection;
+    content: Record<string, unknown>;
+    state: OutreachState;
+  }>(`/api/outreach/run/${section}`, { sessionId });
+
+export const verifyOutreachSection = (sessionId: string, section: VerifiableSection) =>
+  outreachPost<{
+    section: OutreachSection;
+    result: Record<string, unknown>;
+    state: OutreachState;
+  }>(`/api/outreach/verify/${section}`, { sessionId });
+
+export const verifyOutreachMessages = (sessionId: string) =>
+  outreachPost<{
+    section: OutreachSection;
+    result: Record<string, unknown>;
+    state: OutreachState;
+  }>("/api/outreach/verify-messages", { sessionId });
 
 export function streamLog(
   jobId: string,

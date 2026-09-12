@@ -15,6 +15,13 @@ describe("daily_brief tool", () => {
       "12",
     ]);
   });
+  it("passes includeTomorrow", async () => {
+    const { buildDailyBriefArgs } = await import("../src/tools/daily_brief.js");
+    expect(buildDailyBriefArgs({ includeTomorrow: true })).toEqual([
+      "daily-brief",
+      "--include-tomorrow",
+    ]);
+  });
   it("surfaces sidecar-missing", async () => {
     process.env.CA_FAKE_NO_VENV = "1";
     const { dailyBriefTool } = await import("../src/tools/daily_brief.js");

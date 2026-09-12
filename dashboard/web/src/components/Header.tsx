@@ -34,12 +34,14 @@ export function Header({
   onResync,
   onRefresh,
   onOpenSettings,
+  onOutreach = () => {},
 }: {
   ov: Overview;
   busy: boolean;
   onResync: () => void;
   onRefresh: () => void;
   onOpenSettings: () => void;
+  onOutreach?: () => void;
 }) {
   const { kpis } = ov;
 
@@ -95,6 +97,9 @@ export function Header({
           </Button>
           <Button type="button" variant="default" disabled={busy} onClick={onResync}>
             {busy ? "syncing…" : "⟲ Re-sync"}
+          </Button>
+          <Button type="button" variant="neutral" size="sm" onClick={onOutreach}>
+            Outreach agent
           </Button>
           <Button
             type="button"
