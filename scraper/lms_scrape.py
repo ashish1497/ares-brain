@@ -185,6 +185,7 @@ def run(argv: list[str]) -> dict | None:
     db.add_argument("--json", action="store_true")
     db.add_argument("--within-hours", type=int, default=72)
     db.add_argument("--changed-since-hours", type=int, default=26)
+    db.add_argument("--include-tomorrow", action="store_true")
     ov = sub.add_parser("overview")
     ov.add_argument("--json", action="store_true")
     cs = sub.add_parser("calendar-sync")
@@ -288,7 +289,8 @@ def run(argv: list[str]) -> dict | None:
     if args.cmd == "daily-brief":
         import daily_brief as _db
         result = _db.build_daily_brief(within_hours=args.within_hours,
-                                       changed_since_hours=args.changed_since_hours)
+                                       changed_since_hours=args.changed_since_hours,
+                                       include_tomorrow=args.include_tomorrow)
         print(json.dumps(result) if args.json else json.dumps(result, indent=1))
         return result
     if args.cmd == "overview":

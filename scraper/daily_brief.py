@@ -45,7 +45,7 @@ def _local_date(dt: datetime) -> str:
     return dt.astimezone().strftime("%Y-%m-%d")
 
 
-def _prereads_for(slug, event, now, today) -> list[str]:
+def _prereads_for(slug, event, now, target_date) -> list[str]:
     """Pre-read paths for a class: session-matched normalized material, falling
     back to brain.next_session. Never raises."""
     try:
@@ -57,7 +57,7 @@ def _prereads_for(slug, event, now, today) -> list[str]:
             if paths:
                 return paths
         ns = brain.next_session(slug, now=now)
-        if ns and ns.get("startAt") and _local_date(_parse(ns["startAt"]) or now) == today:
+        if ns and ns.get("startAt") and _local_date(_parse(ns["startAt"]) or now) == target_date:
             return ns.get("prereadPaths") or []
     except Exception as exc:
         print(f"daily_brief: prereads for {slug} failed: {exc}", file=sys.stderr)
@@ -65,12 +65,12 @@ def _prereads_for(slug, event, now, today) -> list[str]:
     return []
 
 
-def _classes_today(now: datetime) -> list[dict]:
+def _classes_on(now: datetime, target_date: str) -> list[dict]:
+    """Sessions/events whose local date == target_date (an '%Y-%m-%d' string)."""
     raw = _read_json(global_file("_events.json"))
     ev = raw.get("events") if isinstance(raw, dict) else []
     if not isinstance(ev, list):
         ev = []
-    today = _local_date(now)
     rows = []
     for e in ev:
         if not isinstance(e, dict):
@@ -78,7 +78,7 @@ def _classes_today(now: datetime) -> list[dict]:
         if e.get("eventType") not in ("session", "event"):
             continue
         start = _parse(e.get("startAt"))
-        if start is None or _local_date(start) != today:
+        if start is None or _local_date(start) != target_date:
             continue
         rows.append((start, e))
     rows.sort(key=lambda t: t[0])
@@ -86,7 +86,7 @@ def _classes_today(now: datetime) -> list[dict]:
     out = []
     for start, e in rows:
         slug = e.get("courseSlug")
-        prereads = _prereads_for(slug, e, now, today) if slug else []
+        prereads = _prereads_for(slug, e, now, target_date) if slug else []
         end = _parse(e.get("endAt"))
         out.append({
             "start": start.astimezone().isoformat(),
@@ -151,6 +151,29 @@ def _assignments_due(now: datetime, within_hours: int) -> list[dict]:
     return out
 
 
+def _overdue(now: datetime, lookback_hours: int) -> list[dict]:
+    """Unsubmitted assignments whose dueAt already passed, within the lookback
+    window — things the user is at risk of having missed."""
+    floor = now - timedelta(hours=lookback_hours)
+    out = []
+    for a, course, is_club in _iter_assignment_files():
+        due = _parse(a.get("dueAt"))
+        if due is None or not (floor <= due < now):
+            continue
+        if a.get("mySubmissionStatus") == "submitted":
+            continue
+        out.append({
+            "id": a.get("id"),
+            "title": a.get("title") or a.get("id"),
+            "course": course,
+            "dueAt": due.astimezone().isoformat(),
+            "hoursAgo": round((now - due).total_seconds() / 3600, 1),
+            "isClub": is_club,
+        })
+    out.sort(key=lambda x: x["hoursAgo"])
+    return out
+
+
 def _changed(now: datetime, since_hours: int) -> dict:
     cutoff = now - timedelta(hours=since_hours)
     root = courses_root()
@@ -184,9 +207,15 @@ def _changed(now: datetime, since_hours: int) -> dict:
     return out
 
 
+# How far back an unsubmitted, already-due assignment still counts as "missed"
+# rather than ancient history.
+_OVERDUE_LOOKBACK_HOURS = 48
+
+
 def build_daily_brief(now: datetime | None = None, *, within_hours: int = 72,
-                      changed_since_hours: int = 26) -> dict:
+                      changed_since_hours: int = 26, include_tomorrow: bool = False) -> dict:
     now = now or datetime.now(timezone.utc)
+    today = _local_date(now)
     ev_path = global_file("_events.json")
     stale = True
     if ev_path.exists():
@@ -197,12 +226,17 @@ def build_daily_brief(now: datetime | None = None, *, within_hours: int = 72,
         except Exception as exc:
             print(f"daily_brief: {getattr(fn, '__name__', fn)} failed: {exc}", file=sys.stderr)
             return empty
-    return {
-        "date": _local_date(now),
+    result = {
+        "date": today,
         "generatedAt": now.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "classesToday": _safe(lambda: _classes_today(now), []),
+        "classesToday": _safe(lambda: _classes_on(now, today), []),
         "assignmentsDue": _safe(lambda: _assignments_due(now, within_hours), []),
+        "overdue": _safe(lambda: _overdue(now, _OVERDUE_LOOKBACK_HOURS), []),
         "changed": _safe(lambda: _changed(now, changed_since_hours), {}),
         "changedSinceHours": changed_since_hours,
         "scrapeStale": stale,
     }
+    if include_tomorrow:
+        tomorrow = _local_date(now + timedelta(hours=24))
+        result["classesTomorrow"] = _safe(lambda: _classes_on(now, tomorrow), [])
+    return result

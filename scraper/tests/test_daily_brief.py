@@ -45,6 +45,33 @@ def test_assignments_due_window(corpus):
     assert 0 < by["Essay 1"]["hoursAway"] <= 72
 
 
+def test_overdue_window(corpus):
+    b = daily_brief.build_daily_brief(now=NOW)
+    titles = {a["title"] for a in b["overdue"]}
+    assert titles == {"Reading Quiz"}          # 4h ago, unsubmitted; Old Worksheet (125h ago) too old
+    hit = b["overdue"][0]
+    assert hit["hoursAgo"] == 4.0
+
+
+def test_overdue_excludes_submitted(corpus):
+    (corpus / "courses" / "ai-course" / "raw" / "assignments.json").write_text(json.dumps([
+        {"id": "a-overdue", "courseName": "AI Course", "title": "Reading Quiz",
+         "dueAt": "2026-09-15T02:00:00.000Z", "submissionType": "any",
+         "mySubmissionStatus": "submitted"},
+    ]))
+    b = daily_brief.build_daily_brief(now=NOW)
+    assert b["overdue"] == []
+
+
+def test_classes_tomorrow_only_when_requested(corpus):
+    b = daily_brief.build_daily_brief(now=NOW)
+    assert "classesTomorrow" not in b
+    b2 = daily_brief.build_daily_brief(now=NOW, include_tomorrow=True)
+    ids = [c["course"] for c in b2["classesTomorrow"]]
+    assert ids == ["AI Course"]
+    assert b2["classesTomorrow"][0]["start"].startswith("2026-09-16")
+
+
 def test_changed_window(corpus):
     b = daily_brief.build_daily_brief(now=NOW, changed_since_hours=26)
     assert b["changed"] == {"ai-course": {"material": 1}}   # fresh counted, stale not
