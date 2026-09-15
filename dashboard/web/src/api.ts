@@ -232,6 +232,18 @@ const j = (r: Response) => r.json();
 export const getCourses = (): Promise<Course[]> => fetch("/api/courses").then(j);
 export const getState = (): Promise<State> => fetch("/api/state").then(j);
 
+/** Fire-and-forget: puts one line into the server's activity log, so a tab
+ * switch shows up in the same stream as requests/jobs/gate checks instead
+ * of only being visible on screen. Never throws — logging must not be able
+ * to break the UI action it's attached to. */
+export function clientLog(scope: string, message: string): void {
+  fetch("/api/client-log", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ scope, message }),
+  }).catch(() => {});
+}
+
 /** Thrown by getOverview (and any other gated call) when the server 503s
  * because the onboarding gate flipped back to incomplete — carries the
  * setup-state payload so the UI can show exactly what's pending instead of

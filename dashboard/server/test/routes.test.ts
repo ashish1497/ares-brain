@@ -116,6 +116,35 @@ describe("routes", () => {
     expect(res.status).toBe(403);
   });
 
+  it("POST /api/client-log accepts a scope+message and never errors", async () => {
+    const res = await fetch(`${base}/api/client-log`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ scope: "tab", message: "switched to chat" }),
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it("POST /api/client-log tolerates malformed JSON instead of 500ing", async () => {
+    const res = await fetch(`${base}/api/client-log`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "not json",
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it("POST /api/client-log is placed before the onboarding gate in the router, so logging still works before setup completes", async () => {
+    // No setup-state mocking needed here — client-log is matched before the
+    // gate check in handle(), so it never depends on runPythonJSON/probeClaudeCli.
+    const res = await fetch(`${base}/api/client-log`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ scope: "tab", message: "x" }),
+    });
+    expect(res.status).toBe(200);
+  });
+
   it("rejects GET /api/state with a foreign Host", async () => {
     const res = await raw("/api/state", { headers: { host: "evil.example" } });
     expect(res.status).toBe(403);

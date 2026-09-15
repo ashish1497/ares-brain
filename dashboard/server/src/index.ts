@@ -11,6 +11,7 @@ import { runPythonJSON } from "./lib/python.js";
 import { probeClaudeCli } from "./lib/claudeProbe.js";
 import { guardOrigin } from "./lib/origin.js";
 import { handleOutreachRoute } from "./lib/outreachRoutes.js";
+import { log } from "./lib/log.js";
 import {
   startJob,
   currentJob,
@@ -71,6 +72,7 @@ async function readBody(req: IncomingMessage): Promise<string> {
 }
 
 async function getSetupState() {
+  log("gate", "checking setup state (spawning python + claude probes)…");
   const py = await runPythonJSON(["setup-state", "--json"]);
   const base = py.ok
     ? (py.data as {
@@ -82,6 +84,10 @@ async function getSetupState() {
   const claudeCliLoggedIn = await probeClaudeCli();
   const ready =
     base.driveConnected && base.calendarConnected && base.mesaTokenPresent && claudeCliLoggedIn;
+  log(
+    "gate",
+    `drive=${base.driveConnected} calendar=${base.calendarConnected} mesaToken=${base.mesaTokenPresent} claudeCli=${claudeCliLoggedIn} -> ready=${ready}`,
+  );
   return { ...base, claudeCliLoggedIn, ready };
 }
 
@@ -100,7 +106,10 @@ async function gatedSetupState() {
   // probing anyway just contends with it for resources and can produce a
   // false-negative under load, flipping the gate closed mid-job. Fall back
   // to the last known state instead; only compute fresh once idle.
-  if (currentJob()?.status === "running" && gateCache) return gateCache.state;
+  if (currentJob()?.status === "running" && gateCache) {
+    log("gate", "skipping re-probe — a job is already running, reusing last known state");
+    return gateCache.state;
+  }
   const state = await getSetupState();
   gateCache = { state, at: Date.now() };
   return state;
@@ -130,6 +139,16 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     // cached ready:false on the next /api/* call (up to GATE_CACHE_MS later).
     gateCache = { state, at: Date.now() };
     return json(res, 200, state);
+  }
+
+  if (match("POST", "/api/client-log", method, url)) {
+    try {
+      const b = JSON.parse(await readBody(req));
+      log(String(b.scope || "web"), String(b.message || ""));
+    } catch {
+      /* best-effort — a malformed log call is never worth a 400 */
+    }
+    return json(res, 200, { ok: true });
   }
 
   // Gate: every other /api/* route requires setup to be complete.
@@ -283,6 +302,11 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
 
 export function createServer() {
   return httpCreate((req, res) => {
+    const start = Date.now();
+    const { method, url } = req;
+    res.on("finish", () => {
+      log("http", `${method} ${url} -> ${res.statusCode} (${Date.now() - start}ms)`);
+    });
     handle(req, res).catch((e) => {
       if (!res.headersSent) json(res, 500, { error: String(e) });
       else res.end();

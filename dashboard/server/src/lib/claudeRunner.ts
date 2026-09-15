@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { repoRoot } from "./repo.js";
+import { log } from "./log.js";
 
 // Mirrors the daily/evening launchd jobs' proven --allowedTools pattern (see
 // commands/ares-brain-daily-setup.md's plist ProgramArguments) as closely as
@@ -30,11 +31,13 @@ export function runClaude(
   message: string,
   onLine: (line: string) => void,
 ): { done: Promise<{ code: number }>; kill: () => void } {
+  log("claude", `spawning: claude -p "${message.slice(0, 80)}"`);
   const child = spawn(
     "claude",
     ["-p", message, "--permission-mode", "acceptEdits", "--allowedTools", ALLOWED_TOOLS],
     { cwd: repoRoot(), env: { ...process.env } },
   );
+  const startedMs = Date.now();
   let buf = "";
   const pump = (chunk: Buffer) => {
     buf += chunk.toString("utf8");
@@ -46,13 +49,16 @@ export function runClaude(
   child.stderr.on("data", pump);
   const done = new Promise<{ code: number }>((res) => {
     child.on("error", (e) => {
+      log("claude", `pid=${child.pid} spawn error: ${e}`);
       onLine(`spawn error: ${e}`);
       res({ code: 1 });
     });
     child.on("close", (code) => {
+      log("claude", `pid=${child.pid} exited code=${code} (${Date.now() - startedMs}ms)`);
       if (buf) onLine(buf);
       res({ code: code ?? 0 });
     });
   });
+  log("claude", `spawned pid=${child.pid}`);
   return { done, kill: () => child.kill("SIGTERM") };
 }

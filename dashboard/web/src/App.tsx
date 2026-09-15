@@ -157,7 +157,14 @@ export function App() {
         onOpenSettings={() => setSettingsOpen(true)}
         onOutreach={() => go("outreach-agent")}
       />
-      <Tabs active={active} counts={counts} onSelect={(t) => go(t)} />
+      <Tabs
+        active={active}
+        counts={counts}
+        onSelect={(t) => {
+          api.clientLog("tab", `switched to ${t}`);
+          go(t);
+        }}
+      />
       <div className="mx-auto max-w-[1400px] px-4 pb-8 md:px-8">
         {err && ov && <StaleBanner onRetry={refresh} />}
         <main className="py-6">

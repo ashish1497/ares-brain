@@ -2,6 +2,7 @@ import { EventEmitter } from "node:events";
 import { randomUUID } from "node:crypto";
 import { runPython } from "./python.js";
 import { runClaude } from "./claudeRunner.js";
+import { log } from "./log.js";
 
 export class BusyError extends Error {}
 
@@ -93,6 +94,15 @@ export function startJob(o: StartOpts): Job {
     log: [],
   };
   current = job;
+  const detail =
+    o.kind === "chat"
+      ? `"${(o.message ?? "").slice(0, 80)}"`
+      : o.course
+        ? `course=${o.course}`
+        : o.url
+          ? `url=${o.url}`
+          : "";
+  log("job", `start ${job.id} kind=${job.kind}${detail ? " " + detail : ""}`);
   const push = (l: string) => {
     job.log.push(l);
     if (job.log.length > LOG_CAP) job.log.splice(0, job.log.length - LOG_CAP);
@@ -100,11 +110,16 @@ export function startJob(o: StartOpts): Job {
   };
   const handle = o.kind === "chat" ? runClaude(o.message ?? "", push) : runPython(argv(o), push);
   kill = handle.kill;
+  const startedMs = Date.now();
   handle.done.then(({ code }) => {
     job.status = code === 0 ? "done" : "failed";
     job.exitCode = code;
     job.finishedAt = new Date().toISOString();
     lastRuns[job.kind] = { finishedAt: job.finishedAt, exitCode: code };
+    log(
+      "job",
+      `end ${job.id} kind=${job.kind} status=${job.status} exitCode=${code} (${Date.now() - startedMs}ms)`,
+    );
     bus.emit("end", job);
   });
   return job;
