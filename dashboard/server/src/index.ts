@@ -56,6 +56,19 @@ function courseAllowed(course: string): boolean {
   return slugs.length === 0 ? true : slugs.includes(course);
 }
 
+/** Reads config/course-drive-folders.json directly — a plain, small, checked-in
+ * file; not worth a python spawn just to read it. Returns {} on any read/parse
+ * failure (matches drive_sync.py's own _folders_config tolerance). */
+async function readDriveFolders(): Promise<Record<string, string>> {
+  try {
+    const raw = await readFile(join(repoRoot(), "config", "course-drive-folders.json"), "utf8");
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 function json(res: ServerResponse, code: number, body: unknown) {
   const s = JSON.stringify(body);
   res.writeHead(code, {
@@ -211,6 +224,107 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     if (bad) return json(res, 403, { error: bad });
     const date = new URL(url, "http://x").searchParams.get("date");
     return json(res, 200, await readDailyBrief(date));
+  }
+
+  if (match("GET", "/api/drive/folders", method, url)) {
+    const bad = guardOrigin(req);
+    if (bad) return json(res, 403, { error: bad });
+    return json(res, 200, await readDriveFolders());
+  }
+
+  if (match("POST", "/api/drive/register-folder", method, url)) {
+    const bad = guardOrigin(req);
+    if (bad) return json(res, 403, { error: bad });
+    let b: any;
+    try {
+      b = JSON.parse(await readBody(req));
+    } catch {
+      return json(res, 400, { error: "bad json" });
+    }
+    if (!courseAllowed(b.course)) return json(res, 400, { error: "unknown course" });
+    if (!String(b.folderId ?? "").trim()) return json(res, 400, { error: "folderId required" });
+    const r = await runPythonJSON([
+      "drive-register-folder",
+      "--course",
+      b.course,
+      "--folder-id",
+      String(b.folderId).trim(),
+      "--json",
+    ]);
+    return r.ok ? json(res, 200, r.data) : json(res, 503, { error: r.error });
+  }
+
+  const browseParams = match("GET", "/api/drive/browse", method, url);
+  if (browseParams) {
+    const bad = guardOrigin(req);
+    if (bad) return json(res, 403, { error: bad });
+    const course = new URL(url, "http://x").searchParams.get("course") ?? "";
+    if (!courseAllowed(course)) return json(res, 400, { error: "unknown course" });
+    const r = await runPythonJSON(["drive-browse", "--course", course, "--json"]);
+    return r.ok ? json(res, 200, r.data) : json(res, 503, { error: r.error });
+  }
+
+  if (match("GET", "/api/drive/access-token", method, url)) {
+    const bad = guardOrigin(req);
+    if (bad) return json(res, 403, { error: bad });
+    const r = await runPythonJSON(["drive-access-token", "--json"]);
+    return r.ok ? json(res, 200, r.data) : json(res, 503, { error: r.error });
+  }
+
+  if (match("GET", "/api/notes", method, url)) {
+    const bad = guardOrigin(req);
+    if (bad) return json(res, 403, { error: bad });
+    const course = new URL(url, "http://x").searchParams.get("course") ?? "";
+    if (!courseAllowed(course)) return json(res, 400, { error: "unknown course" });
+    const params = JSON.stringify({ course, type: "self-note", limit: 100 });
+    const r = await runPythonJSON(["brain-query", "--params", params, "--json"]);
+    return r.ok ? json(res, 200, r.data) : json(res, 503, { error: r.error });
+  }
+
+  if (match("GET", "/api/study", method, url)) {
+    const bad = guardOrigin(req);
+    if (bad) return json(res, 403, { error: bad });
+    const course = new URL(url, "http://x").searchParams.get("course") ?? "";
+    if (!courseAllowed(course)) return json(res, 400, { error: "unknown course" });
+    const r = await runPythonJSON(["list-study", "--course", course, "--json"]);
+    return r.ok ? json(res, 200, r.data) : json(res, 503, { error: r.error });
+  }
+
+  if (match("POST", "/api/drive/share-note", method, url)) {
+    const bad = guardOrigin(req);
+    if (bad) return json(res, 403, { error: bad });
+    let b: any;
+    try {
+      b = JSON.parse(await readBody(req));
+    } catch {
+      return json(res, 400, { error: "bad json" });
+    }
+    if (!courseAllowed(b.course)) return json(res, 400, { error: "unknown course" });
+    if (!String(b.path ?? "").trim()) return json(res, 400, { error: "path required" });
+    const r = await runPythonJSON(["share-note", "--course", b.course, "--path", b.path, "--json"]);
+    return r.ok ? json(res, 200, r.data) : json(res, 503, { error: r.error });
+  }
+
+  if (match("POST", "/api/drive/share-study", method, url)) {
+    const bad = guardOrigin(req);
+    if (bad) return json(res, 403, { error: bad });
+    let b: any;
+    try {
+      b = JSON.parse(await readBody(req));
+    } catch {
+      return json(res, 400, { error: "bad json" });
+    }
+    if (!courseAllowed(b.course)) return json(res, 400, { error: "unknown course" });
+    if (!String(b.name ?? "").trim()) return json(res, 400, { error: "name required" });
+    const r = await runPythonJSON([
+      "share-study",
+      "--course",
+      b.course,
+      "--name",
+      b.name,
+      "--json",
+    ]);
+    return r.ok ? json(res, 200, r.data) : json(res, 503, { error: r.error });
   }
 
   if (url.startsWith("/api/outreach/")) {

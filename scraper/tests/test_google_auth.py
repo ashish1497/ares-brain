@@ -29,3 +29,32 @@ def test_do_auth_missing_client_secret(monkeypatch, tmp_path):
     result = ga.do_auth()
     assert result["status"] == "error"
     assert "client_secret.json" in result["hint"]
+
+
+def test_access_token_none_without_token_file(monkeypatch, tmp_path):
+    monkeypatch.setenv("GOOGLE_TOKEN", str(tmp_path / "missing.json"))
+    assert ga.access_token() is None
+
+
+def test_access_token_returns_valid_creds_token(monkeypatch):
+    class FakeCreds:
+        valid = True
+        token = "abc123"
+
+    monkeypatch.setattr(ga, "_valid_creds", lambda: FakeCreds())
+    assert ga.access_token() == "abc123"
+
+
+def test_service_and_access_token_use_the_same_validity_check(monkeypatch):
+    """Both must go through _valid_creds — not drift into two different
+    notions of 'is this token usable'."""
+    calls = []
+
+    def fake_valid_creds():
+        calls.append(1)
+        return None
+
+    monkeypatch.setattr(ga, "_valid_creds", fake_valid_creds)
+    assert ga.service("drive", "v3") is None
+    assert ga.access_token() is None
+    assert len(calls) == 2

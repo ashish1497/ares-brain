@@ -147,3 +147,64 @@ def test_share_study_rejects_name_with_slash(home, monkeypatch):
                                   "--name", "sub/dir", "--json"])
     assert result["ok"] is False
     assert not mock_up.called
+
+
+def test_drive_access_token_returns_token(home):
+    with patch("google_auth.access_token", return_value="tok123"):
+        import lms_scrape
+        result = lms_scrape.run(["drive-access-token", "--json"])
+    assert result == {"token": "tok123"}
+
+
+def test_drive_access_token_none_when_not_connected(home):
+    with patch("google_auth.access_token", return_value=None):
+        import lms_scrape
+        result = lms_scrape.run(["drive-access-token", "--json"])
+    assert result == {"token": None}
+
+
+def test_drive_browse_rejects_bad_course(home):
+    import lms_scrape
+    result = lms_scrape.run(["drive-browse", "--course", "..", "--json"])
+    assert result["connected"] is False
+    assert "invalid course" in result["error"]
+
+
+def test_drive_browse_delegates_to_drive_sync(home):
+    fake = {"connected": True, "materials": [{"name": "x.md"}], "transcripts": [],
+            "guide": None, "notes": [], "testprep": []}
+    with patch("drive_sync.browse", return_value=fake) as mock_browse:
+        import lms_scrape
+        result = lms_scrape.run(["drive-browse", "--course", "ai-101", "--json"])
+    assert result == fake
+    mock_browse.assert_called_once_with("ai-101")
+
+
+def test_drive_register_folder_rejects_bad_course(home):
+    import lms_scrape
+    result = lms_scrape.run(["drive-register-folder", "--course", "..",
+                             "--folder-id", "F1", "--json"])
+    assert result == {"ok": False, "error": "invalid course: '..'"}
+
+
+def test_drive_register_folder_rejects_empty_id(home):
+    import lms_scrape
+    result = lms_scrape.run(["drive-register-folder", "--course", "ai-101",
+                             "--folder-id", "  ", "--json"])
+    assert result == {"ok": False, "error": "folder id required"}
+
+
+def test_drive_register_folder_writes_config(home):
+    with patch("drive_sync.register_folder", return_value={"ai-101": "F1"}) as mock_reg:
+        import lms_scrape
+        result = lms_scrape.run(["drive-register-folder", "--course", "ai-101",
+                                 "--folder-id", "F1", "--json"])
+    assert result == {"ok": True, "folders": {"ai-101": "F1"}}
+    mock_reg.assert_called_once_with("ai-101", "F1")
+
+
+def test_list_study_returns_items(home):
+    with patch("brain.list_study", return_value=[{"name": "testprep-1", "type": "testprep"}]):
+        import lms_scrape
+        result = lms_scrape.run(["list-study", "--course", "ai-101", "--json"])
+    assert result == {"items": [{"name": "testprep-1", "type": "testprep"}]}

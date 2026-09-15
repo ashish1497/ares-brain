@@ -32,6 +32,20 @@ def folder_id_for_course(slug: str) -> str | None:
     return _folders_config().get(slug)
 
 
+def register_folder(slug: str, folder_id: str) -> dict:
+    """Add/replace one course's Drive folder ID in the checked-in config.
+    This only writes the LOCAL copy of config/course-drive-folders.json —
+    propagating a newly registered folder to the rest of the cohort still
+    means committing and pushing it, the same as any other repo config
+    (no new distribution mechanism, per the spec's own non-goals)."""
+    p = _config_dir() / "course-drive-folders.json"
+    current = _folders_config()
+    current[slug] = folder_id
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(current, indent=2, sort_keys=True) + "\n")
+    return current
+
+
 def _drive_service():
     return google_auth.service("drive", "v3")
 
@@ -129,6 +143,56 @@ def list_shared_meta(slug: str, prefix: str, exclude_subfolder: str | None = Non
         return []
     metas = _list_shared_meta(svc, folder_id, prefix, exclude_subfolder)
     return [{"subfolder": m["subfolder"], "name": m["name"]} for m in metas]
+
+
+def browse(slug: str) -> dict:
+    """Everything shared for a course, for a dashboard listing — NOT the
+    same shape as list_shared (which downloads content for one prefix at a
+    time and only handles the notes/testprep <prefix>__<subfolder>__<name>
+    shape). materials/transcripts/guide are flat <prefix>__<name> files
+    with no subfolder segment, so they need their own parse here."""
+    out = {
+        "connected": False,
+        "materials": [],
+        "transcripts": [],
+        "guide": None,
+        "notes": [],
+        "testprep": [],
+    }
+    folder_id = folder_id_for_course(slug)
+    if not folder_id:
+        return out
+    out["connected"] = True
+    svc = _drive_service()
+    if svc is None:
+        out["error"] = "Drive not authorized"
+        return out
+    q = f"'{folder_id}' in parents and trashed = false"
+    resp = svc.files().list(q=q, fields="files(id, name, modifiedTime, webViewLink)").execute()
+    for f in resp.get("files") or []:
+        parts = f["name"].split("__")
+        if len(parts) < 2:
+            continue
+        prefix = parts[0]
+        row = {
+            "name": "__".join(parts[1:]),
+            "link": f.get("webViewLink"),
+            "modifiedTime": f.get("modifiedTime"),
+        }
+        if prefix == "materials":
+            out["materials"].append(row)
+        elif prefix == "transcripts":
+            out["transcripts"].append(row)
+        elif prefix == "guide":
+            out["guide"] = row
+        elif prefix in ("notes", "testprep") and len(parts) >= 3:
+            out[prefix].append({
+                "subfolder": parts[1],
+                "name": "__".join(parts[2:]),
+                "link": f.get("webViewLink"),
+                "modifiedTime": f.get("modifiedTime"),
+            })
+    return out
 
 
 def list_shared(slug: str, prefix: str, exclude_subfolder: str | None = None) -> list[dict]:

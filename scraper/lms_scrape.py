@@ -208,6 +208,18 @@ def run(argv: list[str]) -> dict | None:
     ss.add_argument("--course", required=True)
     ss.add_argument("--name", required=True)
     ss.add_argument("--json", action="store_true")
+    dat = sub.add_parser("drive-access-token")
+    dat.add_argument("--json", action="store_true")
+    db_ = sub.add_parser("drive-browse")
+    db_.add_argument("--course", required=True)
+    db_.add_argument("--json", action="store_true")
+    drf = sub.add_parser("drive-register-folder")
+    drf.add_argument("--course", required=True)
+    drf.add_argument("--folder-id", required=True, dest="folder_id")
+    drf.add_argument("--json", action="store_true")
+    lst = sub.add_parser("list-study")
+    lst.add_argument("--course", required=True)
+    lst.add_argument("--json", action="store_true")
     args = p.parse_args(argv)
 
     if args.cmd == "whoami":
@@ -388,6 +400,36 @@ def run(argv: list[str]) -> dict | None:
                 name = _si.my_name()
                 link = _ds.upload_shared(args.course, f"testprep/{name}/{local.name}", local)
                 result = {"ok": link is not None, "link": link}
+        print(json.dumps(result) if args.json else json.dumps(result, indent=1))
+        return result
+    if args.cmd == "drive-access-token":
+        import google_auth as _ga
+        token = _ga.access_token()
+        result = {"token": token}
+        print(json.dumps(result) if args.json else json.dumps(result, indent=1))
+        return result
+    if args.cmd == "drive-browse":
+        import drive_sync as _ds, brain as _b
+        if not _b._course_root_ok(args.course):
+            result = {"connected": False, "error": f"invalid course: {args.course!r}"}
+        else:
+            result = _ds.browse(args.course)
+        print(json.dumps(result) if args.json else json.dumps(result, indent=1))
+        return result
+    if args.cmd == "drive-register-folder":
+        import drive_sync as _ds, brain as _b
+        if not _b._course_root_ok(args.course):
+            result = {"ok": False, "error": f"invalid course: {args.course!r}"}
+        elif not args.folder_id.strip():
+            result = {"ok": False, "error": "folder id required"}
+        else:
+            folders = _ds.register_folder(args.course, args.folder_id.strip())
+            result = {"ok": True, "folders": folders}
+        print(json.dumps(result) if args.json else json.dumps(result, indent=1))
+        return result
+    if args.cmd == "list-study":
+        import brain as _b
+        result = {"items": _b.list_study(args.course)}
         print(json.dumps(result) if args.json else json.dumps(result, indent=1))
         return result
     summary = _run_all(args)

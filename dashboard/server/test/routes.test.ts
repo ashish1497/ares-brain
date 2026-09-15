@@ -19,10 +19,30 @@ vi.mock("../src/lib/claudeProbe.js", () => ({
 
 import { createServer } from "../src/index.js";
 import { startJob, _resetForTest } from "../src/lib/jobs.js";
+import { runPythonJSON } from "../src/lib/python.js";
 import { request as httpRequest, type Server } from "node:http";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { repoRoot } from "../src/lib/repo.js";
+
+const GATE_READY = {
+  ok: true as const,
+  data: { driveConnected: true, calendarConnected: true, mesaTokenPresent: true },
+};
+
+/** Reconfigures the runPythonJSON mock so `setup-state` (the gate's own
+ * check) always reports ready, while a specific subcommand gets the
+ * response this test cares about — everything else falls back to a plain
+ * {ok:true, data:{}}. Needed because the module-level mock at the top of
+ * this file can't know per-test what each route's own runPythonJSON call
+ * should return. */
+function mockPython(cmd: string, response: Awaited<ReturnType<typeof runPythonJSON>>) {
+  vi.mocked(runPythonJSON).mockImplementation(async (args: string[]) => {
+    if (args[0] === "setup-state") return GATE_READY;
+    if (args[0] === cmd) return response;
+    return { ok: true, data: {} };
+  });
+}
 
 let server: Server;
 let base: string;
@@ -63,7 +83,15 @@ afterAll(() => {
   return new Promise<void>((r) => server.close(() => r()));
 });
 
-beforeEach(() => _resetForTest());
+beforeEach(() => {
+  _resetForTest();
+  // Restore the default (setup-state -> ready, everything else -> ok:{})
+  // between tests — individual "drive routes" tests reassign this via
+  // mockPython() and must not leak into unrelated tests.
+  vi.mocked(runPythonJSON).mockImplementation(async (args: string[]) =>
+    args[0] === "setup-state" ? GATE_READY : { ok: true, data: {} },
+  );
+});
 
 describe("routes", () => {
   it("GET /api/courses returns an array", async () => {
@@ -270,5 +298,157 @@ describe("routes", () => {
     expect(res.status).toBe(400);
     expect(JSON.parse(res.body)).toEqual({ error: "unknown course" });
     expect(existsSync(join(repoRoot(), "evil"))).toBe(false);
+  });
+
+  describe("drive routes", () => {
+    it("GET /api/drive/folders reads config/course-drive-folders.json", async () => {
+      const res = await fetch(`${base}/api/drive/folders`);
+      expect(res.status).toBe(200);
+      // Whatever the repo's real config currently holds — just prove it's the
+      // real file, not a stub (an object, not an error shape).
+      expect(typeof (await res.json())).toBe("object");
+    });
+
+    it("POST /api/drive/register-folder requires a known course", async () => {
+      const res = await raw("/api/drive/register-folder", {
+        method: "POST",
+        headers: { "content-type": "application/json", host },
+        body: JSON.stringify({ course: "../evil", folderId: "F1" }),
+      });
+      expect(res.status).toBe(400);
+    });
+
+    it("POST /api/drive/register-folder requires a non-empty folderId", async () => {
+      const res = await raw("/api/drive/register-folder", {
+        method: "POST",
+        headers: { "content-type": "application/json", host },
+        body: JSON.stringify({ course: "ai-and-its-application", folderId: "  " }),
+      });
+      expect(res.status).toBe(400);
+    });
+
+    it("POST /api/drive/register-folder delegates to the CLI and returns its result", async () => {
+      mockPython("drive-register-folder", {
+        ok: true,
+        data: { ok: true, folders: { "ai-and-its-application": "F1" } },
+      });
+      const res = await raw("/api/drive/register-folder", {
+        method: "POST",
+        headers: { "content-type": "application/json", host },
+        body: JSON.stringify({ course: "ai-and-its-application", folderId: "F1" }),
+      });
+      expect(res.status).toBe(200);
+      expect(JSON.parse(res.body)).toEqual({
+        ok: true,
+        folders: { "ai-and-its-application": "F1" },
+      });
+    });
+
+    it("GET /api/drive/browse requires a known course", async () => {
+      const res = await raw("/api/drive/browse?course=../evil", { headers: { host } });
+      expect(res.status).toBe(400);
+    });
+
+    it("GET /api/drive/browse returns the CLI's browse result", async () => {
+      const fakeBrowse = {
+        connected: true,
+        materials: [{ name: "syllabus.md" }],
+        transcripts: [],
+        guide: null,
+        notes: [],
+        testprep: [],
+      };
+      mockPython("drive-browse", { ok: true, data: fakeBrowse });
+      const res = await raw("/api/drive/browse?course=ai-and-its-application", {
+        headers: { host },
+      });
+      expect(res.status).toBe(200);
+      expect(JSON.parse(res.body)).toEqual(fakeBrowse);
+    });
+
+    it("GET /api/drive/access-token returns the CLI's token result", async () => {
+      mockPython("drive-access-token", { ok: true, data: { token: "tok123" } });
+      const res = await raw("/api/drive/access-token", { headers: { host } });
+      expect(res.status).toBe(200);
+      expect(JSON.parse(res.body)).toEqual({ token: "tok123" });
+    });
+
+    it("GET /api/notes requires a known course", async () => {
+      const res = await raw("/api/notes?course=../evil", { headers: { host } });
+      expect(res.status).toBe(400);
+    });
+
+    it("GET /api/notes returns self-note query results", async () => {
+      mockPython("brain-query", {
+        ok: true,
+        data: { results: [{ path: "normalized/self-note-x.md" }] },
+      });
+      const res = await raw("/api/notes?course=ai-and-its-application", { headers: { host } });
+      expect(res.status).toBe(200);
+      expect(JSON.parse(res.body)).toEqual({
+        results: [{ path: "normalized/self-note-x.md" }],
+      });
+    });
+
+    it("GET /api/study requires a known course", async () => {
+      const res = await raw("/api/study?course=../evil", { headers: { host } });
+      expect(res.status).toBe(400);
+    });
+
+    it("GET /api/study returns list-study results", async () => {
+      mockPython("list-study", { ok: true, data: { items: [{ name: "testprep-1" }] } });
+      const res = await raw("/api/study?course=ai-and-its-application", { headers: { host } });
+      expect(res.status).toBe(200);
+      expect(JSON.parse(res.body)).toEqual({ items: [{ name: "testprep-1" }] });
+    });
+
+    it("POST /api/drive/share-note requires a known course and a path", async () => {
+      const badCourse = await raw("/api/drive/share-note", {
+        method: "POST",
+        headers: { "content-type": "application/json", host },
+        body: JSON.stringify({ course: "../evil", path: "normalized/x.md" }),
+      });
+      expect(badCourse.status).toBe(400);
+      const noPath = await raw("/api/drive/share-note", {
+        method: "POST",
+        headers: { "content-type": "application/json", host },
+        body: JSON.stringify({ course: "ai-and-its-application", path: "" }),
+      });
+      expect(noPath.status).toBe(400);
+    });
+
+    it("POST /api/drive/share-note delegates to the CLI", async () => {
+      mockPython("share-note", { ok: true, data: { ok: true, link: "https://drive/x" } });
+      const res = await raw("/api/drive/share-note", {
+        method: "POST",
+        headers: { "content-type": "application/json", host },
+        body: JSON.stringify({
+          course: "ai-and-its-application",
+          path: "normalized/self-note-x.md",
+        }),
+      });
+      expect(res.status).toBe(200);
+      expect(JSON.parse(res.body)).toEqual({ ok: true, link: "https://drive/x" });
+    });
+
+    it("POST /api/drive/share-study requires a known course and a name", async () => {
+      const noName = await raw("/api/drive/share-study", {
+        method: "POST",
+        headers: { "content-type": "application/json", host },
+        body: JSON.stringify({ course: "ai-and-its-application", name: "" }),
+      });
+      expect(noName.status).toBe(400);
+    });
+
+    it("POST /api/drive/share-study delegates to the CLI", async () => {
+      mockPython("share-study", { ok: true, data: { ok: true, link: "https://drive/y" } });
+      const res = await raw("/api/drive/share-study", {
+        method: "POST",
+        headers: { "content-type": "application/json", host },
+        body: JSON.stringify({ course: "ai-and-its-application", name: "testprep-1" }),
+      });
+      expect(res.status).toBe(200);
+      expect(JSON.parse(res.body)).toEqual({ ok: true, link: "https://drive/y" });
+    });
   });
 });
