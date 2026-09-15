@@ -192,6 +192,8 @@ def run(argv: list[str]) -> dict | None:
     cs.add_argument("--dry-run", action="store_true")
     cs.add_argument("--json", action="store_true")
     sub.add_parser("calendar-auth")
+    ss = sub.add_parser("setup-state")
+    ss.add_argument("--json", action="store_true")
     args = p.parse_args(argv)
 
     if args.cmd == "whoami":
@@ -313,6 +315,11 @@ def run(argv: list[str]) -> dict | None:
         r = _cs.do_auth()
         print(json.dumps(r, indent=1))
         return r
+    if args.cmd == "setup-state":
+        import setup_state as _ss
+        result = _ss.check_setup()
+        print(json.dumps(result) if args.json else json.dumps(result, indent=1))
+        return result
     summary = _run_all(args)
     _write_overview_cache()
     print(json.dumps(summary) if getattr(args, "json", False)
