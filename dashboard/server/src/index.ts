@@ -290,6 +290,25 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     return r.ok ? json(res, 200, r.data) : json(res, 503, { error: r.error });
   }
 
+  if (match("GET", "/api/drive/checklist", method, url)) {
+    const bad = guardOrigin(req);
+    if (bad) return json(res, 403, { error: bad });
+    const r = await runPythonJSON(["drive-checklist", "--json"]);
+    return r.ok ? json(res, 200, r.data) : json(res, 503, { error: r.error });
+  }
+
+  if (match("GET", "/api/study/content", method, url)) {
+    const bad = guardOrigin(req);
+    if (bad) return json(res, 403, { error: bad });
+    const q = new URL(url, "http://x").searchParams;
+    const course = q.get("course") ?? "";
+    const name = q.get("name") ?? "";
+    if (!courseAllowed(course)) return json(res, 400, { error: "unknown course" });
+    if (!name.trim()) return json(res, 400, { error: "name required" });
+    const r = await runPythonJSON(["get-study", "--course", course, "--name", name, "--json"]);
+    return r.ok ? json(res, 200, r.data) : json(res, 503, { error: r.error });
+  }
+
   if (match("POST", "/api/drive/share-note", method, url)) {
     const bad = guardOrigin(req);
     if (bad) return json(res, 403, { error: bad });
@@ -324,6 +343,20 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       b.name,
       "--json",
     ]);
+    return r.ok ? json(res, 200, r.data) : json(res, 503, { error: r.error });
+  }
+
+  if (match("POST", "/api/drive/backfill", method, url)) {
+    const bad = guardOrigin(req);
+    if (bad) return json(res, 403, { error: bad });
+    let b: any;
+    try {
+      b = JSON.parse(await readBody(req));
+    } catch {
+      return json(res, 400, { error: "bad json" });
+    }
+    if (!courseAllowed(b.course)) return json(res, 400, { error: "unknown course" });
+    const r = await runPythonJSON(["drive-backfill", "--course", b.course, "--json"]);
     return r.ok ? json(res, 200, r.data) : json(res, 503, { error: r.error });
   }
 

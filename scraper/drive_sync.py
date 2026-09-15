@@ -3,7 +3,10 @@
 attendance or assignments — those code paths don't call this module.
 No LLM, no LMS contact."""
 import json
+import re
 from pathlib import Path
+
+import yaml
 
 import google_auth
 
@@ -11,6 +14,23 @@ _FOLDER_NAME_TO_SUBDIR = {
     "materials": "materials",
     "transcripts": "transcripts",
     "guide": "guide",
+}
+
+_FENCE = re.compile(r"^---\n(.*?)\n---\n(.*)\Z", re.DOTALL)
+
+# ingest.py only calls write_if_absent for content it JUST normalized on this
+# run (the diff-write skip means an unchanged file never re-triggers the
+# share call) — so a course that already had materials/transcripts ingested
+# BEFORE its Drive folder was registered gets nothing pushed, silently,
+# forever, until something changes. backfill_course() is the one-time catch-up:
+# push everything currently on disk regardless of ingest's diff state.
+# write_if_absent's own content-hash check still makes this idempotent to
+# re-run — nothing gets duplicated on Drive.
+_NORMALIZED_TYPE_TO_PREFIX = {
+    "material": "materials",
+    "outline": "outline",
+    "announcement": "announcements",
+    "transcript": "transcripts",
 }
 
 
@@ -48,6 +68,69 @@ def register_folder(slug: str, folder_id: str) -> dict:
 
 def _drive_service():
     return google_auth.service("drive", "v3")
+
+
+def create_folder(name: str) -> str | None:
+    """Create a new Drive folder at root and return its id. The app only
+    holds the `drive.file` scope, so it can only ever see folders it
+    creates itself — there's no way to search for/reuse an existing folder
+    by name from here, by design."""
+    svc = _drive_service()
+    if svc is None:
+        return None
+    metadata = {"name": name, "mimeType": "application/vnd.google-apps.folder"}
+    created = svc.files().create(body=metadata, fields="id").execute()
+    return created.get("id")
+
+
+def share_with_domain(folder_id: str, domain: str, role: str = "reader") -> bool:
+    """Grant every account on `domain` (e.g. the school's Google Workspace
+    domain) access to a folder — NOT the open internet. Deliberately no
+    `type: "anyone"` path here: these folders hold real class transcripts
+    with classmates' names and voices, so sharing is domain- or
+    email-restricted only."""
+    svc = _drive_service()
+    if svc is None:
+        return False
+    svc.permissions().create(
+        fileId=folder_id,
+        body={"type": "domain", "domain": domain, "role": role},
+        fields="id",
+    ).execute()
+    return True
+
+
+def share_all_with_domain(domain: str, role: str = "reader") -> dict:
+    """Share every currently-registered course folder with `domain`. Returns
+    per-course results so a single Drive-API hiccup on one folder doesn't
+    hide whether the other 16 succeeded."""
+    folders = _folders_config()
+    done, errors = [], []
+    for slug, folder_id in folders.items():
+        try:
+            share_with_domain(folder_id, domain, role)
+            done.append(slug)
+        except Exception as exc:  # noqa: BLE001 — one bad folder must not abort the rest
+            errors.append(f"{slug}: {exc}")
+    return {"ok": True, "shared": done, "errors": errors}
+
+
+def setup_course(slug: str, course_name: str) -> dict:
+    """One-shot: create a fresh Drive folder for a course that has none
+    registered yet, register it, then backfill everything already on disk
+    into it. Idempotent on the backfill half; NOT idempotent on folder
+    creation — calling this twice for an already-registered course creates
+    a second, orphaned folder, so callers must check folder_id_for_course
+    first."""
+    if folder_id_for_course(slug):
+        return {"ok": False, "error": f"{slug!r} already has a folder registered"}
+    folder_id = create_folder(f"Ares Brain — {course_name}")
+    if not folder_id:
+        return {"ok": False, "error": "Drive not authorized"}
+    register_folder(slug, folder_id)
+    result = backfill_course(slug)
+    result["folderId"] = folder_id
+    return result
 
 
 def _find(svc, folder_id: str, name: str) -> dict | None:
@@ -96,6 +179,58 @@ def write_if_absent(slug: str, subpath: str, content: bytes, content_hash: str) 
     metadata = {"name": name, "parents": [folder_id], "appProperties": {"contentHash": content_hash}}
     svc.files().create(body=metadata, media_body=media, fields="id").execute()
     return True
+
+
+def backfill_course(slug: str) -> dict:
+    """One-time catch-up push: everything already on disk for this course
+    (materials/outline/announcements/transcripts + GUIDE.md, if built) gets
+    offered to write_if_absent, regardless of whether ingest's diff-write
+    skipped it on the last run. Safe to re-run — write_if_absent's own
+    content-hash check means nothing already on Drive gets duplicated."""
+    import hashlib
+    from paths import course_dir
+
+    folder_id = folder_id_for_course(slug)
+    if not folder_id:
+        return {"ok": False, "error": f"no Drive folder registered for {slug!r}"}
+
+    pushed, skipped, errors = [], [], []
+    normalized = course_dir(slug) / "normalized"
+    for path in sorted(normalized.glob("*.md")) if normalized.exists() else []:
+        text = path.read_text(errors="replace")
+        m = _FENCE.match(text)
+        if not m:
+            continue
+        try:
+            fm = yaml.safe_load(m.group(1)) or {}
+        except yaml.YAMLError:
+            continue
+        prefix = _NORMALIZED_TYPE_TO_PREFIX.get(fm.get("type") if isinstance(fm, dict) else None)
+        if not prefix:
+            continue
+        content = path.read_bytes()
+        # Must match ingest.py's _body_hash(content.decode()) exactly (whole
+        # file, not just the body) — otherwise this write's stored hash never
+        # matches what a later real ingest run computes, and every ingest
+        # after a backfill looks like a "changed" file forever.
+        content_hash = hashlib.sha256(content).hexdigest()
+        try:
+            wrote = write_if_absent(slug, f"{prefix}/{path.name}", content, content_hash)
+            (pushed if wrote else skipped).append(f"{prefix}/{path.name}")
+        except Exception as exc:  # noqa: BLE001 — one bad file must not abort the whole backfill
+            errors.append(f"{path.name}: {exc}")
+
+    guide = course_dir(slug) / "brain" / "GUIDE.md"
+    if guide.exists():
+        content = guide.read_bytes()
+        content_hash = hashlib.sha256(content).hexdigest()
+        try:
+            wrote = write_if_absent(slug, "guide/GUIDE.md", content, content_hash)
+            (pushed if wrote else skipped).append("guide/GUIDE.md")
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"GUIDE.md: {exc}")
+
+    return {"ok": True, "pushed": pushed, "alreadyOnDrive": skipped, "errors": errors}
 
 
 def upload_shared(slug: str, subpath: str, local_path: Path) -> str | None:

@@ -217,9 +217,26 @@ def run(argv: list[str]) -> dict | None:
     drf.add_argument("--course", required=True)
     drf.add_argument("--folder-id", required=True, dest="folder_id")
     drf.add_argument("--json", action="store_true")
+    dbf = sub.add_parser("drive-backfill")
+    dbf.add_argument("--course", required=True)
+    dbf.add_argument("--json", action="store_true")
+    dsc = sub.add_parser("drive-setup-course")
+    dsc.add_argument("--course", required=True)
+    dsc.add_argument("--course-name", required=True, dest="course_name")
+    dsc.add_argument("--json", action="store_true")
+    dsd = sub.add_parser("drive-share-domain")
+    dsd.add_argument("--domain", required=True)
+    dsd.add_argument("--role", default="reader", choices=["reader", "writer"])
+    dsd.add_argument("--json", action="store_true")
+    dck = sub.add_parser("drive-checklist")
+    dck.add_argument("--json", action="store_true")
     lst = sub.add_parser("list-study")
     lst.add_argument("--course", required=True)
     lst.add_argument("--json", action="store_true")
+    gst = sub.add_parser("get-study")
+    gst.add_argument("--course", required=True)
+    gst.add_argument("--name", required=True)
+    gst.add_argument("--json", action="store_true")
     args = p.parse_args(argv)
 
     if args.cmd == "whoami":
@@ -416,6 +433,34 @@ def run(argv: list[str]) -> dict | None:
             result = _ds.browse(args.course)
         print(json.dumps(result) if args.json else json.dumps(result, indent=1))
         return result
+    if args.cmd == "drive-backfill":
+        import drive_sync as _ds, brain as _b
+        if not _b._course_root_ok(args.course):
+            result = {"ok": False, "error": f"invalid course: {args.course!r}"}
+        else:
+            result = _ds.backfill_course(args.course)
+        print(json.dumps(result) if args.json else json.dumps(result, indent=1))
+        return result
+    if args.cmd == "drive-setup-course":
+        import drive_sync as _ds, brain as _b
+        if not _b._course_root_ok(args.course):
+            result = {"ok": False, "error": f"invalid course: {args.course!r}"}
+        else:
+            result = _ds.setup_course(args.course, args.course_name)
+        print(json.dumps(result) if args.json else json.dumps(result, indent=1))
+        return result
+    if args.cmd == "drive-share-domain":
+        import drive_sync as _ds
+        result = _ds.share_all_with_domain(args.domain, args.role)
+        print(json.dumps(result) if args.json else json.dumps(result, indent=1))
+        return result
+    if args.cmd == "drive-checklist":
+        import brain as _b
+        idx = json.loads(scrape_steps.global_file("_index.json").read_text())
+        slugs_to_names = {c["slug"]: c["name"] for c in idx}
+        result = {"items": _b.drive_checklist(slugs_to_names)}
+        print(json.dumps(result) if args.json else json.dumps(result, indent=1))
+        return result
     if args.cmd == "drive-register-folder":
         import drive_sync as _ds, brain as _b
         if not _b._course_root_ok(args.course):
@@ -430,6 +475,13 @@ def run(argv: list[str]) -> dict | None:
     if args.cmd == "list-study":
         import brain as _b
         result = {"items": _b.list_study(args.course)}
+        print(json.dumps(result) if args.json else json.dumps(result, indent=1))
+        return result
+    if args.cmd == "get-study":
+        import brain as _b
+        content = _b.read_study(args.course, args.name)
+        result = ({"ok": True, "content": content} if content is not None
+                  else {"ok": False, "error": f"study/{args.name}.md not found"})
         print(json.dumps(result) if args.json else json.dumps(result, indent=1))
         return result
     summary = _run_all(args)

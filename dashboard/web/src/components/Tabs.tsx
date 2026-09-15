@@ -9,6 +9,7 @@ const TAB_DEFS: { id: string; label: string; countKey?: "assignments" | "gaps" }
   { id: "gaps", label: "Gaps", countKey: "gaps" },
   { id: "chat", label: "Chat" },
   { id: "drive", label: "Drive" },
+  { id: "testprep", label: "Testprep" },
 ];
 
 /** Sticky tab bar beneath the summary bar; active tab reads "pressed", inactive is flat. */

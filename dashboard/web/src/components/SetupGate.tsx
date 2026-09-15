@@ -47,9 +47,15 @@ export const SETUP_ROWS: SetupRow[] = [
 export function SetupChecklist({
   state,
   onRetry,
+  watching,
+  lastCheckedAt,
 }: {
   state: SetupState | null;
   onRetry?: () => void;
+  /** Set by the polling SetupGate to show it's actively re-checking, not
+   * stuck — the checklist alone gives no sign anything is still running. */
+  watching?: boolean;
+  lastCheckedAt?: number | null;
 }) {
   return (
     <div className="mx-auto max-w-[600px] px-4 py-12">
@@ -58,6 +64,20 @@ export function SetupChecklist({
         <p className="mb-4 text-[13px] text-[color:var(--color-ink-muted)]">
           The dashboard needs all four of these before it can open.
         </p>
+        {watching && (
+          <div className="mb-4 flex items-center gap-2 text-[12px] text-[color:var(--color-ink-muted)]">
+            <span className="relative flex size-2">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-[color:var(--color-soon)] opacity-75" />
+              <span className="relative inline-flex size-2 rounded-full bg-[color:var(--color-soon)]" />
+            </span>
+            <span>
+              Watching — rechecking every 3s
+              {lastCheckedAt
+                ? ` · last checked ${new Date(lastCheckedAt).toLocaleTimeString()}`
+                : ""}
+            </span>
+          </div>
+        )}
         <ul className="space-y-3">
           {SETUP_ROWS.map((r) => {
             const ok = state?.[r.key];
@@ -94,6 +114,7 @@ export function SetupChecklist({
 
 export function SetupGate({ children }: { children: ReactNode }) {
   const [state, setState] = useState<SetupState | null>(null);
+  const [lastCheckedAt, setLastCheckedAt] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -104,10 +125,13 @@ export function SetupGate({ children }: { children: ReactNode }) {
         .then((s: SetupState) => {
           if (cancelled) return;
           setState(s);
+          setLastCheckedAt(Date.now());
           if (!s.ready) timer = setTimeout(poll, 3000);
         })
         .catch(() => {
-          if (!cancelled) timer = setTimeout(poll, 3000);
+          if (cancelled) return;
+          setLastCheckedAt(Date.now());
+          timer = setTimeout(poll, 3000);
         });
     };
     poll();
@@ -119,5 +143,5 @@ export function SetupGate({ children }: { children: ReactNode }) {
 
   if (state?.ready) return <>{children}</>;
 
-  return <SetupChecklist state={state} />;
+  return <SetupChecklist state={state} watching lastCheckedAt={lastCheckedAt} />;
 }

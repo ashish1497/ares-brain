@@ -231,6 +231,36 @@ def brain_status(slug: str) -> dict:
     }
 
 
+def drive_checklist(slugs_to_names: dict) -> list[dict]:
+    """Local-only (no Drive API calls, no rate limits) per-course view of
+    what SHOULD end up on Drive vs. what's on disk right now: is the folder
+    even registered, and how much of the local corpus is share-eligible
+    (material/outline/announcement/transcript-typed + a built guide) so a
+    course sitting at "registered but nothing pushed yet" is visible without
+    reaching for drive-browse per course."""
+    folders = drive_sync._folders_config()
+    out = []
+    for slug, name in slugs_to_names.items():
+        registered = slug in folders
+        normalized = course_dir(slug) / "normalized"
+        shareable = 0
+        if normalized.exists():
+            for p in normalized.glob("*.md"):
+                fm, _ = parse_frontmatter(p.read_text(errors="replace"))
+                if fm.get("type") in drive_sync._NORMALIZED_TYPE_TO_PREFIX:
+                    shareable += 1
+        has_guide = (brain_dir(slug) / "GUIDE.md").exists()
+        out.append({
+            "slug": slug,
+            "name": name,
+            "registered": registered,
+            "folderId": folders.get(slug),
+            "shareableLocalFiles": shareable,
+            "hasGuide": has_guide,
+        })
+    return out
+
+
 def study_dir(slug: str) -> Path:
     return course_dir(slug) / "study"
 
@@ -275,6 +305,20 @@ def list_study(slug: str) -> list[dict]:
         fm, _ = parse_frontmatter(p.read_text(errors="replace"))
         out.append({"name": p.stem, "type": fm.get("type"), "generatedAt": fm.get("generatedAt")})
     return out
+
+
+def read_study(slug: str, name: str) -> str | None:
+    """Body of one study/testprep artifact (frontmatter stripped) for the
+    dashboard reader. Same path-safety as write_study_artifact — a study
+    name never escapes study_dir."""
+    if not _course_root_ok(slug) or not _safe_seg(name) or name.startswith("."):
+        return None
+    base = study_dir(slug).resolve()
+    target = (base / f"{name}.md").resolve()
+    if base not in target.parents or not target.is_file():
+        return None
+    _fm, body = parse_frontmatter(target.read_text(errors="replace"))
+    return body
 
 
 def build_index(slug: str, force: bool = False) -> dict:

@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import * as api from "../api";
-import type { Course, DriveBrowse, DriveFolders, NoteHit, StudyItem } from "../api";
+import type {
+  Course,
+  DriveBrowse,
+  DriveChecklistItem,
+  DriveFolders,
+  NoteHit,
+  StudyItem,
+} from "../api";
 import { pickDriveFolder, DrivePickerError } from "../lib/drivePicker";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
@@ -37,6 +44,26 @@ export function DriveTab() {
   const [manualId, setManualId] = useState("");
   const [sharing, setSharing] = useState<string | null>(null);
   const [shareResult, setShareResult] = useState<Record<string, string>>({});
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillResult, setBackfillResult] = useState("");
+  const [checklist, setChecklist] = useState<DriveChecklistItem[] | null>(null);
+  const [pushingSlug, setPushingSlug] = useState<string | null>(null);
+
+  const refreshChecklist = () => api.getDriveChecklist().then((r) => setChecklist(r.items));
+
+  useEffect(() => {
+    refreshChecklist();
+  }, []);
+
+  const pushRow = async (slug: string) => {
+    setPushingSlug(slug);
+    try {
+      await api.backfillDrive(slug);
+      await refreshChecklist();
+    } finally {
+      setPushingSlug(null);
+    }
+  };
 
   useEffect(() => {
     api.getCourses().then((cs) => {
@@ -119,6 +146,24 @@ export function DriveTab() {
     }
   };
 
+  const doBackfill = async () => {
+    setBackfilling(true);
+    setBackfillResult("");
+    try {
+      const r = await api.backfillDrive(selected);
+      setBackfillResult(
+        r.ok
+          ? `pushed ${r.pushed.length}, already there ${r.alreadyOnDrive.length}${r.errors.length ? `, ${r.errors.length} error(s)` : ""}`
+          : `failed: ${r.error}`,
+      );
+      if (r.ok) api.browseDrive(selected).then(setBrowse);
+    } catch (e) {
+      setBackfillResult(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBackfilling(false);
+    }
+  };
+
   if (courses.length === 0) {
     return (
       <Card className="md:p-6">
@@ -131,6 +176,44 @@ export function DriveTab() {
 
   return (
     <div className="space-y-6">
+      <Card className="md:p-6">
+        <SectionHeader
+          rule={false}
+          info="Local-only check — no Drive calls. 'Local' is every share-eligible file (materials/outline/announcements/transcripts) sitting in courses/<slug>/normalized right now; it doesn't mean it's actually landed on Drive yet, only that a folder + Push would have something to send."
+        >
+          Sync checklist
+        </SectionHeader>
+        {!checklist ? (
+          <p className="text-[13px] text-[color:var(--color-ink-muted)]">Loading…</p>
+        ) : (
+          <ul className="divide-y divide-[color:var(--color-rule)]">
+            {checklist.map((c) => (
+              <li key={c.slug} className="flex items-center justify-between gap-3 py-2">
+                <div className="flex items-center gap-2">
+                  <StatePill state={c.registered ? "ok" : "bad"}>
+                    {c.registered ? "registered" : "no folder"}
+                  </StatePill>
+                  <span className="text-[13px]">{c.name}</span>
+                  <span className="text-[12px] text-[color:var(--color-ink-muted)]">
+                    {c.shareableLocalFiles} local file{c.shareableLocalFiles === 1 ? "" : "s"}
+                    {!c.hasGuide && " · no guide"}
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="neutral"
+                  disabled={!c.registered || c.shareableLocalFiles === 0 || pushingSlug === c.slug}
+                  onClick={() => pushRow(c.slug)}
+                >
+                  {pushingSlug === c.slug ? "Pushing…" : "Push"}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
       <Card className="md:p-6">
         <SectionHeader
           rule={false}
@@ -151,11 +234,30 @@ export function DriveTab() {
         </select>
 
         {connected ? (
-          <div className="flex items-center gap-2">
-            <StatePill state="ok">Connected</StatePill>
-            <code className="text-[12px] text-[color:var(--color-ink-muted)]">
-              {folders[selected]}
-            </code>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <StatePill state="ok">Connected</StatePill>
+              <code className="text-[12px] text-[color:var(--color-ink-muted)]">
+                {folders[selected]}
+              </code>
+              <Button
+                type="button"
+                variant="neutral"
+                size="sm"
+                onClick={doBackfill}
+                disabled={backfilling}
+              >
+                {backfilling ? "Pushing…" : "Push everything now"}
+              </Button>
+            </div>
+            <p className="mt-2 text-[13px] text-[color:var(--color-ink-muted)]">
+              Materials/transcripts/guide only auto-push when they're freshly re-normalized by a
+              scrape — a course whose folder was registered after its content was already ingested
+              gets nothing pushed until this runs once.
+            </p>
+            {backfillResult && (
+              <p className="mt-1 text-[13px] text-[color:var(--color-ink)]">{backfillResult}</p>
+            )}
           </div>
         ) : (
           <div>

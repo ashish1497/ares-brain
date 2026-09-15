@@ -59,7 +59,11 @@ export function Header({
 
   return (
     <header className="sticky top-0 z-20 border-b-[3px] border-edge bg-paper">
-      <div className="mx-auto flex h-14 max-w-[1400px] items-center gap-4 px-4 md:px-8">
+      {/* overflow-x-auto contains any overflow to this bar — without it, content
+          wider than the viewport (all the buttons + chips) pushed the whole
+          <body> wider and caused page-level horizontal scroll on mobile,
+          same class of bug the Tabs nav below already guards against. */}
+      <div className="mx-auto flex h-14 max-w-[1400px] items-center gap-4 overflow-x-auto px-4 md:px-8">
         <span className="rounded-nb border-[3px] border-edge bg-cta px-2 py-0.5 text-[12px] font-bold text-black">
           ARES BRAIN
         </span>

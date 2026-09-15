@@ -26,24 +26,36 @@ function ExamCard({ e }: { e: OverviewExam }) {
     : e.courseNames;
 
   const testprepVariant = e.testprepCommands.length === 1 ? "default" : "neutral";
-  const commandButtons = e.testprepCommands.map((cmd) => (
-    <div key={cmd.course} className="flex items-center gap-2">
-      <CopyButton value={cmd.command} label="Practice set" variant={testprepVariant} />
-      {multi && (
-        <span className="text-[13px] text-[color:var(--color-ink-muted)]">{cmd.course}</span>
-      )}
-    </div>
-  ));
+  // One row per course, always — never rely on flex-wrap to decide whether a
+  // row breaks to a new line. At 17 courses (an "all courses" exam),
+  // flex-wrap packed several course+button pairs onto the same visual line
+  // and made the whole list unreadable.
+  const commandRows = (
+    <ul className="divide-y divide-[color:var(--color-rule)]">
+      {e.testprepCommands.map((cmd) => (
+        <li key={cmd.course} className="flex items-center justify-between gap-3 py-2">
+          {multi && <span className="text-[13px]">{cmd.course}</span>}
+          <CopyButton value={cmd.command} label="Practice set" variant={testprepVariant} />
+        </li>
+      ))}
+    </ul>
+  );
 
   const collapseBrief = briefCourseNames.length > 3;
-  const briefButtons = briefCourseNames.map((courseName) => (
-    <CopyButton
-      key={courseName}
-      value={`/mesa:ares-brain-course-brief "${courseName}"`}
-      label={`Brief me — ${courseName}`}
-      variant="neutral"
-    />
-  ));
+  const briefRows = (
+    <ul className="divide-y divide-[color:var(--color-rule)]">
+      {briefCourseNames.map((courseName) => (
+        <li key={courseName} className="flex items-center justify-between gap-3 py-2">
+          <span className="text-[13px]">{courseName}</span>
+          <CopyButton
+            value={`/mesa:ares-brain-course-brief "${courseName}"`}
+            label="Brief me"
+            variant="neutral"
+          />
+        </li>
+      ))}
+    </ul>
+  );
 
   return (
     <Card className="gap-0 md:p-6">
@@ -60,27 +72,27 @@ function ExamCard({ e }: { e: OverviewExam }) {
           {e.testprepExists ? "practice set" : "no practice set"}
         </StatePill>
       </div>
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-col gap-3">
         {collapseCommands ? (
-          <details className="w-full">
+          <details>
             <summary className="cursor-pointer text-[13px] text-[color:var(--color-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-edge">
               {e.testprepCommands.length} practice sets
             </summary>
-            <div className="mt-3 flex flex-wrap items-center gap-3">{commandButtons}</div>
+            <div className="mt-2">{commandRows}</div>
           </details>
         ) : (
-          commandButtons
+          commandRows
         )}
         {!e.brainReady &&
           (collapseBrief ? (
-            <details className="w-full">
+            <details>
               <summary className="cursor-pointer text-[13px] text-[color:var(--color-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-edge">
                 {briefCourseNames.length} briefs
               </summary>
-              <div className="mt-3 flex flex-wrap items-center gap-3">{briefButtons}</div>
+              <div className="mt-2">{briefRows}</div>
             </details>
           ) : (
-            briefButtons
+            briefRows
           ))}
       </div>
     </Card>

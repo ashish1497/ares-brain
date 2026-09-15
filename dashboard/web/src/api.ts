@@ -347,6 +347,41 @@ export interface StudyItem {
 export const getStudy = (course: string): Promise<{ items: StudyItem[] }> =>
   driveJson(`/api/study?course=${encodeURIComponent(course)}`);
 
+export const getStudyContent = (
+  course: string,
+  name: string,
+): Promise<{ ok: boolean; content?: string; error?: string }> =>
+  driveJson(
+    `/api/study/content?course=${encodeURIComponent(course)}&name=${encodeURIComponent(name)}`,
+  );
+
+export interface DriveChecklistItem {
+  slug: string;
+  name: string;
+  registered: boolean;
+  folderId: string | null;
+  shareableLocalFiles: number;
+  hasGuide: boolean;
+}
+
+export const getDriveChecklist = (): Promise<{ items: DriveChecklistItem[] }> =>
+  driveJson("/api/drive/checklist");
+
+export const backfillDrive = (
+  course: string,
+): Promise<{
+  ok: boolean;
+  pushed: string[];
+  alreadyOnDrive: string[];
+  errors: string[];
+  error?: string;
+}> =>
+  driveJson("/api/drive/backfill", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ course }),
+  });
+
 export const shareNote = (
   course: string,
   path: string,
