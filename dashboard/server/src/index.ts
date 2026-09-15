@@ -8,6 +8,7 @@ import { receiveUpload, courseSlugOk } from "./lib/upload.js";
 import { repoRoot } from "./lib/repo.js";
 import { readDailyBrief } from "./lib/dailyBrief.js";
 import { runPythonJSON } from "./lib/python.js";
+import { probeClaudeCli } from "./lib/claudeProbe.js";
 import { guardOrigin } from "./lib/origin.js";
 import { handleOutreachRoute } from "./lib/outreachRoutes.js";
 import {
@@ -68,9 +69,54 @@ async function readBody(req: IncomingMessage): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
+async function getSetupState() {
+  const py = await runPythonJSON(["setup-state", "--json"]);
+  const base = py.ok
+    ? (py.data as {
+        driveConnected: boolean;
+        calendarConnected: boolean;
+        mesaTokenPresent: boolean;
+      })
+    : { driveConnected: false, calendarConnected: false, mesaTokenPresent: false };
+  const claudeCliLoggedIn = await probeClaudeCli();
+  const ready =
+    base.driveConnected && base.calendarConnected && base.mesaTokenPresent && claudeCliLoggedIn;
+  return { ...base, claudeCliLoggedIn, ready };
+}
+
+// Short-lived cache for the blanket API gate only — NOT for the GET /api/setup-state
+// endpoint itself, which must always compute fresh (it's what the setup screen polls
+// to watch live progress). Without this cache, every /api/* request — including
+// frequent polls like GET /api/overview every 20s — would spawn a `claude -p` probe
+// process (up to a 5s timeout) forever, even once setup is complete.
+let gateCache: { state: Awaited<ReturnType<typeof getSetupState>>; at: number } | null = null;
+const GATE_CACHE_MS = 10_000;
+
+async function gatedSetupState() {
+  if (gateCache && Date.now() - gateCache.at < GATE_CACHE_MS) return gateCache.state;
+  const state = await getSetupState();
+  gateCache = { state, at: Date.now() };
+  return state;
+}
+
+/** Test-only: clear the gate cache so tests don't leak state across cases. */
+export function _resetGateCacheForTest() {
+  gateCache = null;
+}
+
 async function handle(req: IncomingMessage, res: ServerResponse) {
   const url = req.url ?? "/";
   const method = req.method ?? "GET";
+
+  if (match("GET", "/api/setup-state", method, url)) {
+    return json(res, 200, await getSetupState());
+  }
+
+  // Gate: every other /api/* route requires setup to be complete.
+  if (url.startsWith("/api/")) {
+    const state = await gatedSetupState();
+    if (!state.ready) return json(res, 503, { error: "setup incomplete", setupState: state });
+  }
 
   if (match("GET", "/api/courses", method, url)) return json(res, 200, readCourses());
 

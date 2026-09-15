@@ -3,6 +3,18 @@ import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from "vites
 // Real jobs module, but never actually spawn Python.
 vi.mock("../src/lib/python.js", () => ({
   runPython: vi.fn(() => ({ done: new Promise(() => {}), kill: () => {} })),
+  // Every /api/* route now sits behind the onboarding gate (see setupGate.test.ts),
+  // which calls this for its own setup-state probe — report setup complete so the
+  // routes under test here reach their real handlers.
+  runPythonJSON: vi.fn(() =>
+    Promise.resolve({
+      ok: true,
+      data: { driveConnected: true, calendarConnected: true, mesaTokenPresent: true },
+    }),
+  ),
+}));
+vi.mock("../src/lib/claudeProbe.js", () => ({
+  probeClaudeCli: vi.fn(() => Promise.resolve(true)),
 }));
 
 import { createServer } from "../src/index.js";

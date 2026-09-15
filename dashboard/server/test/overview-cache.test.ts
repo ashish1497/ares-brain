@@ -16,6 +16,11 @@ vi.mock("../src/lib/repo.js", () => ({
   repoRoot: () => mocks.root,
   venvPython: () => join(mocks.root, "scraper", ".venv", "bin", "python"),
 }));
+// The onboarding gate now runs in front of GET /api/overview too, and would
+// otherwise spawn a real `claude -p` subprocess on every request.
+vi.mock("../src/lib/claudeProbe.js", () => ({
+  probeClaudeCli: vi.fn(() => Promise.resolve(true)),
+}));
 
 import { createServer } from "../src/index.js";
 import type { Server } from "node:http";
@@ -31,6 +36,14 @@ beforeAll(async () => {
   const port = (server.address() as any).port;
   base = `http://127.0.0.1:${port}`;
   process.env.ARES_BRAIN_DASHBOARD_PORT = String(port);
+  // Warm the gate's setup-state cache once, before any per-test mock resets, so
+  // the assertions below about mocks.runPythonJSON call counts reflect only the
+  // /api/overview handler's own spawns — not the gate's setup-state probe.
+  mocks.runPythonJSON.mockResolvedValue({
+    ok: true,
+    data: { driveConnected: true, calendarConnected: true, mesaTokenPresent: true },
+  });
+  await fetch(`${base}/api/__warm_gate_cache__`);
 });
 afterAll(() => {
   delete process.env.ARES_BRAIN_DASHBOARD_PORT;

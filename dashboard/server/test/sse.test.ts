@@ -1,6 +1,19 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-vi.mock("../src/lib/python.js", () => ({ runPython: vi.fn() }));
+vi.mock("../src/lib/python.js", () => ({
+  runPython: vi.fn(),
+  // The onboarding gate now runs in front of GET /api/jobs/:id/log too — report
+  // setup complete so this test reaches the real SSE handler.
+  runPythonJSON: vi.fn(() =>
+    Promise.resolve({
+      ok: true,
+      data: { driveConnected: true, calendarConnected: true, mesaTokenPresent: true },
+    }),
+  ),
+}));
+vi.mock("../src/lib/claudeProbe.js", () => ({
+  probeClaudeCli: vi.fn(() => Promise.resolve(true)),
+}));
 import { runPython } from "../src/lib/python.js";
 import { createServer } from "../src/index.js";
 import { startJob, _listenerCounts, _resetForTest } from "../src/lib/jobs.js";

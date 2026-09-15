@@ -1,5 +1,25 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
+// Every /api/* route now sits behind the onboarding gate (see setupGate.test.ts),
+// which calls these for its own setup-state probe — report setup complete so the
+// outreach routes under test here reach their real handlers.
+vi.mock("../src/lib/python.js", async () => {
+  const actual =
+    await vi.importActual<typeof import("../src/lib/python.js")>("../src/lib/python.js");
+  return {
+    ...actual,
+    runPythonJSON: vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        data: { driveConnected: true, calendarConnected: true, mesaTokenPresent: true },
+      }),
+    ),
+  };
+});
+vi.mock("../src/lib/claudeProbe.js", () => ({
+  probeClaudeCli: vi.fn(() => Promise.resolve(true)),
+}));
+
 vi.mock("../src/lib/outreach.js", async () => {
   const actual =
     await vi.importActual<typeof import("../src/lib/outreach.js")>("../src/lib/outreach.js");
