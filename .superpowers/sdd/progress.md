@@ -264,3 +264,6 @@ Starting Plan 2 (onboarding-gate) Task 1.
 
 Plan 2 (onboarding-gate): COMPLETE. Task1 ae05f84, Task2 ad5315e, Task3 4247513 (gate-only cache added, TTL 10s, 9 test files), Task4 9a15e26 (App.test.tsx fixed forward). server 79/79, web 278/278, root npm run check clean.
 Starting Plan 3 (shared-first-sync) Task 1.
+
+Plan 3 (shared-first-sync): COMPLETE. Task1 d7ffb5f (transcripts), Task2 16ab39f (materials/outline/announcements — used `target` not `slug` for announcements per real code shape, fixed a drive_sync import-patchability bug), Task3 71501f3 (GUIDE.md CLI + skill wiring, ingest._body_hash reused instead of undefined hashlib import). pytest 296/296.
+Starting Plan 4 (notes-sharing) Task 1.
