@@ -287,3 +287,6 @@ Pre-PR live testing (2026-09-15): "why is claude CLI not logged in" — investig
 
 Activity logging (a19c8ad): one-line log for every request ([http]), job start/end ([job]), gate check ([gate]), claude spawn ([claude]/[probe]), and client tab switch ([tab] via new POST /api/client-log, placed before the gate). Exactly what would've made the earlier stuck chat job visible in real time. server 93/93, web 282/282, tsc clean, root check clean.
 38 commits total. Ready for PR.
+
+Thundering-herd fix (f4e1413): the new activity logging caught it live — 5 concurrent claude probes spawned within 3s (multiple polling intervals/tabs racing a cold gate cache), contention made one genuinely time out and flip ready:false. Fixed: getSetupState() single-flights, concurrent callers share one in-flight computation. Test proves 3 concurrent requests -> exactly 1 probe/python call. server 94/94, tsc clean, root check clean.
+40 commits total. Ready for PR.
