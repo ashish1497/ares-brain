@@ -2,6 +2,7 @@ import shutil
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
+from unittest.mock import patch
 import pytest
 import brain
 
@@ -343,3 +344,20 @@ def test_next_session_none_when_no_data(home):
     import importlib, paths
     importlib.reload(paths); importlib.reload(brain)
     assert brain.next_session("empty-course") is None
+
+
+def test_build_index_includes_shared_notes_with_attribution(course):
+    shared = [{"subfolder": "arjun", "name": "n1.md",
+               "content": b"---\ntype: self-note\ntitle: Arjun's note\n---\nunit economics content"}]
+    with patch("brain.drive_sync.list_shared", return_value=shared), \
+         patch("brain.student_identity.my_name", return_value="priya"):
+        brain.build_index(course, force=True)
+    results = brain.query(course, text="economics")
+    assert any(r.get("sharedBy") == "arjun" for r in results)
+
+
+def test_query_local_docs_have_empty_sharedby(course):
+    with patch("brain.drive_sync.list_shared", return_value=[]):
+        brain.build_index(course, force=True)
+    results = brain.query(course)
+    assert all(r.get("sharedBy", "") == "" for r in results)

@@ -9,6 +9,8 @@ from pathlib import Path
 
 import yaml
 
+import drive_sync
+import student_identity
 from paths import course_dir, courses_root, ensure
 
 _FENCE = re.compile(r"^---\n(.*?)\n---\n(.*)\Z", re.DOTALL)
@@ -255,6 +257,7 @@ def build_index(slug: str, force: bool = False) -> dict:
         "CREATE VIRTUAL TABLE docs USING fts5("
         "path UNINDEXED, course UNINDEXED, type UNINDEXED, "
         "session UNINDEXED, due UNINDEXED, title, body, "
+        "sharedBy UNINDEXED, "
         "tokenize = 'porter unicode61')"
     )
     corpus_bytes = 0
@@ -263,11 +266,25 @@ def build_index(slug: str, force: bool = False) -> dict:
         fm, body = parse_frontmatter(text)
         corpus_bytes += len(body.encode())
         con.execute(
-            "INSERT INTO docs (path, course, type, session, due, title, body) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO docs (path, course, type, session, due, title, body, sharedBy) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, '')",
             (f"normalized/{p.name}", fm.get("course", ""), fm.get("type", ""),
              str(fm.get("session", "")), fm.get("due", ""),
              fm.get("title", p.stem), body),
+        )
+
+    try:
+        shared = drive_sync.list_shared(slug, "notes", exclude_subfolder=student_identity.my_name())
+    except Exception:  # noqa: BLE001 — sharing is best-effort, never blocks indexing
+        shared = []
+    for item in shared:
+        fm, body = parse_frontmatter(item["content"].decode(errors="replace"))
+        con.execute(
+            "INSERT INTO docs (path, course, type, session, due, title, body, sharedBy) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (f"shared/notes/{item['subfolder']}/{item['name']}", fm.get("course", ""),
+             fm.get("type", "self-note"), str(fm.get("session", "")), fm.get("due", ""),
+             fm.get("title", item["name"]), body, item["subfolder"]),
         )
     con.commit()
     con.close()
@@ -308,6 +325,7 @@ def query(slug, *, type=None, session_min=None, session_max=None,
             d = dict(r)
             d["session"] = int(d["session"]) if str(d["session"]).isdigit() else None
             d["snippet"] = (d["snippet"] or "").strip()
+            d["sharedBy"] = d.get("sharedBy", "") or ""
             out.append(d)
     if text:
         out.sort(key=lambda d: d["score"])
@@ -340,7 +358,7 @@ def _query_one(s, type, session_min, session_max, due_before, text, limit,
         else:
             order = "CAST(NULLIF(session,'') AS INTEGER), due"
             sel = "substr(body, 1, 300) AS snippet, 0.0 AS score"
-        sql = (f"SELECT path, course, type, session, due, title, {sel} FROM docs"
+        sql = (f"SELECT path, course, type, session, due, title, sharedBy, {sel} FROM docs"
                + (f" WHERE {' AND '.join(where)}" if where else "")
                + f" ORDER BY {order} LIMIT ?")
         params.append(limit)
