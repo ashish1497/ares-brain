@@ -75,8 +75,11 @@ def do_auth() -> dict:
         kind = next(iter(conf), "unknown") if isinstance(conf, dict) else "unknown"
         return {"status": "error",
                 "hint": f"client_secret.json must be a Desktop OAuth client (got '{kind}')"}
-    flow = _installed_app_flow(str(cs))
-    creds = flow.run_local_server(port=0)
-    token_path().write_text(creds.to_json())
-    os.chmod(token_path(), 0o600)
+    try:
+        flow = _installed_app_flow(str(cs))
+        creds = flow.run_local_server(port=0)
+        token_path().write_text(creds.to_json())
+        os.chmod(token_path(), 0o600)
+    except Exception as exc:  # noqa: BLE001
+        return {"status": "error", "hint": str(exc)}
     return {"status": "ok"}
