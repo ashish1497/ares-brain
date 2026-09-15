@@ -252,3 +252,9 @@ Controller live re-verification on a fresh production build: all six tabs render
 G2 final finding, fixed in 31b2944: C1 was INCOMPLETE. The Sync calendar button was added inside the Gaps stale panel, which only renders when scrapeStale || attendanceStale — both false on live data (scrape 1.1h old), so the capability was unreachable from the UI entirely and the README's claim stayed false for the healthy case. Spec §8 offers "the Gaps stale panel and/or Settings".
 Ruling: Sync calendar goes in SETTINGS, which is reachable from the sticky summary bar on every tab, under a "Calendar" sub-heading, variant neutral, disabled while busy — the Gaps contextual button stays. You run a calendar sync because deadlines moved, not because your scrape went stale, so it must not be hidden behind a health condition. Verified live: Settings now shows it on every tab, still 0 cta in the panel, still a proper dialog. Cost if wrong: one extra button in Settings.
 G2 branch state: 36 commits, pytest 250, web 253/31, server 41/7, root npm run check exit 0, tree clean. Whole-branch review verdict MERGE WITH FIXES -> all fixes applied and re-reviewed clean. NOT YET MERGED — awaiting the user's approval on the merge to main.
+
+## Collaborative multi-student — branch collab-multi-student off main (2026-09-15)
+Spec: docs/superpowers/specs/2026-09-12-collaborative-multi-student-design.md
+Plans: docs/superpowers/plans/2026-09-12-{1..6}-*.md
+Build order: 1 auth-foundation -> 2 onboarding-gate -> 3 shared-first-sync -> 4 notes-sharing -> 5 testprep-sharing -> 6 chatbot
+Status: starting Plan 1 Task 1.
