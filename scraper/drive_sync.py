@@ -70,6 +70,15 @@ def write_if_absent(slug: str, subpath: str, content: bytes, content_hash: str) 
         return False
     from googleapiclient.http import MediaInMemoryUpload
     media = MediaInMemoryUpload(content, mimetype="application/octet-stream")
+    if existing:
+        # Same name already exists with a different hash — update it in place
+        # instead of create()-ing a duplicate (Drive allows duplicate names).
+        svc.files().update(
+            fileId=existing["id"],
+            body={"appProperties": {"contentHash": content_hash}},
+            media_body=media,
+        ).execute()
+        return True
     metadata = {"name": name, "parents": [folder_id], "appProperties": {"contentHash": content_hash}}
     svc.files().create(body=metadata, media_body=media, fields="id").execute()
     return True
@@ -90,13 +99,11 @@ def upload_shared(slug: str, subpath: str, local_path: Path) -> str | None:
     return created.get("webViewLink")
 
 
-def list_shared(slug: str, prefix: str, exclude_subfolder: str | None = None) -> list[dict]:
-    folder_id = folder_id_for_course(slug)
-    if not folder_id:
-        return []
-    svc = _drive_service()
-    if svc is None:
-        return []
+def _list_shared_meta(svc, folder_id: str, prefix: str,
+                      exclude_subfolder: str | None = None) -> list[dict]:
+    """Metadata-only listing (no content download) of shared files matching
+    `prefix__<subfolder>__<name>`. Used both by list_shared (which then
+    downloads content) and by callers that just need a cheap signature."""
     q = f"'{folder_id}' in parents and trashed = false"
     resp = svc.files().list(q=q, fields="files(id, name)").execute()
     out = []
@@ -107,6 +114,33 @@ def list_shared(slug: str, prefix: str, exclude_subfolder: str | None = None) ->
         subfolder, name = parts[1], parts[2]
         if exclude_subfolder and subfolder == exclude_subfolder:
             continue
-        content = svc.files().get_media(fileId=f["id"]).execute()
-        out.append({"subfolder": subfolder, "name": name, "content": content})
+        out.append({"id": f["id"], "subfolder": subfolder, "name": name})
+    return out
+
+
+def list_shared_meta(slug: str, prefix: str, exclude_subfolder: str | None = None) -> list[dict]:
+    """Like list_shared but without downloading file content — cheap enough
+    to call just to detect whether the shared set changed."""
+    folder_id = folder_id_for_course(slug)
+    if not folder_id:
+        return []
+    svc = _drive_service()
+    if svc is None:
+        return []
+    metas = _list_shared_meta(svc, folder_id, prefix, exclude_subfolder)
+    return [{"subfolder": m["subfolder"], "name": m["name"]} for m in metas]
+
+
+def list_shared(slug: str, prefix: str, exclude_subfolder: str | None = None) -> list[dict]:
+    folder_id = folder_id_for_course(slug)
+    if not folder_id:
+        return []
+    svc = _drive_service()
+    if svc is None:
+        return []
+    metas = _list_shared_meta(svc, folder_id, prefix, exclude_subfolder)
+    out = []
+    for m in metas:
+        content = svc.files().get_media(fileId=m["id"]).execute()
+        out.append({"subfolder": m["subfolder"], "name": m["name"], "content": content})
     return out

@@ -7,11 +7,18 @@ description: Build or refresh a course's GUIDE.md — a structured overview of c
 
 You write `courses/<slug>/brain/GUIDE.md` for one course from its material.
 
-1. Run `cd scraper && uv run python lms_scrape.py drive-guide-check --course <slug> --json`.
-   If `found: true`, write its `body` straight to `courses/<slug>/brain/GUIDE.md`,
-   run `brain-mark-guide` for it, tell the user it was pulled from the shared
-   cohort Drive folder (not synthesized), and STOP — don't do the LLM
-   synthesis below at all.
+1. Check whether `courses/<slug>/brain/GUIDE.md` already exists locally.
+   - **If it does NOT exist yet (first-time build for this student):** run
+     `cd scraper && uv run python lms_scrape.py drive-guide-check --course <slug> --json`.
+     If `found: true`, write its `body` straight to `courses/<slug>/brain/GUIDE.md`,
+     run `brain-mark-guide` for it, tell the user it was pulled from the shared
+     cohort Drive folder (not synthesized), and STOP — don't do the LLM
+     synthesis below at all.
+   - **If it already exists** (whether it was pulled from Drive on a prior run
+     or built locally), skip the Drive check entirely — go straight to step 2.
+     Don't let a stale local guide silently hide behind someone else's old
+     shared copy forever; once a student has any guide, only the normal
+     staleness check below governs whether it gets rebuilt.
 2. Call `brain_status` for the course. If `guideSourcesBehind` is 0 and `GUIDE.md` exists, tell the user it's already current and ask if they want a rebuild anyway.
 3. Ensure the course.md notes file exists: if `courses/<slug>/brain/course.md` is missing, tell the user you're creating a blank one they can fill in (the `ensure_course_md` step / `brain-index` will have made it; if not, create it with the template headings: "What the professor emphasises", "Exam / assessment style", "Topics I'm weak on", "Things to remember").
 4. Read `courses/<slug>/brain/course.md` — respect what the user wrote there.

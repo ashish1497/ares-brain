@@ -46,6 +46,23 @@ def test_write_if_absent_uploads_when_missing(monkeypatch):
     mock_svc.files().create.assert_called()
 
 
+def test_write_if_absent_updates_when_hash_differs(monkeypatch):
+    """C2: an existing same-named file with a DIFFERENT hash must be updated
+    in place, not create()-d again as a duplicate (Drive allows duplicate
+    names, so create() here silently produces duplicate files over time)."""
+    monkeypatch.setattr(ds, "folder_id_for_course", lambda slug: "FOLDER123")
+    mock_svc = MagicMock()
+    mock_svc.files().list().execute.return_value = {
+        "files": [{"id": "F1", "appProperties": {"contentHash": "oldhash"}}]
+    }
+    monkeypatch.setattr(ds, "_drive_service", lambda: mock_svc)
+    wrote = ds.write_if_absent("ai-101", "guide/GUIDE.md", b"new content", "newhash")
+    assert wrote is True
+    mock_svc.files().update.assert_called_once()
+    assert mock_svc.files().update.call_args.kwargs["fileId"] == "F1"
+    assert not mock_svc.files().create.called
+
+
 def test_list_shared_excludes_named_subfolder(monkeypatch):
     monkeypatch.setattr(ds, "folder_id_for_course", lambda slug: "FOLDER123")
     mock_svc = MagicMock()
