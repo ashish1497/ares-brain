@@ -270,3 +270,6 @@ Starting Plan 4 (notes-sharing) Task 1.
 
 Plan 4 (notes-sharing): COMPLETE. Task1 0080755 (fixed by controller 84c65df — get_media was called before exclusion check, wasting a Drive API call per excluded file), Task2 be0f278 (share-note CLI, fixed paths.course_dir import), Task3 c53bad7 (sharedBy column added to CREATE TABLE + the actual SELECT column list in _query_one, not just query()'s dict — brief under-specified this; module-level drive_sync/student_identity imports for patchability). pytest 303/303.
 Starting Plan 5 (testprep-sharing) Task 1.
+
+Plan 5 (testprep-sharing): COMPLETE. Task1 56ab337 (share-study CLI, mirrors share-note). Task2 fb9816e (skill wiring, done directly, docs-only). pytest 305/305.
+Starting Plan 6 (chatbot) Task 1.
