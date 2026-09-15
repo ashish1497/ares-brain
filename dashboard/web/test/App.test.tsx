@@ -44,6 +44,24 @@ test("a failed first load renders a full-page error card with a Retry button, no
   expect(screen.queryByText("loading…")).not.toBeInTheDocument();
 });
 
+test("a SetupIncompleteError from getOverview shows what's pending, not a generic 503 card", async () => {
+  vi.mocked(api.getOverview).mockRejectedValue(
+    new api.SetupIncompleteError({
+      driveConnected: true,
+      calendarConnected: true,
+      mesaTokenPresent: true,
+      claudeCliLoggedIn: false,
+      ready: false,
+    }),
+  );
+
+  render(<App />);
+
+  expect(await screen.findByText("Claude Code CLI login")).toBeInTheDocument();
+  expect(screen.getByText(/claude setup-token/)).toBeInTheDocument();
+  expect(screen.queryByText("couldn't load overview")).not.toBeInTheDocument();
+});
+
 test("Retry re-runs the fetch and renders the shell on success", async () => {
   vi.mocked(api.getOverview).mockRejectedValueOnce(new Error("overview 503"));
   vi.mocked(api.getOverview).mockResolvedValue(overview());

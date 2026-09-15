@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as api from "./api";
-import { getOverview, type Job, type Overview } from "./api";
+import { getOverview, SetupIncompleteError, type Job, type Overview } from "./api";
 import { Header } from "./components/Header";
 import { Tabs } from "./components/Tabs";
 import { Settings } from "./components/Settings";
@@ -16,7 +16,7 @@ import { BrainTab } from "./components/BrainTab";
 import { GapsTab } from "./components/GapsTab";
 import { ChatPanel } from "./components/ChatPanel";
 import { OutreachAgentPage } from "./components/outreach/OutreachAgentPage";
-import { SetupGate } from "./components/SetupGate";
+import { SetupGate, SetupChecklist, type SetupState } from "./components/SetupGate";
 
 const TAB_IDS = ["today", "assignments", "attendance", "exams", "brain", "gaps", "chat"];
 
@@ -50,6 +50,7 @@ function StaleBanner({ onRetry }: { onRetry: () => void }) {
 export function App() {
   const [ov, setOv] = useState<Overview | null>(null);
   const [err, setErr] = useState("");
+  const [setupPending, setSetupPending] = useState<SetupState | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [lines, setLines] = useState<string[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -65,8 +66,15 @@ export function App() {
       .then((o) => {
         setOv(o);
         setErr("");
+        setSetupPending(null);
       })
-      .catch((e: unknown) => setErr(e instanceof Error ? e.message : String(e)));
+      .catch((e: unknown) => {
+        if (e instanceof SetupIncompleteError) {
+          setSetupPending(e.setupState);
+          return;
+        }
+        setErr(e instanceof Error ? e.message : String(e));
+      });
   useEffect(() => {
     refresh();
     api.getState().then((s) => {
@@ -123,6 +131,7 @@ export function App() {
     }
   }
 
+  if (setupPending) return <SetupChecklist state={setupPending} onRetry={refresh} />;
   if (!ov && err) return <ErrorCard message={err} onRetry={refresh} />;
   if (!ov) return <div className="mx-auto max-w-[1400px] p-8">loading…</div>;
 

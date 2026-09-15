@@ -95,6 +95,12 @@ const GATE_CACHE_MS = 10_000;
 
 async function gatedSetupState() {
   if (gateCache && Date.now() - gateCache.at < GATE_CACHE_MS) return gateCache.state;
+  // Don't re-probe (which spawns a second `claude` process) while a job is
+  // already running — a running job is itself live proof the CLI works, and
+  // probing anyway just contends with it for resources and can produce a
+  // false-negative under load, flipping the gate closed mid-job. Fall back
+  // to the last known state instead; only compute fresh once idle.
+  if (currentJob()?.status === "running" && gateCache) return gateCache.state;
   const state = await getSetupState();
   gateCache = { state, at: Date.now() };
   return state;
@@ -103,6 +109,14 @@ async function gatedSetupState() {
 /** Test-only: clear the gate cache so tests don't leak state across cases. */
 export function _resetGateCacheForTest() {
   gateCache = null;
+}
+
+/** Test-only: force the gate cache to look expired (past GATE_CACHE_MS) without
+ * clearing it, so a test can prove what happens on the next lookup when the TTL
+ * has lapsed but a job is (or isn't) running — distinct from _resetGateCacheForTest,
+ * which simulates having no prior state at all. */
+export function _expireGateCacheForTest() {
+  if (gateCache) gateCache.at = 0;
 }
 
 async function handle(req: IncomingMessage, res: ServerResponse) {

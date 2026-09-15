@@ -232,9 +232,27 @@ const j = (r: Response) => r.json();
 export const getCourses = (): Promise<Course[]> => fetch("/api/courses").then(j);
 export const getState = (): Promise<State> => fetch("/api/state").then(j);
 
+/** Thrown by getOverview (and any other gated call) when the server 503s
+ * because the onboarding gate flipped back to incomplete — carries the
+ * setup-state payload so the UI can show exactly what's pending instead of
+ * a bare "503". */
+export class SetupIncompleteError extends Error {
+  setupState: import("./components/SetupGate").SetupState;
+  constructor(setupState: import("./components/SetupGate").SetupState) {
+    super("setup incomplete");
+    this.setupState = setupState;
+  }
+}
+
 export const getOverview = (fresh = false): Promise<Overview> =>
-  fetch("/api/overview" + (fresh ? "?fresh=1" : "")).then((r) => {
-    if (!r.ok) throw new Error(`overview ${r.status}`);
+  fetch("/api/overview" + (fresh ? "?fresh=1" : "")).then(async (r) => {
+    if (!r.ok) {
+      if (r.status === 503) {
+        const body = await r.json().catch(() => null);
+        if (body?.setupState) throw new SetupIncompleteError(body.setupState);
+      }
+      throw new Error(`overview ${r.status}`);
+    }
     return r.json();
   });
 

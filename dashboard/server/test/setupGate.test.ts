@@ -6,10 +6,15 @@ vi.mock("../src/lib/python.js", async () => {
   return { ...actual, runPythonJSON: vi.fn() };
 });
 vi.mock("../src/lib/claudeProbe.js", () => ({ probeClaudeCli: vi.fn() }));
+vi.mock("../src/lib/jobs.js", async () => {
+  const actual = await vi.importActual<typeof import("../src/lib/jobs.js")>("../src/lib/jobs.js");
+  return { ...actual, currentJob: vi.fn(actual.currentJob) };
+});
 
-import { createServer, _resetGateCacheForTest } from "../src/index.js";
+import { createServer, _resetGateCacheForTest, _expireGateCacheForTest } from "../src/index.js";
 import { runPythonJSON } from "../src/lib/python.js";
 import { probeClaudeCli } from "../src/lib/claudeProbe.js";
+import { currentJob } from "../src/lib/jobs.js";
 import type { Server } from "node:http";
 
 let server: Server;
@@ -117,6 +122,49 @@ describe("setup gate", () => {
     // not the stale negative gate cache from up to GATE_CACHE_MS (10s) ago.
     const res = await fetch(`${base}/api/courses`);
     expect(res.status).toBe(200);
+  });
+
+  it("skips re-probing while a job is running, trusting the last known state instead", async () => {
+    (runPythonJSON as any).mockResolvedValue({
+      ok: true,
+      data: { driveConnected: true, calendarConnected: true, mesaTokenPresent: true },
+    });
+    (probeClaudeCli as any).mockResolvedValue(true);
+
+    // Establish a good gate cache first (idle — no job running yet).
+    const first = await fetch(`${base}/api/courses`);
+    expect(first.status).toBe(200);
+    expect(probeClaudeCli).toHaveBeenCalledTimes(1);
+
+    // Now simulate a job running — as if a real `claude -p` chat job is
+    // mid-flight — and force the cache to look expired so a naive
+    // implementation would re-probe.
+    (currentJob as any).mockReturnValue({ status: "running" });
+    _expireGateCacheForTest();
+
+    // A second gated call must NOT spawn a second probe (which would
+    // contend with the running job's own `claude` process and can
+    // false-negative under load) — it should reuse the last known state.
+    const second = await fetch(`${base}/api/state`);
+    expect(second.status).toBe(200);
+    expect(probeClaudeCli).toHaveBeenCalledTimes(1);
+  });
+
+  it("re-probes once idle, even right after skipping while a job was running", async () => {
+    (runPythonJSON as any).mockResolvedValue({
+      ok: true,
+      data: { driveConnected: true, calendarConnected: true, mesaTokenPresent: true },
+    });
+    (probeClaudeCli as any).mockResolvedValue(true);
+
+    await fetch(`${base}/api/courses`);
+    expect(probeClaudeCli).toHaveBeenCalledTimes(1);
+
+    (currentJob as any).mockReturnValue(null); // idle
+    _expireGateCacheForTest();
+
+    await fetch(`${base}/api/state`);
+    expect(probeClaudeCli).toHaveBeenCalledTimes(2);
   });
 
   it("never serves GET /api/setup-state itself from the gate cache", async () => {

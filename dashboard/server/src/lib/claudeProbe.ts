@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 
 const FAILURE_MARKERS = ["Not logged in", "revoked", "authentication_error"];
 
-export function probeClaudeCli(timeoutMs = 5000): Promise<boolean> {
+export function probeClaudeCli(timeoutMs = 10000): Promise<boolean> {
   return new Promise((resolve) => {
     let out = "";
     let settled = false;
