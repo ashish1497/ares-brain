@@ -355,25 +355,39 @@ def run(argv: list[str]) -> dict | None:
         print(json.dumps(result) if args.json else json.dumps(result, indent=1))
         return result
     if args.cmd == "share-note":
-        import drive_sync as _ds, student_identity as _si
-        local = paths.course_dir(args.course) / args.path
-        if not local.exists():
-            result = {"ok": False, "error": f"{args.path} not found"}
+        import drive_sync as _ds, student_identity as _si, brain as _b
+        if not _b._course_root_ok(args.course):
+            result = {"ok": False, "error": f"invalid course: {args.course!r}"}
         else:
-            name = _si.my_name()
-            link = _ds.upload_shared(args.course, f"notes/{name}/{local.name}", local)
-            result = {"ok": link is not None, "link": link}
+            base = (paths.course_dir(args.course) / "normalized").resolve()
+            target = (paths.course_dir(args.course) / args.path).resolve()
+            if (base not in target.parents and target != base) or not target.is_file():
+                result = {"ok": False, "error": f"{args.path} not found"}
+            else:
+                fm, _body = _b.parse_frontmatter(target.read_text(errors="replace"))
+                if fm.get("type") != "self-note":
+                    result = {"ok": False,
+                             "error": "only self-note files may be shared"}
+                else:
+                    name = _si.my_name()
+                    link = _ds.upload_shared(args.course, f"notes/{name}/{target.name}", target)
+                    result = {"ok": link is not None, "link": link}
         print(json.dumps(result) if args.json else json.dumps(result, indent=1))
         return result
     if args.cmd == "share-study":
         import drive_sync as _ds, student_identity as _si, brain as _b
-        local = _b.study_dir(args.course) / f"{args.name}.md"
-        if not local.exists():
-            result = {"ok": False, "error": f"study/{args.name}.md not found"}
+        if not _b._course_root_ok(args.course):
+            result = {"ok": False, "error": f"invalid course: {args.course!r}"}
+        elif not _b._safe_seg(args.name):
+            result = {"ok": False, "error": f"invalid study artifact name: {args.name!r}"}
         else:
-            name = _si.my_name()
-            link = _ds.upload_shared(args.course, f"testprep/{name}/{local.name}", local)
-            result = {"ok": link is not None, "link": link}
+            local = _b.study_dir(args.course) / f"{args.name}.md"
+            if not local.exists():
+                result = {"ok": False, "error": f"study/{args.name}.md not found"}
+            else:
+                name = _si.my_name()
+                link = _ds.upload_shared(args.course, f"testprep/{name}/{local.name}", local)
+                result = {"ok": link is not None, "link": link}
         print(json.dumps(result) if args.json else json.dumps(result, indent=1))
         return result
     summary = _run_all(args)
