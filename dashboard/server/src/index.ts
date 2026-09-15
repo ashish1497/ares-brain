@@ -29,6 +29,7 @@ const KINDS: JobKind[] = [
   "transcribe",
   "transcribe-url",
   "transcribe-inbox",
+  "chat",
 ];
 const WEB_DIST = join(repoRoot(), "dashboard", "web", "dist");
 const OVERVIEW_CACHE_MAX_AGE_MS = 120_000;
@@ -178,6 +179,8 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     )
       return json(res, 400, { error: "course required" });
     if (b.kind === "transcribe-url" && !b.url) return json(res, 400, { error: "url required" });
+    if (b.kind === "chat" && !String(b.message ?? "").trim())
+      return json(res, 400, { error: "message required" });
     if (b.course && !courseAllowed(b.course)) return json(res, 400, { error: "unknown course" });
     try {
       const job = startJob(b);

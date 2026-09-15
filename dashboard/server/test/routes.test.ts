@@ -136,6 +136,24 @@ describe("routes", () => {
     expect(res.status).toBe(202);
   });
 
+  it("POST /api/jobs {kind:chat} with no message -> 400", async () => {
+    const res = await raw("/api/jobs", {
+      method: "POST",
+      headers: { "content-type": "application/json", host },
+      body: JSON.stringify({ kind: "chat" }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("POST /api/jobs {kind:chat, message} -> 202", async () => {
+    const res = await raw("/api/jobs", {
+      method: "POST",
+      headers: { "content-type": "application/json", host },
+      body: JSON.stringify({ kind: "chat", message: "what's due this week?" }),
+    });
+    expect(res.status).toBe(202);
+  });
+
   it("unknown path -> 404 (api) ", async () => {
     expect((await fetch(`${base}/api/nope`)).status).toBe(404);
   });
