@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 import pytest
 import calendar_sync
+import google_auth
 
 FIX = Path(__file__).parent / "fixtures" / "scrubbed" / "calendar_corpus"
 NOW = datetime(2026, 9, 10, tzinfo=timezone.utc)
@@ -140,8 +141,8 @@ def test_service_builds_from_valid_token(home, monkeypatch):
         expired = False
         refresh_token = "r"
         def to_json(self): return "{}"
-    monkeypatch.setattr(calendar_sync, "_creds_from_token_file", lambda: FakeCreds())
-    monkeypatch.setattr(calendar_sync, "_build_service", lambda creds: "SERVICE")
+    monkeypatch.setattr(google_auth, "_creds_from_token_file", lambda: FakeCreds())
+    monkeypatch.setattr(google_auth, "_build_service", lambda api_name, version, creds: "SERVICE")
     assert calendar_sync._service() == "SERVICE"
 
 
@@ -159,8 +160,8 @@ def test_service_refreshes_expired_token(home, monkeypatch):
         def refresh(self, _req): self.valid = True; self.expired = False
         def to_json(self): return '{"refreshed":true}'
     fc = FakeCreds()
-    monkeypatch.setattr(calendar_sync, "_creds_from_token_file", lambda: fc)
-    monkeypatch.setattr(calendar_sync, "_build_service", lambda creds: "SERVICE")
+    monkeypatch.setattr(google_auth, "_creds_from_token_file", lambda: fc)
+    monkeypatch.setattr(google_auth, "_build_service", lambda api_name, version, creds: "SERVICE")
     assert calendar_sync._service() == "SERVICE"
     assert '"refreshed"' in tok.read_text()
 
@@ -175,7 +176,7 @@ def test_service_none_when_expired_no_refresh(home, monkeypatch):
 
     class FakeCreds:
         valid = False; expired = True; refresh_token = None
-    monkeypatch.setattr(calendar_sync, "_creds_from_token_file", lambda: FakeCreds())
+    monkeypatch.setattr(google_auth, "_creds_from_token_file", lambda: FakeCreds())
     assert calendar_sync._service() is None
 
 
@@ -210,7 +211,7 @@ def test_do_auth_rejects_non_object_json(home, monkeypatch):
     import calendar_sync
     importlib.reload(calendar_sync)
     r = calendar_sync.do_auth()
-    assert r["status"] == "error" and "JSON object" in r["hint"]
+    assert r["status"] == "error" and "Desktop OAuth client" in r["hint"]
 
 
 def test_do_auth_writes_token(home, monkeypatch):
@@ -229,7 +230,7 @@ def test_do_auth_writes_token(home, monkeypatch):
             class C:
                 def to_json(self): return '{"token":"granted"}'
             return C()
-    monkeypatch.setattr(calendar_sync, "_installed_app_flow", lambda cs_path: FakeFlow())
+    monkeypatch.setattr(google_auth, "_installed_app_flow", lambda cs_path: FakeFlow())
     r = calendar_sync.do_auth()
     assert r["status"] == "ok"
     assert tok.read_text() == '{"token":"granted"}'

@@ -14,7 +14,6 @@ from pathlib import Path
 
 from paths import courses_root, global_file, ensure, HOME
 
-_SCOPES = ["https://www.googleapis.com/auth/calendar"]
 _CAL_NAME = "Mesa Assignments"
 _TZ = "Asia/Kolkata"
 AUTH_HINT = ("run once:  cd scraper && uv run python lms_scrape.py calendar-auth\n"
@@ -80,78 +79,14 @@ def _parse(s):
 
 # --- auth -------------------------------------------------------------------
 
-def _client_secret_path() -> Path:
-    return Path(os.environ.get("GOOGLE_CLIENT_SECRET") or (HOME / "client_secret.json"))
-
-
-def _token_path() -> Path:
-    return Path(os.environ.get("GOOGLE_TOKEN") or (HOME / "token.json"))
-
-
-def _creds_from_token_file():
-    from google.oauth2.credentials import Credentials
-    return Credentials.from_authorized_user_file(str(_token_path()), _SCOPES)
-
-
-def _build_service(creds):
-    from googleapiclient.discovery import build
-    return build("calendar", "v3", credentials=creds, cache_discovery=False)
-
-
-def _installed_app_flow(cs_path: str):
-    from google_auth_oauthlib.flow import InstalledAppFlow
-    return InstalledAppFlow.from_client_secrets_file(cs_path, _SCOPES)
+import google_auth
 
 
 def _service():
-    if not _token_path().exists():
-        return None
-    try:
-        creds = _creds_from_token_file()
-    except Exception:  # noqa: BLE001
-        return None
-    if getattr(creds, "valid", False):
-        pass
-    elif getattr(creds, "expired", False) and getattr(creds, "refresh_token", None):
-        try:
-            from google.auth.transport.requests import Request
-            creds.refresh(Request())
-            _token_path().write_text(creds.to_json())
-            os.chmod(_token_path(), 0o600)
-        except Exception:  # noqa: BLE001
-            return None
-    else:
-        return None
-    try:
-        return _build_service(creds)
-    except Exception as exc:  # noqa: BLE001
-        print(f"calendar service init failed: {exc}", file=sys.stderr)
-        return None
+    return google_auth.service("calendar", "v3")
 
 
-def do_auth() -> dict:
-    cs = _client_secret_path()
-    if not cs.exists():
-        return {"status": "error",
-                "hint": f"no client_secret.json at {cs} — download a Desktop OAuth client from GCP Console"}
-    try:
-        conf = json.loads(cs.read_text())
-    except Exception as exc:  # noqa: BLE001
-        return {"status": "error", "hint": f"client_secret.json is not valid JSON: {exc}"}
-    if not isinstance(conf, dict):
-        return {"status": "error", "hint": "client_secret.json is not a JSON object"}
-    if "installed" not in conf:
-        kind = next(iter(conf), "unknown")
-        return {"status": "error",
-                "hint": f"client_secret.json is a '{kind}' client — create an OAuth client of type 'Desktop app' instead"}
-    try:
-        flow = _installed_app_flow(str(cs))
-        creds = flow.run_local_server(port=0)
-        _token_path().write_text(creds.to_json())
-        os.chmod(_token_path(), 0o600)
-    except Exception as exc:  # noqa: BLE001
-        return {"status": "error", "hint": str(exc)}
-    return {"status": "ok", "token": str(_token_path()), "scopes": _SCOPES}
+do_auth = google_auth.do_auth
 
 
 # --- calendar -------------------------------------------------------------------

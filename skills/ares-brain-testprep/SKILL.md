@@ -29,6 +29,11 @@ Generate ~15 practice questions for a course.
 5. Persist: heredoc the whole set (body on stdin) to
    `cd scraper && uv run python lms_scrape.py brain-write-study --course <slug> --name testprep[-s<N>-<M>]-<YYYYMMDD> --type testprep --sources "<comma-separated normalized paths used>"`.
    Tell the user the path it prints.
+6. Ask the user if they want to share this testprep with classmates. If
+   yes, run `cd scraper && uv run python lms_scrape.py share-study --course
+<slug> --name <the name used in step 5> --json` and give them the
+   printed link. If they say no (or don't answer), don't share it — sharing
+   is always opt-in, never automatic.
 
 ## Rules
 

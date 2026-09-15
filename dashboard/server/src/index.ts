@@ -8,8 +8,10 @@ import { receiveUpload, courseSlugOk } from "./lib/upload.js";
 import { repoRoot } from "./lib/repo.js";
 import { readDailyBrief } from "./lib/dailyBrief.js";
 import { runPythonJSON } from "./lib/python.js";
+import { probeClaudeCli } from "./lib/claudeProbe.js";
 import { guardOrigin } from "./lib/origin.js";
 import { handleOutreachRoute } from "./lib/outreachRoutes.js";
+import { log } from "./lib/log.js";
 import {
   startJob,
   currentJob,
@@ -28,6 +30,7 @@ const KINDS: JobKind[] = [
   "transcribe",
   "transcribe-url",
   "transcribe-inbox",
+  "chat",
 ];
 const WEB_DIST = join(repoRoot(), "dashboard", "web", "dist");
 const OVERVIEW_CACHE_MAX_AGE_MS = 120_000;
@@ -53,6 +56,19 @@ function courseAllowed(course: string): boolean {
   return slugs.length === 0 ? true : slugs.includes(course);
 }
 
+/** Reads config/course-drive-folders.json directly — a plain, small, checked-in
+ * file; not worth a python spawn just to read it. Returns {} on any read/parse
+ * failure (matches drive_sync.py's own _folders_config tolerance). */
+async function readDriveFolders(): Promise<Record<string, string>> {
+  try {
+    const raw = await readFile(join(repoRoot(), "config", "course-drive-folders.json"), "utf8");
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 function json(res: ServerResponse, code: number, body: unknown) {
   const s = JSON.stringify(body);
   res.writeHead(code, {
@@ -68,9 +84,112 @@ async function readBody(req: IncomingMessage): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
+async function _computeSetupState() {
+  log("gate", "checking setup state (spawning python + claude probes)…");
+  const py = await runPythonJSON(["setup-state", "--json"]);
+  const base = py.ok
+    ? (py.data as {
+        driveConnected: boolean;
+        calendarConnected: boolean;
+        mesaTokenPresent: boolean;
+      })
+    : { driveConnected: false, calendarConnected: false, mesaTokenPresent: false };
+  const claudeCliLoggedIn = await probeClaudeCli();
+  const ready =
+    base.driveConnected && base.calendarConnected && base.mesaTokenPresent && claudeCliLoggedIn;
+  log(
+    "gate",
+    `drive=${base.driveConnected} calendar=${base.calendarConnected} mesaToken=${base.mesaTokenPresent} claudeCli=${claudeCliLoggedIn} -> ready=${ready}`,
+  );
+  return { ...base, claudeCliLoggedIn, ready };
+}
+
+// Single-flight: without this, several requests arriving in the same instant
+// (a browser polling /api/state every 3s AND /api/overview every 20s AND
+// SetupGate polling /api/setup-state, all landing on a cold/expired cache at
+// once) each independently decide "no valid cache" and spawn their OWN
+// `claude -p` probe process concurrently — observed live as 5 simultaneous
+// probes within 3 seconds, whose resource contention made one of them
+// genuinely time out at 10s and flip ready:false, even though the CLI itself
+// was fine. Collapsing concurrent callers onto one shared computation fixes
+// the root cause, not just the symptom.
+let inFlight: Promise<Awaited<ReturnType<typeof _computeSetupState>>> | null = null;
+
+async function getSetupState() {
+  if (inFlight) return inFlight;
+  inFlight = _computeSetupState();
+  try {
+    return await inFlight;
+  } finally {
+    inFlight = null;
+  }
+}
+
+// Short-lived cache for the blanket API gate only — NOT for the GET /api/setup-state
+// endpoint itself, which must always compute fresh (it's what the setup screen polls
+// to watch live progress). Without this cache, every /api/* request — including
+// frequent polls like GET /api/overview every 20s — would spawn a `claude -p` probe
+// process (up to a 5s timeout) forever, even once setup is complete.
+let gateCache: { state: Awaited<ReturnType<typeof getSetupState>>; at: number } | null = null;
+const GATE_CACHE_MS = 10_000;
+
+async function gatedSetupState() {
+  if (gateCache && Date.now() - gateCache.at < GATE_CACHE_MS) return gateCache.state;
+  // Don't re-probe (which spawns a second `claude` process) while a job is
+  // already running — a running job is itself live proof the CLI works, and
+  // probing anyway just contends with it for resources and can produce a
+  // false-negative under load, flipping the gate closed mid-job. Fall back
+  // to the last known state instead; only compute fresh once idle.
+  if (currentJob()?.status === "running" && gateCache) {
+    log("gate", "skipping re-probe — a job is already running, reusing last known state");
+    return gateCache.state;
+  }
+  const state = await getSetupState();
+  gateCache = { state, at: Date.now() };
+  return state;
+}
+
+/** Test-only: clear the gate cache so tests don't leak state across cases. */
+export function _resetGateCacheForTest() {
+  gateCache = null;
+}
+
+/** Test-only: force the gate cache to look expired (past GATE_CACHE_MS) without
+ * clearing it, so a test can prove what happens on the next lookup when the TTL
+ * has lapsed but a job is (or isn't) running — distinct from _resetGateCacheForTest,
+ * which simulates having no prior state at all. */
+export function _expireGateCacheForTest() {
+  if (gateCache) gateCache.at = 0;
+}
+
 async function handle(req: IncomingMessage, res: ServerResponse) {
   const url = req.url ?? "/";
   const method = req.method ?? "GET";
+
+  if (match("GET", "/api/setup-state", method, url)) {
+    const state = await getSetupState();
+    // Also refresh the gate cache with this fresh read so the very first
+    // successful load right after setup completes doesn't still see a stale
+    // cached ready:false on the next /api/* call (up to GATE_CACHE_MS later).
+    gateCache = { state, at: Date.now() };
+    return json(res, 200, state);
+  }
+
+  if (match("POST", "/api/client-log", method, url)) {
+    try {
+      const b = JSON.parse(await readBody(req));
+      log(String(b.scope || "web"), String(b.message || ""));
+    } catch {
+      /* best-effort — a malformed log call is never worth a 400 */
+    }
+    return json(res, 200, { ok: true });
+  }
+
+  // Gate: every other /api/* route requires setup to be complete.
+  if (url.startsWith("/api/")) {
+    const state = await gatedSetupState();
+    if (!state.ready) return json(res, 503, { error: "setup incomplete", setupState: state });
+  }
 
   if (match("GET", "/api/courses", method, url)) return json(res, 200, readCourses());
 
@@ -107,6 +226,140 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     return json(res, 200, await readDailyBrief(date));
   }
 
+  if (match("GET", "/api/drive/folders", method, url)) {
+    const bad = guardOrigin(req);
+    if (bad) return json(res, 403, { error: bad });
+    return json(res, 200, await readDriveFolders());
+  }
+
+  if (match("POST", "/api/drive/register-folder", method, url)) {
+    const bad = guardOrigin(req);
+    if (bad) return json(res, 403, { error: bad });
+    let b: any;
+    try {
+      b = JSON.parse(await readBody(req));
+    } catch {
+      return json(res, 400, { error: "bad json" });
+    }
+    if (!courseAllowed(b.course)) return json(res, 400, { error: "unknown course" });
+    if (!String(b.folderId ?? "").trim()) return json(res, 400, { error: "folderId required" });
+    const r = await runPythonJSON([
+      "drive-register-folder",
+      "--course",
+      b.course,
+      "--folder-id",
+      String(b.folderId).trim(),
+      "--json",
+    ]);
+    return r.ok ? json(res, 200, r.data) : json(res, 503, { error: r.error });
+  }
+
+  const browseParams = match("GET", "/api/drive/browse", method, url);
+  if (browseParams) {
+    const bad = guardOrigin(req);
+    if (bad) return json(res, 403, { error: bad });
+    const course = new URL(url, "http://x").searchParams.get("course") ?? "";
+    if (!courseAllowed(course)) return json(res, 400, { error: "unknown course" });
+    const r = await runPythonJSON(["drive-browse", "--course", course, "--json"]);
+    return r.ok ? json(res, 200, r.data) : json(res, 503, { error: r.error });
+  }
+
+  if (match("GET", "/api/drive/access-token", method, url)) {
+    const bad = guardOrigin(req);
+    if (bad) return json(res, 403, { error: bad });
+    const r = await runPythonJSON(["drive-access-token", "--json"]);
+    return r.ok ? json(res, 200, r.data) : json(res, 503, { error: r.error });
+  }
+
+  if (match("GET", "/api/notes", method, url)) {
+    const bad = guardOrigin(req);
+    if (bad) return json(res, 403, { error: bad });
+    const course = new URL(url, "http://x").searchParams.get("course") ?? "";
+    if (!courseAllowed(course)) return json(res, 400, { error: "unknown course" });
+    const params = JSON.stringify({ course, type: "self-note", limit: 100 });
+    const r = await runPythonJSON(["brain-query", "--params", params, "--json"]);
+    return r.ok ? json(res, 200, r.data) : json(res, 503, { error: r.error });
+  }
+
+  if (match("GET", "/api/study", method, url)) {
+    const bad = guardOrigin(req);
+    if (bad) return json(res, 403, { error: bad });
+    const course = new URL(url, "http://x").searchParams.get("course") ?? "";
+    if (!courseAllowed(course)) return json(res, 400, { error: "unknown course" });
+    const r = await runPythonJSON(["list-study", "--course", course, "--json"]);
+    return r.ok ? json(res, 200, r.data) : json(res, 503, { error: r.error });
+  }
+
+  if (match("GET", "/api/drive/checklist", method, url)) {
+    const bad = guardOrigin(req);
+    if (bad) return json(res, 403, { error: bad });
+    const r = await runPythonJSON(["drive-checklist", "--json"]);
+    return r.ok ? json(res, 200, r.data) : json(res, 503, { error: r.error });
+  }
+
+  if (match("GET", "/api/study/content", method, url)) {
+    const bad = guardOrigin(req);
+    if (bad) return json(res, 403, { error: bad });
+    const q = new URL(url, "http://x").searchParams;
+    const course = q.get("course") ?? "";
+    const name = q.get("name") ?? "";
+    if (!courseAllowed(course)) return json(res, 400, { error: "unknown course" });
+    if (!name.trim()) return json(res, 400, { error: "name required" });
+    const r = await runPythonJSON(["get-study", "--course", course, "--name", name, "--json"]);
+    return r.ok ? json(res, 200, r.data) : json(res, 503, { error: r.error });
+  }
+
+  if (match("POST", "/api/drive/share-note", method, url)) {
+    const bad = guardOrigin(req);
+    if (bad) return json(res, 403, { error: bad });
+    let b: any;
+    try {
+      b = JSON.parse(await readBody(req));
+    } catch {
+      return json(res, 400, { error: "bad json" });
+    }
+    if (!courseAllowed(b.course)) return json(res, 400, { error: "unknown course" });
+    if (!String(b.path ?? "").trim()) return json(res, 400, { error: "path required" });
+    const r = await runPythonJSON(["share-note", "--course", b.course, "--path", b.path, "--json"]);
+    return r.ok ? json(res, 200, r.data) : json(res, 503, { error: r.error });
+  }
+
+  if (match("POST", "/api/drive/share-study", method, url)) {
+    const bad = guardOrigin(req);
+    if (bad) return json(res, 403, { error: bad });
+    let b: any;
+    try {
+      b = JSON.parse(await readBody(req));
+    } catch {
+      return json(res, 400, { error: "bad json" });
+    }
+    if (!courseAllowed(b.course)) return json(res, 400, { error: "unknown course" });
+    if (!String(b.name ?? "").trim()) return json(res, 400, { error: "name required" });
+    const r = await runPythonJSON([
+      "share-study",
+      "--course",
+      b.course,
+      "--name",
+      b.name,
+      "--json",
+    ]);
+    return r.ok ? json(res, 200, r.data) : json(res, 503, { error: r.error });
+  }
+
+  if (match("POST", "/api/drive/backfill", method, url)) {
+    const bad = guardOrigin(req);
+    if (bad) return json(res, 403, { error: bad });
+    let b: any;
+    try {
+      b = JSON.parse(await readBody(req));
+    } catch {
+      return json(res, 400, { error: "bad json" });
+    }
+    if (!courseAllowed(b.course)) return json(res, 400, { error: "unknown course" });
+    const r = await runPythonJSON(["drive-backfill", "--course", b.course, "--json"]);
+    return r.ok ? json(res, 200, r.data) : json(res, 503, { error: r.error });
+  }
+
   if (url.startsWith("/api/outreach/")) {
     if (method === "POST") {
       const bad = guardOrigin(req);
@@ -132,6 +385,8 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     )
       return json(res, 400, { error: "course required" });
     if (b.kind === "transcribe-url" && !b.url) return json(res, 400, { error: "url required" });
+    if (b.kind === "chat" && !String(b.message ?? "").trim())
+      return json(res, 400, { error: "message required" });
     if (b.course && !courseAllowed(b.course)) return json(res, 400, { error: "unknown course" });
     try {
       const job = startJob(b);
@@ -215,6 +470,11 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
 
 export function createServer() {
   return httpCreate((req, res) => {
+    const start = Date.now();
+    const { method, url } = req;
+    res.on("finish", () => {
+      log("http", `${method} ${url} -> ${res.statusCode} (${Date.now() - start}ms)`);
+    });
     handle(req, res).catch((e) => {
       if (!res.headersSent) json(res, 500, { error: String(e) });
       else res.end();

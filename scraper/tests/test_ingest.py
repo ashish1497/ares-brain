@@ -555,3 +555,67 @@ def test_study_book_summary_normalized(home):
     (study / "book-lean-startup-summary.md").unlink()
     ingest.step_ingest(index)
     assert not out.exists()  # orphan-deleted
+
+
+def test_normalize_materials_shares_each_written_doc(home):
+    from unittest.mock import patch
+    raw = _seed_course(home)
+    (raw / "materials.json").write_text(json.dumps([
+        {"id": "m1", "kind": "text", "title": "Outline note", "content": "<p>a</p>",
+         "localPath": None}]))
+    ingest._name_owner.clear()
+    with patch("ingest.drive_sync.write_if_absent") as mock_write:
+        out = ingest._normalize_materials("course-one", "Course One", {})
+    assert out[0][3] is True  # was_written
+    assert mock_write.called
+    subpath = mock_write.call_args.args[1]
+    assert subpath.startswith("materials/")
+
+
+def test_normalize_assignments_never_shares(home):
+    from unittest.mock import patch
+    raw = _seed_course(home)
+    (raw / "assignments.json").write_text(json.dumps([
+        {"id": "a1", "title": "S1 Assignment", "instructions": "<p>Do it.</p>",
+         "dueAt": "2026-08-29T11:30:00.000Z"}]))
+    ingest._name_owner.clear()
+    with patch("ingest.drive_sync.write_if_absent") as mock_write:
+        ingest._normalize_assignments("course-one", "Course One", {})
+    mock_write.assert_not_called()
+
+
+def test_normalize_outline_shares_written_doc(home, monkeypatch):
+    from unittest.mock import patch
+    raw = _seed_course(home)
+    (raw / "topics.json").write_text(json.dumps([{"id": "t1", "type": "outline"}]))
+    (raw / "materials.json").write_text(json.dumps([
+        {"id": "mo", "kind": "text", "title": "Outline", "category": "outline",
+         "topicId": "t1", "localPath": None,
+         "content": '<a href="https://docs.google.com/spreadsheets/d/SHEET/edit">Outline</a>'}]))
+    import gsheet
+    monkeypatch.setattr(gsheet, "fetch_csv", lambda sid: "Session,Topic\n1,Intro\n")
+    ingest._name_owner.clear()
+    with patch("ingest.drive_sync.write_if_absent") as mock_write:
+        results, claimed = ingest._normalize_outline("course-one", "Course One", {})
+    assert results[0][3] is True  # was_written
+    assert mock_write.called
+    args = mock_write.call_args.args
+    assert args[0] == "course-one"
+    assert args[1].startswith("outline/")
+
+
+def test_normalize_announcements_shares_with_target_slug(home):
+    from unittest.mock import patch
+    raw = _seed_course(home)
+    (raw / "announcements.json").write_text(json.dumps([
+        {"id": "a1", "title": "Room change", "body": "<p>Now in B2</p>"}]))
+    index_by_slug = {"course-one": "Course One"}
+    ingest._name_owner.clear()
+    with patch("ingest.drive_sync.write_if_absent") as mock_write:
+        results, failed = ingest._normalize_announcements(index_by_slug, {}, [])
+    assert not failed
+    assert results["course-one"][0][3] is True  # was_written
+    assert mock_write.called
+    args = mock_write.call_args.args
+    assert args[0] == "course-one"
+    assert args[1].startswith("announcements/")

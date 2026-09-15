@@ -9,6 +9,7 @@ from pathlib import Path
 from paths import course_dir, courses_root, ensure, raw_dir, slugify
 from scrape_steps import _read_or_none
 
+import drive_sync
 import gsheet
 from extract import extract_text
 from html2md import html_to_markdown
@@ -136,6 +137,17 @@ def _diff_write(slug: str, *, key: str, input_hash: str, old_sources: dict,
     return (key, input_hash, write(), True)
 
 
+def _share_if_written(slug: str, prefix: str, path, was_written: bool) -> None:
+    """Push a freshly-written normalized doc to the shared Drive folder.
+    Only call this from normalizers whose output type is meant to be
+    shared (materials/outline/announcements) — never from assignments or
+    inbox/self-notes."""
+    if not was_written or path is None:
+        return
+    content = path.read_bytes()
+    drive_sync.write_if_absent(slug, f"{prefix}/{path.name}", content, _body_hash(content.decode()))
+
+
 def _normalize_materials(slug: str, course_name: str, old_sources: dict,
                          errors: list | None = None, claimed: set | None = None):
     errors = errors if errors is not None else []
@@ -149,12 +161,14 @@ def _normalize_materials(slug: str, course_name: str, old_sources: dict,
                 continue
             h = _input_hash(json.dumps(m, sort_keys=True))
             session = m.get("session") if isinstance(m.get("session"), int) else None
-            out.append(_diff_write(
+            key_, hash_, path, was_written = _diff_write(
                 slug, key=key, input_hash=h, old_sources=old_sources,
                 write=lambda m=m, key=key, session=session: write_normalized(
                     slug, type_="material", source=key,
                     title=m.get("title") or m["id"], course_name=course_name,
-                    body=_material_body(m, slug), session=session)))
+                    body=_material_body(m, slug), session=session))
+            _share_if_written(slug, "materials", path, was_written)
+            out.append((key_, hash_, path, was_written))
         except Exception as exc:  # noqa: BLE001
             errors.append(f"{slug} _normalize_materials record: {exc}")
     return out
@@ -271,6 +285,7 @@ def _normalize_outline(slug: str, course_name: str, old_sources: dict,
             write=lambda: write_normalized(
                 slug, type_="outline", source=f"api:material:{om['id']}",
                 title="Outline", course_name=course_name, body=body))
+        _share_if_written(slug, "outline", res[2], res[3])
         return [res], claimed
     except Exception as exc:  # noqa: BLE001
         errors.append(f"{slug} _normalize_outline record: {exc}")
@@ -386,6 +401,7 @@ def _normalize_announcements(index_by_slug: dict, old_by_slug: dict, errors: lis
                         target, type_="announcement", source=key,
                         title=a.get("title") or a["id"],
                         course_name=index_by_slug[target], body=body))
+                _share_if_written(target, "announcements", res[2], res[3])
                 results.setdefault(target, []).append(res)
             except Exception as exc:  # noqa: BLE001
                 errors.append(f"{target} _normalize_announcements record: {exc}")

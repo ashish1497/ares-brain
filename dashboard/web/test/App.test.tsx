@@ -19,6 +19,18 @@ vi.mock("../src/api", async (orig) => ({
 beforeEach(() => {
   vi.mocked(api.getState).mockResolvedValue({ job: null, lastRuns: {} });
   window.location.hash = "";
+  // App is now wrapped in SetupGate, which polls /api/setup-state before rendering
+  // the real app shell — report setup complete so these tests see the app directly.
+  global.fetch = vi.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      driveConnected: true,
+      calendarConnected: true,
+      mesaTokenPresent: true,
+      claudeCliLoggedIn: true,
+      ready: true,
+    }),
+  }) as any;
 });
 
 test("a failed first load renders a full-page error card with a Retry button, not a stuck loading state", async () => {
@@ -30,6 +42,24 @@ test("a failed first load renders a full-page error card with a Retry button, no
   expect(screen.getByText("overview 503")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   expect(screen.queryByText("loading…")).not.toBeInTheDocument();
+});
+
+test("a SetupIncompleteError from getOverview shows what's pending, not a generic 503 card", async () => {
+  vi.mocked(api.getOverview).mockRejectedValue(
+    new api.SetupIncompleteError({
+      driveConnected: true,
+      calendarConnected: true,
+      mesaTokenPresent: true,
+      claudeCliLoggedIn: false,
+      ready: false,
+    }),
+  );
+
+  render(<App />);
+
+  expect(await screen.findByText("Claude Code CLI login")).toBeInTheDocument();
+  expect(screen.getByText(/claude setup-token/)).toBeInTheDocument();
+  expect(screen.queryByText("couldn't load overview")).not.toBeInTheDocument();
 });
 
 test("Retry re-runs the fetch and renders the shell on success", async () => {
