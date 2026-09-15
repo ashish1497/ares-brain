@@ -55,7 +55,21 @@ beforeEach(() => {
   mocks.root = root;
   cache = join(root, "courses", "_overview.json");
   mocks.runPythonJSON.mockReset();
-  mocks.runPythonJSON.mockResolvedValue({ ok: true, data: { kpis: { fromSpawn: true } } });
+  // Filter by args[0] rather than blanket-mocking every call to the overview
+  // payload shape: the 10s gate cache (GATE_CACHE_MS) can expire mid-run and
+  // re-probe setup-state, and a setup-state call answered with the overview
+  // shape misreads driveConnected/etc as undefined — flipping ready to false
+  // and turning unrelated assertions in this file into spurious 503s. Mirrors
+  // the pattern in overview.test.ts.
+  mocks.runPythonJSON.mockImplementation((args: string[]) => {
+    if (args[0] === "setup-state") {
+      return Promise.resolve({
+        ok: true,
+        data: { driveConnected: true, calendarConnected: true, mesaTokenPresent: true },
+      });
+    }
+    return Promise.resolve({ ok: true, data: { kpis: { fromSpawn: true } } });
+  });
 });
 afterEach(() => rmSync(root, { recursive: true, force: true }));
 

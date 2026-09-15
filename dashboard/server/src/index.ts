@@ -110,7 +110,12 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   const method = req.method ?? "GET";
 
   if (match("GET", "/api/setup-state", method, url)) {
-    return json(res, 200, await getSetupState());
+    const state = await getSetupState();
+    // Also refresh the gate cache with this fresh read so the very first
+    // successful load right after setup completes doesn't still see a stale
+    // cached ready:false on the next /api/* call (up to GATE_CACHE_MS later).
+    gateCache = { state, at: Date.now() };
+    return json(res, 200, state);
   }
 
   // Gate: every other /api/* route requires setup to be complete.

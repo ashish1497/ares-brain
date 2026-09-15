@@ -93,6 +93,32 @@ describe("setup gate", () => {
     expect(probeClaudeCli).toHaveBeenCalledTimes(1);
   });
 
+  it("I3: refreshes the gate cache from GET /api/setup-state so a gated route doesn't 503 on stale cache", async () => {
+    // Seed a stale negative gate cache, as if setup wasn't done a moment ago.
+    (runPythonJSON as any).mockResolvedValue({
+      ok: true,
+      data: { driveConnected: false, calendarConnected: false, mesaTokenPresent: false },
+    });
+    (probeClaudeCli as any).mockResolvedValue(false);
+    const seed = await fetch(`${base}/api/courses`);
+    expect(seed.status).toBe(503); // gate cache is now negative
+
+    // Setup finishes; the setup-state poll (what SetupGate uses to flip to ready:true)
+    // now sees everything pass.
+    (runPythonJSON as any).mockResolvedValue({
+      ok: true,
+      data: { driveConnected: true, calendarConnected: true, mesaTokenPresent: true },
+    });
+    (probeClaudeCli as any).mockResolvedValue(true);
+    const state = await fetch(`${base}/api/setup-state`);
+    expect((await state.json()).ready).toBe(true);
+
+    // The very next gated call must reflect that fresh state immediately —
+    // not the stale negative gate cache from up to GATE_CACHE_MS (10s) ago.
+    const res = await fetch(`${base}/api/courses`);
+    expect(res.status).toBe(200);
+  });
+
   it("never serves GET /api/setup-state itself from the gate cache", async () => {
     (runPythonJSON as any).mockResolvedValue({
       ok: true,
