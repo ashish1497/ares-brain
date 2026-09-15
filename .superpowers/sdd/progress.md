@@ -278,3 +278,7 @@ Plan 6 (chatbot): COMPLETE. Task1 3ebd135 (runClaude), Task2 b22a3d9 (chat JobKi
 
 ALL 6 PLANS COMPLETE (20 tasks: 19 subagent-implemented, 1 trivial config file + 1 docs-only skill edit done directly by controller). pytest 305/305, server 86/86, web 279/279, root npm run check clean (0 errors, 45 pre-existing `any` warnings).
 Ready for final whole-branch review.
+
+Whole-branch review (opus): 2 Critical (C1 path-traversal/credential-exfil in share-note/share-study, C2 write_if_absent duplicating Drive files) + 13 Important + 7 Minor. Fix subagent dispatched with C1,C2,I1,I2,I3,I5,I6,I9,I11,I12,I13 (I4 left as documented scope gap — Picker UI not built, no code bug; Minors left as follow-ups). Commits 439a168..0652e8e. Controller spot-verified C1's fix directly (containment check + self-note type gate + _safe_seg reuse — sound).
+Final: pytest 313/313, server 88/88, web 280/280, tsc clean both, root npm run check clean. 35 commits total over main.
+READY TO MERGE — awaiting user go-ahead.
