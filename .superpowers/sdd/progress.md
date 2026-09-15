@@ -261,3 +261,6 @@ Status: starting Plan 1 Task 1.
 
 Plan 1 (auth-foundation): COMPLETE. Task1 f6ab7de, Task2 1c8db78 (do_auth hardened + 3 monkeypatch fixes beyond brief), Task3 55fe570, Task4 58b8fdf. pytest 281/281.
 Starting Plan 2 (onboarding-gate) Task 1.
+
+Plan 2 (onboarding-gate): COMPLETE. Task1 ae05f84, Task2 ad5315e, Task3 4247513 (gate-only cache added, TTL 10s, 9 test files), Task4 9a15e26 (App.test.tsx fixed forward). server 79/79, web 278/278, root npm run check clean.
+Starting Plan 3 (shared-first-sync) Task 1.
