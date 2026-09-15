@@ -194,6 +194,12 @@ def run(argv: list[str]) -> dict | None:
     sub.add_parser("calendar-auth")
     ss = sub.add_parser("setup-state")
     ss.add_argument("--json", action="store_true")
+    dgc = sub.add_parser("drive-guide-check")
+    dgc.add_argument("--course", required=True)
+    dgc.add_argument("--json", action="store_true")
+    dgu = sub.add_parser("drive-guide-upload")
+    dgu.add_argument("--course", required=True)
+    dgu.add_argument("--json", action="store_true")
     args = p.parse_args(argv)
 
     if args.cmd == "whoami":
@@ -318,6 +324,26 @@ def run(argv: list[str]) -> dict | None:
     if args.cmd == "setup-state":
         import setup_state as _ss
         result = _ss.check_setup()
+        print(json.dumps(result) if args.json else json.dumps(result, indent=1))
+        return result
+    if args.cmd == "drive-guide-check":
+        import drive_sync as _ds
+        content = _ds.read_or_none(args.course, "guide/GUIDE.md")
+        result = {"found": content is not None}
+        if content is not None:
+            result["body"] = content.decode("utf-8", errors="replace")
+        print(json.dumps(result) if args.json else json.dumps(result, indent=1))
+        return result
+    if args.cmd == "drive-guide-upload":
+        import drive_sync as _ds, brain as _b, ingest as _ing
+        guide_path = _b.brain_dir(args.course) / "GUIDE.md"
+        if not guide_path.exists():
+            result = {"ok": False, "error": "GUIDE.md not found locally"}
+        else:
+            content = guide_path.read_bytes()
+            wrote = _ds.write_if_absent(args.course, "guide/GUIDE.md", content,
+                                        _ing._body_hash(content.decode()))
+            result = {"ok": True, "wrote": wrote}
         print(json.dumps(result) if args.json else json.dumps(result, indent=1))
         return result
     summary = _run_all(args)

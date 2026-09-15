@@ -7,20 +7,29 @@ description: Build or refresh a course's GUIDE.md — a structured overview of c
 
 You write `courses/<slug>/brain/GUIDE.md` for one course from its material.
 
-1. Call `brain_status` for the course. If `guideSourcesBehind` is 0 and `GUIDE.md` exists, tell the user it's already current and ask if they want a rebuild anyway.
-2. Ensure the course.md notes file exists: if `courses/<slug>/brain/course.md` is missing, tell the user you're creating a blank one they can fill in (the `ensure_course_md` step / `brain-index` will have made it; if not, create it with the template headings: "What the professor emphasises", "Exam / assessment style", "Topics I'm weak on", "Things to remember").
-3. Read `courses/<slug>/brain/course.md` — respect what the user wrote there.
-4. Gather the corpus:
+1. Run `cd scraper && uv run python lms_scrape.py drive-guide-check --course <slug> --json`.
+   If `found: true`, write its `body` straight to `courses/<slug>/brain/GUIDE.md`,
+   run `brain-mark-guide` for it, tell the user it was pulled from the shared
+   cohort Drive folder (not synthesized), and STOP — don't do the LLM
+   synthesis below at all.
+2. Call `brain_status` for the course. If `guideSourcesBehind` is 0 and `GUIDE.md` exists, tell the user it's already current and ask if they want a rebuild anyway.
+3. Ensure the course.md notes file exists: if `courses/<slug>/brain/course.md` is missing, tell the user you're creating a blank one they can fill in (the `ensure_course_md` step / `brain-index` will have made it; if not, create it with the template headings: "What the professor emphasises", "Exam / assessment style", "Topics I'm weak on", "Things to remember").
+4. Read `courses/<slug>/brain/course.md` — respect what the user wrote there.
+5. Gather the corpus:
    - If `brain_status.corpusBytes` < ~120000: read every `courses/<slug>/normalized/*.md`.
    - Else: read all non-transcript docs in full, plus `brain_query({course, type: "transcript"})` snippets and the single most recent transcript in full.
-5. Write `courses/<slug>/brain/GUIDE.md`:
+6. Write `courses/<slug>/brain/GUIDE.md`:
    - **Overview** — 3-5 sentences: what the course builds toward.
    - **Key concepts & frameworks** — each: name, one-line definition, which sessions cover it, `[source](normalized/…md)` links.
    - **Session arc** — a short ordered list: session N → what it adds.
    - **Glossary** — terms from transcripts/notes, one line each.
    - **Open threads** — questions raised but not resolved in the material.
    - Keep it skimmable — headings + bullets, ~600-1000 words.
-6. Stamp the guide as current: run `cd scraper && uv run python lms_scrape.py brain-mark-guide --course <slug>` (or ask the user to). This sets `_brain.json` `guideBuiltAt` so `brain_status` stops reporting it stale.
+7. Stamp the guide as current: run `cd scraper && uv run python lms_scrape.py brain-mark-guide --course <slug>` (or ask the user to). This sets `_brain.json` `guideBuiltAt` so `brain_status` stops reporting it stale.
+8. Run `cd scraper && uv run python lms_scrape.py drive-guide-upload --course <slug> --json`
+   to share the freshly-built guide with the cohort. If it reports
+   `"ok": false` (no Drive folder configured for this course yet), that's
+   fine — just don't mention it unless the user asks.
 
 ## Rules
 
