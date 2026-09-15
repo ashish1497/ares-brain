@@ -267,3 +267,6 @@ Starting Plan 3 (shared-first-sync) Task 1.
 
 Plan 3 (shared-first-sync): COMPLETE. Task1 d7ffb5f (transcripts), Task2 16ab39f (materials/outline/announcements — used `target` not `slug` for announcements per real code shape, fixed a drive_sync import-patchability bug), Task3 71501f3 (GUIDE.md CLI + skill wiring, ingest._body_hash reused instead of undefined hashlib import). pytest 296/296.
 Starting Plan 4 (notes-sharing) Task 1.
+
+Plan 4 (notes-sharing): COMPLETE. Task1 0080755 (fixed by controller 84c65df — get_media was called before exclusion check, wasting a Drive API call per excluded file), Task2 be0f278 (share-note CLI, fixed paths.course_dir import), Task3 c53bad7 (sharedBy column added to CREATE TABLE + the actual SELECT column list in _query_one, not just query()'s dict — brief under-specified this; module-level drive_sync/student_identity imports for patchability). pytest 303/303.
+Starting Plan 5 (testprep-sharing) Task 1.
