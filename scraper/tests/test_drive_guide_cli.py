@@ -64,3 +64,29 @@ def test_share_note_uploads_and_returns_link(home, monkeypatch):
     assert args[0] == "ai-101"
     assert args[1].startswith("notes/")
     assert args[1] == "notes/Ashish/self-note-x.md"
+
+
+def test_share_study_missing_file(home):
+    import lms_scrape
+    result = lms_scrape.run(["share-study", "--course", "ai-101",
+                              "--name", "does-not-exist", "--json"])
+    assert result["ok"] is False
+
+
+def test_share_study_uploads_and_returns_link(home, monkeypatch):
+    study_dir = home / "courses" / "ai-101" / "study"
+    study_dir.mkdir(parents=True)
+    (study_dir / "testprep-20260912.md").write_text("# Study artifact")
+    monkeypatch.setenv("ARES_BRAIN_STUDENT_NAME", "Ashish")
+
+    with patch("drive_sync.upload_shared", return_value="https://drive.google.com/y") as mock_up:
+        import lms_scrape
+        result = lms_scrape.run(["share-study", "--course", "ai-101",
+                                  "--name", "testprep-20260912", "--json"])
+
+    assert result == {"ok": True, "link": "https://drive.google.com/y"}
+    assert mock_up.called
+    args = mock_up.call_args.args
+    assert args[0] == "ai-101"
+    assert args[1].startswith("testprep/")
+    assert args[1] == "testprep/Ashish/testprep-20260912.md"

@@ -204,6 +204,10 @@ def run(argv: list[str]) -> dict | None:
     sn.add_argument("--course", required=True)
     sn.add_argument("--path", required=True)
     sn.add_argument("--json", action="store_true")
+    ss = sub.add_parser("share-study")
+    ss.add_argument("--course", required=True)
+    ss.add_argument("--name", required=True)
+    ss.add_argument("--json", action="store_true")
     args = p.parse_args(argv)
 
     if args.cmd == "whoami":
@@ -358,6 +362,17 @@ def run(argv: list[str]) -> dict | None:
         else:
             name = _si.my_name()
             link = _ds.upload_shared(args.course, f"notes/{name}/{local.name}", local)
+            result = {"ok": link is not None, "link": link}
+        print(json.dumps(result) if args.json else json.dumps(result, indent=1))
+        return result
+    if args.cmd == "share-study":
+        import drive_sync as _ds, student_identity as _si, brain as _b
+        local = _b.study_dir(args.course) / f"{args.name}.md"
+        if not local.exists():
+            result = {"ok": False, "error": f"study/{args.name}.md not found"}
+        else:
+            name = _si.my_name()
+            link = _ds.upload_shared(args.course, f"testprep/{name}/{local.name}", local)
             result = {"ok": link is not None, "link": link}
         print(json.dumps(result) if args.json else json.dumps(result, indent=1))
         return result
