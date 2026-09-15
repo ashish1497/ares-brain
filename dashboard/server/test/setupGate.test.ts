@@ -167,6 +167,39 @@ describe("setup gate", () => {
     expect(probeClaudeCli).toHaveBeenCalledTimes(2);
   });
 
+  it("single-flights concurrent setup-state checks instead of spawning a probe per request", async () => {
+    // Reproduces the live thundering-herd bug: several requests landing on a
+    // cold/expired cache in the same instant must share ONE underlying probe,
+    // not spawn one each (which was observed live as 5 concurrent `claude -p`
+    // processes contending for resources and one genuinely timing out).
+    (runPythonJSON as any).mockResolvedValue({
+      ok: true,
+      data: { driveConnected: true, calendarConnected: true, mesaTokenPresent: true },
+    });
+    let resolveProbe!: (v: boolean) => void;
+    (probeClaudeCli as any).mockReturnValue(
+      new Promise((res) => {
+        resolveProbe = res;
+      }),
+    );
+
+    // Three concurrent requests, all hitting a cold cache before the first
+    // one's probe has resolved.
+    const requests = [
+      fetch(`${base}/api/setup-state`),
+      fetch(`${base}/api/setup-state`),
+      fetch(`${base}/api/state`),
+    ];
+    // Let them all actually start before resolving the shared probe.
+    await new Promise((r) => setTimeout(r, 10));
+    resolveProbe(true);
+    const results = await Promise.all(requests);
+    expect(results.every((r) => r.status === 200)).toBe(true);
+
+    expect(probeClaudeCli).toHaveBeenCalledTimes(1);
+    expect(runPythonJSON).toHaveBeenCalledTimes(1);
+  });
+
   it("never serves GET /api/setup-state itself from the gate cache", async () => {
     (runPythonJSON as any).mockResolvedValue({
       ok: true,

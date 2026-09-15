@@ -71,7 +71,7 @@ async function readBody(req: IncomingMessage): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
-async function getSetupState() {
+async function _computeSetupState() {
   log("gate", "checking setup state (spawning python + claude probes)…");
   const py = await runPythonJSON(["setup-state", "--json"]);
   const base = py.ok
@@ -89,6 +89,27 @@ async function getSetupState() {
     `drive=${base.driveConnected} calendar=${base.calendarConnected} mesaToken=${base.mesaTokenPresent} claudeCli=${claudeCliLoggedIn} -> ready=${ready}`,
   );
   return { ...base, claudeCliLoggedIn, ready };
+}
+
+// Single-flight: without this, several requests arriving in the same instant
+// (a browser polling /api/state every 3s AND /api/overview every 20s AND
+// SetupGate polling /api/setup-state, all landing on a cold/expired cache at
+// once) each independently decide "no valid cache" and spawn their OWN
+// `claude -p` probe process concurrently — observed live as 5 simultaneous
+// probes within 3 seconds, whose resource contention made one of them
+// genuinely time out at 10s and flip ready:false, even though the CLI itself
+// was fine. Collapsing concurrent callers onto one shared computation fixes
+// the root cause, not just the symptom.
+let inFlight: Promise<Awaited<ReturnType<typeof _computeSetupState>>> | null = null;
+
+async function getSetupState() {
+  if (inFlight) return inFlight;
+  inFlight = _computeSetupState();
+  try {
+    return await inFlight;
+  } finally {
+    inFlight = null;
+  }
 }
 
 // Short-lived cache for the blanket API gate only — NOT for the GET /api/setup-state
