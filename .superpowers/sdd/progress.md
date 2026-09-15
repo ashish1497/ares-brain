@@ -258,3 +258,6 @@ Spec: docs/superpowers/specs/2026-09-12-collaborative-multi-student-design.md
 Plans: docs/superpowers/plans/2026-09-12-{1..6}-*.md
 Build order: 1 auth-foundation -> 2 onboarding-gate -> 3 shared-first-sync -> 4 notes-sharing -> 5 testprep-sharing -> 6 chatbot
 Status: starting Plan 1 Task 1.
+
+Plan 1 (auth-foundation): COMPLETE. Task1 f6ab7de, Task2 1c8db78 (do_auth hardened + 3 monkeypatch fixes beyond brief), Task3 55fe570, Task4 58b8fdf. pytest 281/281.
+Starting Plan 2 (onboarding-gate) Task 1.
