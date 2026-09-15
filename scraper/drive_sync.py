@@ -168,7 +168,15 @@ def browse(slug: str) -> dict:
         out["error"] = "Drive not authorized"
         return out
     q = f"'{folder_id}' in parents and trashed = false"
-    resp = svc.files().list(q=q, fields="files(id, name, modifiedTime, webViewLink)").execute()
+    try:
+        resp = svc.files().list(q=q, fields="files(id, name, modifiedTime, webViewLink)").execute()
+    except Exception as exc:  # noqa: BLE001 — a live Drive API error (bad folder
+        # ID, API not enabled on the GCP project, revoked access, etc.) must
+        # degrade to a clean {connected, error} the UI can show, matching every
+        # other drive_sync function's never-raise contract — not an uncaught
+        # exception that crashes the whole CLI subprocess.
+        out["error"] = str(exc)
+        return out
     for f in resp.get("files") or []:
         parts = f["name"].split("__")
         if len(parts) < 2:

@@ -280,6 +280,93 @@ export const getDailyBrief = (): Promise<DailyBrief> =>
     return r.json();
   });
 
+// ---------------------------------------------------------------------------
+// Drive — folder registration, browsing what's shared, sharing local notes/testprep.
+// ---------------------------------------------------------------------------
+
+export type DriveFolders = Record<string, string>;
+
+async function driveJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const r = await fetch(url, init);
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body?.error || `${url} ${r.status}`);
+  return body as T;
+}
+
+export const getDriveFolders = (): Promise<DriveFolders> => driveJson("/api/drive/folders");
+
+export const registerDriveFolder = (
+  course: string,
+  folderId: string,
+): Promise<{ ok: true; folders: DriveFolders }> =>
+  driveJson("/api/drive/register-folder", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ course, folderId }),
+  });
+
+export interface DriveBrowseItem {
+  name: string;
+  link: string | null;
+  modifiedTime: string | null;
+}
+export interface DriveBrowseGrouped extends DriveBrowseItem {
+  subfolder: string;
+}
+export interface DriveBrowse {
+  connected: boolean;
+  error?: string;
+  materials: DriveBrowseItem[];
+  transcripts: DriveBrowseItem[];
+  guide: DriveBrowseItem | null;
+  notes: DriveBrowseGrouped[];
+  testprep: DriveBrowseGrouped[];
+}
+
+export const browseDrive = (course: string): Promise<DriveBrowse> =>
+  driveJson(`/api/drive/browse?course=${encodeURIComponent(course)}`);
+
+export const getDriveAccessToken = (): Promise<{ token: string | null }> =>
+  driveJson("/api/drive/access-token");
+
+export interface NoteHit {
+  path: string;
+  title: string;
+  course: string;
+}
+
+export const getNotes = (course: string): Promise<{ results: NoteHit[] }> =>
+  driveJson(`/api/notes?course=${encodeURIComponent(course)}`);
+
+export interface StudyItem {
+  name: string;
+  type: string | null;
+  generatedAt: string | null;
+}
+
+export const getStudy = (course: string): Promise<{ items: StudyItem[] }> =>
+  driveJson(`/api/study?course=${encodeURIComponent(course)}`);
+
+export const shareNote = (
+  course: string,
+  path: string,
+): Promise<{ ok: boolean; link: string | null; error?: string }> =>
+  driveJson("/api/drive/share-note", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ course, path }),
+  });
+
+export const shareStudy = (
+  course: string,
+  name: string,
+): Promise<{ ok: boolean; link: string | null; error?: string }> =>
+  driveJson("/api/drive/share-study", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ course, name }),
+  });
+
 export async function startJob(body: {
   kind: string;
   course?: string;

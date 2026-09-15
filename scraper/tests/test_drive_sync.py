@@ -121,6 +121,20 @@ def test_browse_reports_drive_error_when_service_unavailable(monkeypatch):
     assert "error" in result
 
 
+def test_browse_degrades_cleanly_on_a_live_drive_api_error(monkeypatch):
+    """A real 403/404/etc from files().list() (bad folder ID, Drive API not
+    enabled on the GCP project, revoked access, ...) must not crash the CLI
+    subprocess — every other drive_sync function already never raises."""
+    monkeypatch.setattr(ds, "folder_id_for_course", lambda slug: "FOLDER123")
+    mock_svc = MagicMock()
+    mock_svc.files().list().execute.side_effect = Exception("HttpError 403: API not enabled")
+    monkeypatch.setattr(ds, "_drive_service", lambda: mock_svc)
+    result = ds.browse("ai-101")
+    assert result["connected"] is True
+    assert "API not enabled" in result["error"]
+    assert result["materials"] == []
+
+
 def test_browse_parses_flat_and_subfoldered_names_separately(monkeypatch):
     """materials/transcripts/guide are flat `<prefix>__<name>` (2 segments);
     notes/testprep are `<prefix>__<subfolder>__<name>` (3+ segments) — browse
