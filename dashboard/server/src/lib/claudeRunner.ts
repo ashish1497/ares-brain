@@ -1,10 +1,19 @@
 import { spawn } from "node:child_process";
 import { repoRoot } from "./repo.js";
 
+// Mirrors the daily/evening launchd jobs' proven --allowedTools pattern (see
+// commands/ares-brain-daily-setup.md's plist ProgramArguments) as closely as
+// makes sense for the interactive chat context: same Bash(cd:*) +
+// Bash(uv run python lms_scrape.py:*) PAIR (cd:* alone grants nothing without
+// the scraper-invocation entry after it) and the same Read(courses/**), but
+// drops daily-only entries that don't apply to chat — Bash(osascript:*) (mac
+// notifications) and Write(daily/**) (the daily-brief file chat never
+// writes). Write(courses/**) and the extra brain_* query/read MCP tools stay:
+// chat is interactive Q&A over the corpus and needs them, unlike the
+// fire-and-forget daily/evening jobs.
 const ALLOWED_TOOLS = [
   "Bash(cd:*)",
   "Bash(uv run python lms_scrape.py:*)",
-  "Write(daily/**)",
   "Write(courses/**)",
   "Read(courses/**)",
   "mcp__plugin_mesa_mesa__daily_brief",

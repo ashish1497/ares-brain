@@ -25,6 +25,21 @@ describe("runClaude", () => {
     expect(args).toContain("--allowedTools");
   });
 
+  it("I13: allowlist mirrors the daily job's Bash(cd:*)+scraper pair, drops daily-only entries", () => {
+    const child = fakeChild();
+    (spawn as any).mockReturnValue(child);
+    runClaude("hi", () => {});
+    const [, args] = (spawn as any).mock.calls[0];
+    const allowedTools = args[args.indexOf("--allowedTools") + 1] as string;
+    const tools = allowedTools.split(",");
+    // Bash(cd:*) is inert without the scraper-invocation grant right after it.
+    expect(tools).toContain("Bash(cd:*)");
+    expect(tools).toContain("Bash(uv run python lms_scrape.py:*)");
+    // Daily-only entries (mac notifications, the daily-brief file) don't apply to chat.
+    expect(tools).not.toContain("Bash(osascript:*)");
+    expect(tools).not.toContain("Write(daily/**)");
+  });
+
   it("streams stdout lines to onLine", async () => {
     const child = fakeChild();
     (spawn as any).mockReturnValue(child);
