@@ -44,3 +44,20 @@ def test_write_if_absent_uploads_when_missing(monkeypatch):
     wrote = ds.write_if_absent("ai-101", "materials/x.md", b"data", "newhash")
     assert wrote is True
     mock_svc.files().create.assert_called()
+
+
+def test_list_shared_excludes_named_subfolder(monkeypatch):
+    monkeypatch.setattr(ds, "folder_id_for_course", lambda slug: "FOLDER123")
+    mock_svc = MagicMock()
+    mock_svc.files().list().execute.return_value = {
+        "files": [
+            {"id": "F1", "name": "notes__priya__n1.md"},
+            {"id": "F2", "name": "notes__arjun__n2.md"},
+        ]
+    }
+    mock_svc.files().get_media().execute.side_effect = [b"priya's note", b"arjun's note"]
+    monkeypatch.setattr(ds, "_drive_service", lambda: mock_svc)
+    results = ds.list_shared("ai-101", "notes", exclude_subfolder="priya")
+    assert len(results) == 1
+    assert results[0]["subfolder"] == "arjun"
+    assert results[0]["content"] == b"arjun's note"

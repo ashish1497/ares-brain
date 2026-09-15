@@ -88,3 +88,25 @@ def upload_shared(slug: str, subpath: str, local_path: Path) -> str | None:
     metadata = {"name": name, "parents": [folder_id]}
     created = svc.files().create(body=metadata, media_body=media, fields="id, webViewLink").execute()
     return created.get("webViewLink")
+
+
+def list_shared(slug: str, prefix: str, exclude_subfolder: str | None = None) -> list[dict]:
+    folder_id = folder_id_for_course(slug)
+    if not folder_id:
+        return []
+    svc = _drive_service()
+    if svc is None:
+        return []
+    q = f"'{folder_id}' in parents and trashed = false"
+    resp = svc.files().list(q=q, fields="files(id, name)").execute()
+    out = []
+    for f in resp.get("files") or []:
+        parts = f["name"].split("__", 2)
+        if len(parts) != 3 or parts[0] != prefix:
+            continue
+        subfolder, name = parts[1], parts[2]
+        content = svc.files().get_media(fileId=f["id"]).execute()
+        if exclude_subfolder and subfolder == exclude_subfolder:
+            continue
+        out.append({"subfolder": subfolder, "name": name, "content": content})
+    return out
