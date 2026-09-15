@@ -273,3 +273,8 @@ Starting Plan 5 (testprep-sharing) Task 1.
 
 Plan 5 (testprep-sharing): COMPLETE. Task1 56ab337 (share-study CLI, mirrors share-note). Task2 fb9816e (skill wiring, done directly, docs-only). pytest 305/305.
 Starting Plan 6 (chatbot) Task 1.
+
+Plan 6 (chatbot): COMPLETE. Task1 3ebd135 (runClaude), Task2 b22a3d9 (chat JobKind), Task3 fa86fc2 (POST /api/jobs), Task4 30cfbd9 (ChatPanel + tab). server 86/86, web 279/279, tsc clean.
+
+ALL 6 PLANS COMPLETE (20 tasks: 19 subagent-implemented, 1 trivial config file + 1 docs-only skill edit done directly by controller). pytest 305/305, server 86/86, web 279/279, root npm run check clean (0 errors, 45 pre-existing `any` warnings).
+Ready for final whole-branch review.
