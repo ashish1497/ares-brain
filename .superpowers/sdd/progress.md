@@ -290,3 +290,11 @@ Activity logging (a19c8ad): one-line log for every request ([http]), job start/e
 
 Thundering-herd fix (f4e1413): the new activity logging caught it live — 5 concurrent claude probes spawned within 3s (multiple polling intervals/tabs racing a cold gate cache), contention made one genuinely time out and flip ready:false. Fixed: getSetupState() single-flights, concurrent callers share one in-flight computation. Test proves 3 concurrent requests -> exactly 1 probe/python call. server 94/94, tsc clean, root check clean.
 40 commits total. Ready for PR.
+
+I4 close-out (3390d56, 899fce8): built the Drive folder-management UI the earlier whole-branch review flagged as missing. Server: google_auth.access_token(), drive_sync.browse()/register_folder(), 8 new dashboard routes. Web: DriveTab (course selector, connect, browse listing, share notes/testprep), Google Picker widget + manual paste-ID fallback.
+Live-tested against REAL Google APIs via the browser tool (not just unit mocks) — found 3 real things:
+1. Picker widget demands its own interactive sign-in regardless of setOAuthToken() with a server-minted token, because the token's OAuth client is Desktop-type, not Web-type with this origin authorized. Not fixable without a new GCP client. Added paste-ID/URL as the working fallback (tested end-to-end, actually registers).
+2. DriveTab's browse effect had no .catch() -> a thrown fetch error left "Loading..." forever. Fixed.
+3. drive_sync.browse() had no try/except around files().list() -> a live Drive API error crashed the CLI subprocess instead of degrading cleanly. Fixed + tested.
+ALSO SURFACED (external, not a code bug): the GCP project behind the existing Desktop OAuth client has the Drive API disabled (confirmed via real 403 accessNotConfigured) — every drive_sync call has been silently failing against real Drive all session; only mocked unit tests ever exercised the happy path. User needs to enable it once in GCP Console (link in the error text) before Drive sharing works for real, independent of all the code being correct and tested.
+pytest 330/330, server 109/109, web 294/294. 41 commits total.
