@@ -105,8 +105,8 @@ def list_shared(slug: str, prefix: str, exclude_subfolder: str | None = None) ->
         if len(parts) != 3 or parts[0] != prefix:
             continue
         subfolder, name = parts[1], parts[2]
-        content = svc.files().get_media(fileId=f["id"]).execute()
         if exclude_subfolder and subfolder == exclude_subfolder:
             continue
+        content = svc.files().get_media(fileId=f["id"]).execute()
         out.append({"subfolder": subfolder, "name": name, "content": content})
     return out

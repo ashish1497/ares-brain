@@ -55,7 +55,7 @@ def test_list_shared_excludes_named_subfolder(monkeypatch):
             {"id": "F2", "name": "notes__arjun__n2.md"},
         ]
     }
-    mock_svc.files().get_media().execute.side_effect = [b"priya's note", b"arjun's note"]
+    mock_svc.files().get_media().execute.return_value = b"arjun's note"
     monkeypatch.setattr(ds, "_drive_service", lambda: mock_svc)
     results = ds.list_shared("ai-101", "notes", exclude_subfolder="priya")
     assert len(results) == 1
