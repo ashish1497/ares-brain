@@ -14,10 +14,11 @@ import { AttendanceTab } from "./components/AttendanceTab";
 import { ExamsTab } from "./components/ExamsTab";
 import { BrainTab } from "./components/BrainTab";
 import { GapsTab } from "./components/GapsTab";
+import { ChatPanel } from "./components/ChatPanel";
 import { OutreachAgentPage } from "./components/outreach/OutreachAgentPage";
 import { SetupGate } from "./components/SetupGate";
 
-const TAB_IDS = ["today", "assignments", "attendance", "exams", "brain", "gaps"];
+const TAB_IDS = ["today", "assignments", "attendance", "exams", "brain", "gaps", "chat"];
 
 /** Full-page error state shown only when the very first load fails. */
 function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void }) {
@@ -158,6 +159,7 @@ export function App() {
             {active === "exams" && <ExamsTab {...tabProps} />}
             {active === "brain" && <BrainTab {...tabProps} />}
             {active === "gaps" && <GapsTab {...tabProps} />}
+            {active === "chat" && <ChatPanel />}
           </ErrorBoundary>
         </main>
         {(job || lines.length > 0) && <JobLog job={job} lines={lines} />}

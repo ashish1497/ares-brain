@@ -255,6 +255,7 @@ export async function startJob(body: {
   course?: string;
   url?: string;
   title?: string;
+  message?: string;
 }): Promise<{ jobId?: string; error?: string }> {
   const r = await fetch("/api/jobs", {
     method: "POST",
