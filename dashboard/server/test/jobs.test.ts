@@ -3,13 +3,27 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("../src/lib/python.js", () => ({
   runPython: vi.fn(),
 }));
+vi.mock("../src/lib/claudeRunner.js", () => ({
+  runClaude: vi.fn(),
+}));
 import { runPython } from "../src/lib/python.js";
+import { runClaude } from "../src/lib/claudeRunner.js";
 import { startJob, currentJob, lastRunMap, BusyError, _resetForTest } from "../src/lib/jobs.js";
 
 function fakeRun() {
   let emit: (l: string) => void = () => {};
   let finish: (c: { code: number }) => void = () => {};
   (runPython as any).mockImplementation((_a: string[], cb: (l: string) => void) => {
+    emit = cb;
+    return { done: new Promise((r) => (finish = r)), kill: () => {} };
+  });
+  return { emit: (l: string) => emit(l), finish: (code: number) => finish({ code }) };
+}
+
+function fakeClaudeRun() {
+  let emit: (l: string) => void = () => {};
+  let finish: (c: { code: number }) => void = () => {};
+  (runClaude as any).mockImplementation((_m: string, cb: (l: string) => void) => {
     emit = cb;
     return { done: new Promise((r) => (finish = r)), kill: () => {} };
   });
@@ -96,6 +110,14 @@ describe("jobs", () => {
     expect(() => startJob({ kind: "ingest", course: "c1" })).not.toThrow();
     f2.finish(0);
     await new Promise((r) => setTimeout(r, 0));
+  });
+
+  it("chat kind spawns via runClaude, not runPython", () => {
+    fakeClaudeRun();
+    const job = startJob({ kind: "chat", message: "what's due?" });
+    expect(job.kind).toBe("chat");
+    expect((runClaude as any).mock.calls[0][0]).toBe("what's due?");
+    expect(runPython).not.toHaveBeenCalled();
   });
 
   it("failed exit -> status failed", async () => {

@@ -1,11 +1,18 @@
 import { EventEmitter } from "node:events";
 import { randomUUID } from "node:crypto";
 import { runPython } from "./python.js";
+import { runClaude } from "./claudeRunner.js";
 
 export class BusyError extends Error {}
 
 export type JobKind =
-  "sync" | "calendar-sync" | "ingest" | "transcribe" | "transcribe-url" | "transcribe-inbox";
+  | "sync"
+  | "calendar-sync"
+  | "ingest"
+  | "transcribe"
+  | "transcribe-url"
+  | "transcribe-inbox"
+  | "chat";
 
 export interface Job {
   id: string;
@@ -23,6 +30,7 @@ export interface StartOpts {
   course?: string;
   url?: string;
   title?: string;
+  message?: string;
 }
 
 const LOG_CAP = 2000;
@@ -53,6 +61,9 @@ function argv(o: StartOpts): string[] {
         ...(o.title ? ["--title", o.title] : []),
         "--json",
       ];
+    case "chat":
+      // unreachable: startJob branches to runClaude before argv() is called for "chat"; arm exists only for exhaustiveness.
+      return [];
   }
 }
 
@@ -87,7 +98,7 @@ export function startJob(o: StartOpts): Job {
     if (job.log.length > LOG_CAP) job.log.splice(0, job.log.length - LOG_CAP);
     bus.emit("line", l);
   };
-  const handle = runPython(argv(o), push);
+  const handle = o.kind === "chat" ? runClaude(o.message ?? "", push) : runPython(argv(o), push);
   kill = handle.kill;
   handle.done.then(({ code }) => {
     job.status = code === 0 ? "done" : "failed";
