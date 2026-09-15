@@ -1,6 +1,13 @@
 """Query layer over courses/<slug>/normalized/*.md: SQLite FTS5 full-text +
 frontmatter-column filters, a next-session resolver, and guide-staleness
-metadata. No embeddings, no LLM."""
+metadata. No embeddings, no LLM — but build_index() does perform a
+best-effort, network-touching Drive read (drive_sync.list_shared /
+list_shared_meta) to pull classmates' shared notes. That call is wrapped in
+try/except so a Drive failure never blocks indexing, but it is NOT
+timeout-bounded (see the comment at its call sites) — a genuinely hung
+socket on that call can stall build_index, including on the query-triggered
+lazy-rebuild path (_open()/_recover_db's force=True corruption-recovery
+path). Known follow-up, not fixed here."""
 import json
 import re
 import sqlite3
@@ -89,10 +96,16 @@ def brain_dir(slug: str) -> Path:
 
 
 def _normalized_files(slug: str) -> list[Path]:
+    """Local corpus files under normalized/. Excludes underscore-prefixed
+    manifests and materialized shared-note files (those are re-pulled and
+    re-written by build_index each time from Drive, not local source
+    material — indexing them here too would double-count them in the docs
+    table and pollute the local-file fingerprint)."""
     nd = course_dir(slug) / "normalized"
     if not nd.exists():
         return []
-    return sorted(p for p in nd.glob("*.md") if not p.name.startswith("_"))
+    return sorted(p for p in nd.glob("*.md")
+                  if not p.name.startswith("_") and not p.name.startswith("shared-note-"))
 
 
 def _meta_path(slug: str) -> Path:
@@ -127,11 +140,32 @@ def _ingest_hash_map(slug: str) -> dict:
     return out
 
 
-def _fingerprint(slug: str, files: list[Path]) -> dict:
+def _fingerprint(slug: str, files: list[Path], shared_signature=None) -> dict:
     """Content-hash per file from the ingest manifest; mtime fallback for files
-    the manifest doesn't list (e.g. a hand-added test file)."""
+    the manifest doesn't list (e.g. a hand-added test file). `shared_signature`
+    folds in a cheap signature of the shared-notes state on Drive (see
+    `_shared_notes_signature`) so a new/changed classmate note forces a
+    rebuild even when no local file changed."""
     hashes = _ingest_hash_map(slug)
-    return {p.name: hashes.get(p.name, p.stat().st_mtime) for p in files}
+    fp = {p.name: hashes.get(p.name, p.stat().st_mtime) for p in files}
+    if shared_signature is not None:
+        fp["__shared__"] = shared_signature
+    return fp
+
+
+def _shared_notes_signature(slug: str) -> str:
+    """Cheap signature over the shared notes currently on Drive for `slug`,
+    used to detect a new/changed classmate note without a local file change.
+    Best-effort: any failure yields "" (treated like "no shared notes")."""
+    try:
+        # NOTE: not timeout-bounded (see module docstring / I11 follow-up) — a
+        # hung socket here can stall the caller; try/except only guards against
+        # an exception, not a hang.
+        shared = drive_sync.list_shared_meta(slug, "notes", exclude_subfolder=student_identity.my_name())
+    except Exception:  # noqa: BLE001 — sharing is best-effort, never blocks indexing
+        return ""
+    pairs = sorted(f"{item['subfolder']}/{item['name']}" for item in shared)
+    return "|".join(pairs)
 
 
 def _manifest_hashes(slug: str) -> set[str]:
@@ -179,12 +213,17 @@ def brain_status(slug: str) -> dict:
             len(parse_frontmatter(p.read_text(errors="replace"))[1].encode())
             for p in files
         )
+    # indexFingerprint may carry a "__shared__" key (see _fingerprint) reflecting
+    # Drive state at last build; strip it for this local-only staleness check so
+    # brain_status stays a pure, network-free read.
+    stored_fp = dict(meta.get("indexFingerprint") or {})
+    stored_fp.pop("__shared__", None)
     return {
         "slug": slug,
         "corpusBytes": corpus_bytes,
         "sourceCount": len(files),
         "indexBuiltAt": meta.get("indexBuiltAt"),
-        "indexStale": meta.get("indexFingerprint") != _fingerprint(slug, files),
+        "indexStale": stored_fp != _fingerprint(slug, files),
         "guideBuiltAt": meta.get("guideBuiltAt"),
         "guideSourcesBehind": len(current - covered),
         "embeddingsRecommended": corpus_bytes > 150_000,
@@ -244,7 +283,8 @@ def build_index(slug: str, force: bool = False) -> dict:
     if not files:
         # No corpus: do NOT destroy an existing index or overwrite _brain.json.
         return {"indexed": 0, "skipped": True, "reason": "no normalized corpus"}
-    fp = _fingerprint(slug, files)
+    shared_sig = _shared_notes_signature(slug)
+    fp = _fingerprint(slug, files, shared_sig)
     if not force and meta.get("indexFingerprint") == fp and (brain_dir(slug) / "index.sqlite").exists():
         return {"indexed": len(files), "skipped": True, "corpusBytes": meta.get("corpusBytes", 0)}
 
@@ -274,15 +314,22 @@ def build_index(slug: str, force: bool = False) -> dict:
         )
 
     try:
+        # NOTE: not timeout-bounded — see module docstring / I11 follow-up.
         shared = drive_sync.list_shared(slug, "notes", exclude_subfolder=student_identity.my_name())
     except Exception:  # noqa: BLE001 — sharing is best-effort, never blocks indexing
         shared = []
+    if shared:
+        ensure(course_dir(slug) / "normalized")
     for item in shared:
         fm, body = parse_frontmatter(item["content"].decode(errors="replace"))
+        # Materialize to disk under normalized/ so the citation is actually
+        # openable via get_doc (brain_get only serves courses/<slug>/normalized/*).
+        local_name = f"shared-note-{item['subfolder']}-{item['name']}"
+        (course_dir(slug) / "normalized" / local_name).write_text(item["content"].decode(errors="replace"))
         con.execute(
             "INSERT INTO docs (path, course, type, session, due, title, body, sharedBy) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (f"shared/notes/{item['subfolder']}/{item['name']}", fm.get("course", ""),
+            (f"normalized/{local_name}", fm.get("course", ""),
              fm.get("type", "self-note"), str(fm.get("session", "")), fm.get("due", ""),
              fm.get("title", item["name"]), body, item["subfolder"]),
         )

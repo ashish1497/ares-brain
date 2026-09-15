@@ -361,3 +361,50 @@ def test_query_local_docs_have_empty_sharedby(course):
         brain.build_index(course, force=True)
     results = brain.query(course)
     assert all(r.get("sharedBy", "") == "" for r in results)
+
+
+def test_build_index_rebuilds_when_only_shared_notes_change(course):
+    """I1: a new/changed shared note must force a rebuild even when no local
+    file changed — build_index's early-return fingerprint used to be
+    local-files-only, so it would short-circuit before ever pulling shared
+    notes on a second run."""
+    with patch("brain.drive_sync.list_shared", return_value=[]), \
+         patch("brain.drive_sync.list_shared_meta", return_value=[]):
+        r1 = brain.build_index(course)
+    assert r1["skipped"] is False
+
+    shared = [{"subfolder": "arjun", "name": "n1.md",
+               "content": b"---\ntype: self-note\ntitle: Note\n---\nunit economics content"}]
+    shared_meta = [{"subfolder": "arjun", "name": "n1.md"}]
+    with patch("brain.drive_sync.list_shared", return_value=shared), \
+         patch("brain.drive_sync.list_shared_meta", return_value=shared_meta), \
+         patch("brain.student_identity.my_name", return_value="priya"):
+        r2 = brain.build_index(course)   # no force=True — local files unchanged
+
+    assert r2["skipped"] is False
+    results = brain.query(course, text="economics")
+    assert any(r.get("sharedBy") == "arjun" for r in results)
+
+
+def test_build_index_materializes_shared_note_to_openable_path(course, home):
+    """I2: a shared-note row must cite a path get_doc can actually serve
+    (under courses/<slug>/normalized/), not the synthetic shared/notes/...
+    path that get_doc never resolves."""
+    shared = [{"subfolder": "arjun", "name": "n1.md",
+               "content": b"---\ntype: self-note\ntitle: Note\n---\nunit economics content"}]
+    with patch("brain.drive_sync.list_shared", return_value=shared), \
+         patch("brain.drive_sync.list_shared_meta",
+              return_value=[{"subfolder": "arjun", "name": "n1.md"}]), \
+         patch("brain.student_identity.my_name", return_value="priya"):
+        brain.build_index(course, force=True)
+
+    results = brain.query(course, text="economics")
+    shared_row = next(r for r in results if r.get("sharedBy") == "arjun")
+    assert shared_row["path"] == "normalized/shared-note-arjun-n1.md"
+
+    on_disk = home / "courses" / course / "normalized" / "shared-note-arjun-n1.md"
+    assert on_disk.exists()
+
+    doc = brain.get_doc(course, shared_row["path"])
+    assert doc is not None
+    assert "unit economics content" in doc["body"]
