@@ -15,6 +15,7 @@ import { ExamsTab } from "./components/ExamsTab";
 import { BrainTab } from "./components/BrainTab";
 import { GapsTab } from "./components/GapsTab";
 import { OutreachAgentPage } from "./components/outreach/OutreachAgentPage";
+import { SetupGate } from "./components/SetupGate";
 
 const TAB_IDS = ["today", "assignments", "attendance", "exams", "brain", "gaps"];
 
@@ -137,7 +138,7 @@ export function App() {
   const tabProps = { ov, onJob, busy: !!busy, go, params };
 
   return (
-    <>
+    <SetupGate>
       <Header
         ov={ov}
         busy={!!busy}
@@ -168,6 +169,6 @@ export function App() {
         onJob={onJob}
         busy={!!busy}
       />
-    </>
+    </SetupGate>
   );
 }

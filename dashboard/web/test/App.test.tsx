@@ -19,6 +19,18 @@ vi.mock("../src/api", async (orig) => ({
 beforeEach(() => {
   vi.mocked(api.getState).mockResolvedValue({ job: null, lastRuns: {} });
   window.location.hash = "";
+  // App is now wrapped in SetupGate, which polls /api/setup-state before rendering
+  // the real app shell — report setup complete so these tests see the app directly.
+  global.fetch = vi.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      driveConnected: true,
+      calendarConnected: true,
+      mesaTokenPresent: true,
+      claudeCliLoggedIn: true,
+      ready: true,
+    }),
+  }) as any;
 });
 
 test("a failed first load renders a full-page error card with a Retry button, not a stuck loading state", async () => {
