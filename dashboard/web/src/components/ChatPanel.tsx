@@ -8,12 +8,21 @@ export function ChatPanel() {
   const [message, setMessage] = useState("");
   const [job, setJob] = useState<Job | null>(null);
   const [lines, setLines] = useState<string[]>([]);
+  const [error, setError] = useState("");
 
   const send = async () => {
     const text = message.trim();
     if (!text) return;
-    const { jobId, error } = await api.startJob({ kind: "chat", message: text });
-    if (error || !jobId) return;
+    setError("");
+    const { jobId, error: startError } = await api.startJob({ kind: "chat", message: text });
+    if (startError || !jobId) {
+      setError(
+        startError === "busy"
+          ? "ares-brain is busy with another job right now — try again in a moment."
+          : startError || "couldn't send — try again.",
+      );
+      return;
+    }
     setLines([]);
     setJob({
       id: jobId,
@@ -44,6 +53,11 @@ export function ChatPanel() {
           Send
         </Button>
       </div>
+      {error && (
+        <div className="rounded-nb border-[3px] border-edge bg-bad p-3 text-sm font-bold text-black">
+          {error}
+        </div>
+      )}
       <JobLog job={job} lines={lines} />
     </div>
   );
