@@ -103,16 +103,26 @@ npm run --workspace mcp build      # produces mcp/dist/index.js — the plugin l
 
 `mcp/dist/` is gitignored — **rebuild after every pull.**
 
-### 3. LMS token
+### 3. `.env` — required before anything else works
 
 ```bash
 cp .env.example .env
 ```
 
-Paste a fresh `refresh_token` cookie into `.env` as `MESA_REFRESH_TOKEN`:
-DevTools → Application → Cookies → `students.mesaschool.co.in` → `refresh_token`.
-The scraper rotates and rewrites this value on every run, so it stays valid for ~30
-days of use; if it ever locks out, paste a new one.
+Two values in `.env` are **required to start**, not optional:
+
+- `MESA_REFRESH_TOKEN` — paste a fresh `refresh_token` cookie: DevTools →
+  Application → Cookies → `students.mesaschool.co.in` → `refresh_token`. The
+  scraper rotates and rewrites this value on every run, so it stays valid for
+  ~30 days of use; if it ever locks out, paste a new one.
+- `CLAUDE_CODE_OAUTH_TOKEN` — every headless `claude -p` call this repo makes
+  (the dashboard's Chat/Testprep/Mock-midterm "Generate" buttons, and the 6
+  AM/6 PM launchd jobs) needs this to authenticate — being logged into the
+  desktop app does **not** cover a separate `claude` binary on PATH. Generate
+  one with `claude setup-token` and paste the printed value in.
+
+Everything else in `.env.example` (Gemini transcription keys, `MESA_ACCESS_TOKEN`,
+`ARES_BRAIN_HOME`, `MESA_TERM_ID`) is optional — see the comments in the file.
 
 ### 4. Install the plugin
 
@@ -153,30 +163,66 @@ claude plugin install mesa@mesa-local
 
 ## Quickstart prompt
 
-Finished the four install steps above? Open a Claude Code session in this repo and
-paste this as your first message — it walks you through everything else, explains
-each step as it goes, and stops to ask before anything irreversible:
+One paste, from scratch. Open any Claude Code session — the repo doesn't need to
+exist on your machine yet, and this works on macOS, Windows, or Linux — and paste
+this as your first message:
 
 ```
-I just set up ares-brain for my Mesa cohort and this is my first time using it.
+Set me up with ares-brain — I'm on this project for the first time and may not
+have the repo cloned yet.
 
-1. Run `cd scraper && uv run python lms_scrape.py setup-state --json` and tell me
-   plainly what's missing (Drive/Calendar OAuth, my LMS token, Claude CLI login).
-2. Help me fix whatever's missing, one thing at a time — tell me exactly what to do
-   for anything that needs my own browser/account action.
-3. Once setup is clean, run /mesa:ares-brain-course-scrape to pull my courses.
-4. Build the knowledge brain for my two or three heaviest courses with
-   /mesa:ares-brain-course-brain.
-5. Give me a /mesa:ares-brain-week-ahead so I know what's coming up.
-6. Tell me, in a few sentences, what I should ask you for day-to-day (briefings,
-   testprep, assignment help) and what the dashboard (`npm run dashboard`) is for.
+1. Detect my OS (macOS / Windows / Linux) and check what's already installed
+   before assuming anything's missing: `git`, `uv`, `nvm`, `node`, `claude`.
+2. Check for git first — install it if missing (Xcode Command Line Tools on
+   macOS, winget/git-scm.com on Windows, apt/your distro's package manager on
+   Linux) — then check whether a clone of https://github.com/ashish1497/ares-brain
+   already exists somewhere I'd recognize (ask me if unsure where, or if I want
+   it somewhere specific). If it's missing, clone it:
+     git clone https://github.com/ashish1497/ares-brain.git
+3. Install whatever else is missing, one at a time, telling me what each is for
+   before you run its installer, and asking before anything system-wide:
+   - **uv** (https://docs.astral.sh/uv/) — the repo's Python sidecar needs
+     Python 3.12 specifically; once uv itself is installed, use
+     `uv python install 3.12` to get that Python version through uv rather than
+     a separate OS-level Python install — one less moving part, and it's what
+     `uv venv --python 3.12` in the next step actually needs.
+   - **nvm** (https://github.com/nvm-sh/nvm on macOS/Linux,
+     https://github.com/coreybutler/nvm-windows on Windows) if I don't have it,
+     then `nvm install 18 && nvm use 18` (the repo needs Node 18+) — don't
+     install Node directly from nodejs.org or a package manager if nvm is
+     available, since nvm is what lets me switch Node versions later without
+     reinstalling.
+   - **Claude Code CLI**, if the `claude` command itself isn't on my PATH —
+     https://docs.claude.com/en/docs/claude-code — note that the desktop app
+     and the CLI on PATH are separate installs; I may have one without the
+     other.
+4. Follow the repo's own README.md **Install** section exactly, step by step —
+   Python sidecar (uv venv), MCP server build, and the plugin install
+   (`claude plugin marketplace add` / `claude plugin install mesa@mesa-local`).
+   Note macOS-only pieces (the calendar OAuth flow and the 6 AM/6 PM launchd
+   job) plainly if I'm on Windows/Linux — don't invent a Task Scheduler or
+   cron equivalent that isn't in the repo, just tell me scrape/ingest/brain/
+   dashboard work fine without it and the daily job is macOS-only.
+   **`.env` is a hard blocker, not optional** — `cp .env.example .env`, then
+   stop and tell me I must fill in both `MESA_REFRESH_TOKEN` (a cookie from
+   my own browser) and `CLAUDE_CODE_OAUTH_TOKEN` (`claude setup-token`) before
+   anything past this point will work. Nothing else in `.env` blocks startup.
+5. Run `cd scraper && uv run python lms_scrape.py setup-state --json` and tell me
+   plainly what's still missing (Drive/Calendar OAuth, my Mesa LMS refresh token,
+   Claude CLI login) and exactly what to do for each — tell me precisely when
+   something needs my own browser/account action vs. when you can do it.
+6. Once setup is clean, run /mesa:ares-brain-course-scrape to pull my courses,
+   then build the knowledge brain for my two or three heaviest courses with
+   /mesa:ares-brain-course-brain, then give me a /mesa:ares-brain-week-ahead.
+7. Tell me, in a few sentences: what to ask you for day-to-day (briefings,
+   testprep, assignment help), what the dashboard (`npm run dashboard`) is for,
+   and whether my cohort already shares a `config/course-drive-folders.json` I
+   should pull before scraping so my data lands in shared Drive folders my
+   classmates can already see.
 
-Explain what each step does before you run it — I'm new to this, not just to this repo.
+Explain what each step does and why before running it — I'm new to this, not
+just to this repo. Stop and ask before anything irreversible.
 ```
-
-If your cohort already shares a `config/course-drive-folders.json` (ask whoever set
-this up first), pull that before step 3 so your scrape lands in the shared Drive
-folders your classmates can already see — see **Drive** under Dashboard tabs below.
 
 ---
 
