@@ -229,7 +229,41 @@ export interface Overview {
 
 const j = (r: Response) => r.json();
 
+export interface DrillFramework {
+  name: string;
+  summary: string;
+  source: string;
+}
+export interface DrillCard {
+  id: number;
+  front: string;
+  back: string;
+  tag: string;
+}
+export interface DrillMcq {
+  id: number;
+  question: string;
+  options: string[];
+  correct: number;
+  explanation: string;
+}
+export interface DrillPack {
+  course: string;
+  courseName: string;
+  generatedAt: string;
+  examWeight: string;
+  map: string;
+  cheatsheet: string;
+  frameworks: DrillFramework[];
+  cards: DrillCard[];
+  mcq: DrillMcq[];
+}
+
 export const getCourses = (): Promise<Course[]> => fetch("/api/courses").then(j);
+
+/** null when this course has no revision pack built yet (404). */
+export const getDrill = (course: string): Promise<DrillPack | null> =>
+  fetch(`/api/drill/${encodeURIComponent(course)}`).then((r) => (r.ok ? r.json() : null));
 export const getState = (): Promise<State> => fetch("/api/state").then(j);
 
 export const getOverview = (fresh = false): Promise<Overview> =>

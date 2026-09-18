@@ -145,6 +145,14 @@ def mark_guide(slug: str) -> dict:
     return meta
 
 
+def mark_drill(slug: str) -> dict:
+    meta = _load_meta(slug)
+    meta["drillBuiltAt"] = _now()
+    meta["drillSourceHashes"] = sorted(_manifest_hashes(slug))
+    _save_meta(slug, meta)
+    return meta
+
+
 _COURSE_MD_TEMPLATE = """# {name} — my focus notes
 <!-- Edit freely. Loaded as context whenever the agent answers about this course. -->
 
@@ -171,6 +179,7 @@ def brain_status(slug: str) -> dict:
     files = _normalized_files(slug)
     current = _manifest_hashes(slug)
     covered = set(meta.get("guideSourceHashes") or [])
+    drill_covered = set(meta.get("drillSourceHashes") or [])
     corpus_bytes = meta.get("corpusBytes")
     if corpus_bytes is None:
         corpus_bytes = sum(
@@ -185,6 +194,8 @@ def brain_status(slug: str) -> dict:
         "indexStale": meta.get("indexFingerprint") != _fingerprint(slug, files),
         "guideBuiltAt": meta.get("guideBuiltAt"),
         "guideSourcesBehind": len(current - covered),
+        "drillBuiltAt": meta.get("drillBuiltAt"),
+        "drillSourcesBehind": len(current - drill_covered),
         "embeddingsRecommended": corpus_bytes > 150_000,
         "studyArtifacts": len(list_study(slug)),
     }

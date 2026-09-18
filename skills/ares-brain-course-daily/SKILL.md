@@ -91,3 +91,17 @@ Run: `osascript -e 'display notification "<summary>" with title "Mesa — mornin
 `<summary>` = `<N> classes · <M> due soon · <K> changes`
 (prefix `<P> missed · ` when brief.overdue is non-empty; prefix `scrape failed — `
 when step 1 failed). Keep it under ~100 chars.
+
+## 6. Refresh stale revision packs (best-effort, after the brief is done)
+
+Call `brain_status` with no course. For each course where `drillSourcesBehind > 0`
+AND `sourceCount > 0`, run the `ares-brain-drill-build` skill for that course slug.
+
+- This step is entirely best-effort — never let it block or retroactively affect
+  the brief already written in step 4, and never let one course's failure stop the
+  others.
+- If more than 3 courses are stale at once (e.g. after a long gap), only refresh the
+  3 with the most `drillSourcesBehind`, so one morning run doesn't turn into an
+  unbounded content-generation pass — the rest catch up on the next run.
+- Skip entirely (log nothing, don't count as a failure) if `brain_status` itself
+  errors — the drill packs just stay stale until the next successful run.

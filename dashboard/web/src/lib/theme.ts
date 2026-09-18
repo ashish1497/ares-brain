@@ -1,4 +1,4 @@
-export type ThemeName = "meadow" | "violet";
+export type ThemeName = "meadow" | "violet" | "obsidian";
 export type Appearance = "system" | "light" | "dark";
 
 const TKEY = "ares.theme";
@@ -10,7 +10,7 @@ export function getThemePrefs(): { theme: ThemeName; appearance: Appearance } {
   let appearance: Appearance = "system";
   try {
     const t = localStorage.getItem(TKEY);
-    if (t === "meadow" || t === "violet") theme = t;
+    if (t === "meadow" || t === "violet" || t === "obsidian") theme = t;
     const a = localStorage.getItem(AKEY);
     if (a === "system" || a === "light" || a === "dark") appearance = a;
   } catch {

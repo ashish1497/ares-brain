@@ -15,6 +15,7 @@ import { ExamsTab } from "./components/ExamsTab";
 import { BrainTab } from "./components/BrainTab";
 import { GapsTab } from "./components/GapsTab";
 import { OutreachAgentPage } from "./components/outreach/OutreachAgentPage";
+import { RevisionPage } from "./components/revision/RevisionPage";
 
 const TAB_IDS = ["today", "assignments", "attendance", "exams", "brain", "gaps"];
 
@@ -54,10 +55,6 @@ export function App() {
   const stop = useRef<(() => void) | undefined>(undefined);
   const { tab, params, go } = useHashRoute();
 
-  // A genuinely separate page — not one of the six dashboard tabs, and not
-  // gated on the overview load (it needs none of that data).
-  if (tab === "outreach-agent") return <OutreachAgentPage go={go} />;
-
   const refresh = (fresh = false) =>
     getOverview(fresh)
       .then((o) => {
@@ -94,6 +91,14 @@ export function App() {
     const t = setInterval(() => refresh(false), 20_000);
     return () => clearInterval(t);
   }, []);
+
+  // Genuinely separate pages — not one of the six dashboard tabs, and not
+  // gated on the overview load (they need none of that data). This must come
+  // after every Hook call above so hook order stays identical across renders
+  // regardless of which page is active (violating that throws React error #300).
+  if (tab === "outreach-agent") return <OutreachAgentPage go={go} />;
+  if (tab === "revision") return <RevisionPage go={go} />;
+
   const busy = job?.status === "running";
 
   async function onJob(kind: string, opts: Record<string, string> = {}) {
@@ -145,6 +150,7 @@ export function App() {
         onRefresh={() => refresh(true)}
         onOpenSettings={() => setSettingsOpen(true)}
         onOutreach={() => go("outreach-agent")}
+        onRevision={() => go("revision")}
       />
       <Tabs active={active} counts={counts} onSelect={(t) => go(t)} />
       <div className="mx-auto max-w-[1400px] px-4 pb-8 md:px-8">

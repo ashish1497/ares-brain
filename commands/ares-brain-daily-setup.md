@@ -31,7 +31,7 @@ Install both daily agents (morning brief at 06:00, evening check at 18:00). Step
        <string>-p</string><string>/mesa:ares-brain-course-daily</string>
        <string>--permission-mode</string><string>acceptEdits</string>
        <string>--allowedTools</string>
-       <string>Bash(cd:*),Bash(uv run python lms_scrape.py:*),Bash(osascript:*),Write(daily/**),Read(courses/**),mcp__plugin_mesa_mesa__daily_brief,mcp__plugin_mesa_mesa__calendar_sync,mcp__plugin_mesa_mesa__scrape,mcp__plugin_mesa_mesa__ingest</string>
+       <string>Bash(cd:*),Bash(uv run python lms_scrape.py:*),Bash(osascript:*),Write(daily/**),Write(courses/**/brain/drill.json),Read(courses/**),mcp__plugin_mesa_mesa__daily_brief,mcp__plugin_mesa_mesa__calendar_sync,mcp__plugin_mesa_mesa__scrape,mcp__plugin_mesa_mesa__ingest,mcp__plugin_mesa_mesa__brain_status,mcp__plugin_mesa_mesa__brain_get,mcp__plugin_mesa_mesa__brain_query</string>
      </array>
      <key>EnvironmentVariables</key>
      <dict><key>PATH</key><string><PATH></string></dict>

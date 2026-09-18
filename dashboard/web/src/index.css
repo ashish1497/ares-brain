@@ -39,9 +39,66 @@
   --color-bad: #e03131;
 }
 
+/* ---- Obsidian (black + gold, glassmorphism) ---- */
+/* Light/default: champagne glass — black ink, gold accents, warm ivory canvas. */
+:root[data-theme="obsidian"] {
+  --color-edge: rgba(180, 140, 40, 0.45);
+  --color-paper: #f6f1e4;
+  --color-card: rgba(255, 253, 246, 0.55);
+  --color-ink: #1a1712;
+  --color-cta: #caa53d;
+  --color-accent: #8a6a1f;
+  --color-ok: #2f9e44;
+  --color-soon: #f08c00;
+  --color-bad: #e03131;
+  --radius-nb: 16px;
+  --nb-border: 1px;
+  --nb-shadow:
+    0 8px 30px rgba(60, 45, 10, 0.14),
+    0 0 0 1px rgba(180, 140, 40, 0.1);
+}
+
+/* Dark: true black + gold glass — the primary look for this theme. */
+:root[data-appearance="dark"][data-theme="obsidian"] {
+  --color-edge: rgba(212, 175, 55, 0.55);
+  --color-paper: #0b0a08;
+  --color-card: rgba(28, 25, 20, 0.55);
+  --color-ink: #f3ecd9;
+  --color-cta: #d4af37;
+  --color-accent: #f2c94c;
+  --color-ok: #51cf66;
+  --color-soon: #ffc078;
+  --color-bad: #ff6b6b;
+  --nb-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(212, 175, 55, 0.12);
+}
+
+/* Every surface that renders as bg-card / bg-paper becomes a frosted glass pane
+   under Obsidian — one hook covers Card, Modal, Button, pills, tooltips, etc.
+   without touching each component. */
+:root[data-theme="obsidian"] .bg-card {
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+}
+:root[data-theme="obsidian"] .bg-paper {
+  backdrop-filter: blur(10px) saturate(130%);
+  -webkit-backdrop-filter: blur(10px) saturate(130%);
+}
+
+/* Soft gold glow field behind the glass — dark mode only, so the blur has
+   something to catch. */
+:root[data-appearance="dark"][data-theme="obsidian"] body {
+  background:
+    radial-gradient(1200px 800px at 12% -10%, rgba(212, 175, 55, 0.16), transparent 60%),
+    radial-gradient(900px 700px at 110% 15%, rgba(212, 175, 55, 0.1), transparent 55%),
+    radial-gradient(800px 600px at 50% 120%, rgba(120, 90, 20, 0.14), transparent 60%),
+    var(--color-paper);
+}
+
 /* ---- Meadow dark (explicit appearance="dark") ---- */
 /* keep in sync with the @media copy below */
-:root[data-appearance="dark"]:not([data-theme="violet"]) {
+:root[data-appearance="dark"]:not([data-theme="violet"]):not([data-theme="obsidian"]) {
   --color-edge: #16b981;
   --color-paper: #141a17;
   --color-card: #1f2723;
@@ -69,9 +126,35 @@
 
 /* appearance: system → follow the OS unless the user forced light/dark explicitly */
 @media (prefers-color-scheme: dark) {
+  /* ---- Obsidian dark (system) ---- */
+  /* keep in sync with the explicit copy above */
+  :root:not([data-appearance="light"]):not([data-appearance="dark"])[data-theme="obsidian"] {
+    --color-edge: rgba(212, 175, 55, 0.55);
+    --color-paper: #0b0a08;
+    --color-card: rgba(28, 25, 20, 0.55);
+    --color-ink: #f3ecd9;
+    --color-cta: #d4af37;
+    --color-accent: #f2c94c;
+    --color-ok: #51cf66;
+    --color-soon: #ffc078;
+    --color-bad: #ff6b6b;
+    --nb-shadow:
+      0 10px 40px rgba(0, 0, 0, 0.6),
+      0 0 0 1px rgba(212, 175, 55, 0.12);
+  }
+  :root:not([data-appearance="light"]):not([data-appearance="dark"])[data-theme="obsidian"] body {
+    background:
+      radial-gradient(1200px 800px at 12% -10%, rgba(212, 175, 55, 0.16), transparent 60%),
+      radial-gradient(900px 700px at 110% 15%, rgba(212, 175, 55, 0.1), transparent 55%),
+      radial-gradient(800px 600px at 50% 120%, rgba(120, 90, 20, 0.14), transparent 60%),
+      var(--color-paper);
+  }
+
   /* ---- Meadow dark (system) ---- */
   /* keep in sync with the explicit copy above */
-  :root:not([data-appearance="light"]):not([data-appearance="dark"]):not([data-theme="violet"]) {
+  :root:not([data-appearance="light"]):not([data-appearance="dark"]):not([data-theme="violet"]):not(
+      [data-theme="obsidian"]
+    ) {
     --color-edge: #16b981;
     --color-paper: #141a17;
     --color-card: #1f2723;

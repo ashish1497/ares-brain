@@ -9,6 +9,7 @@ import type { Overview } from "../api";
 const SWATCHES: { theme: ThemeName; label: string; colors: string[] }[] = [
   { theme: "meadow", label: "Meadow", colors: ["#0f8a5f", "#eafff4", "#ffffff", "#ffd23f"] },
   { theme: "violet", label: "Ultraviolet", colors: ["#5b21b6", "#faf3e0", "#fffdf7", "#ffd23f"] },
+  { theme: "obsidian", label: "Obsidian", colors: ["#d4af37", "#0b0a08", "#1c1914", "#f2c94c"] },
 ];
 
 const APPEARANCES: { value: Appearance; label: string }[] = [
