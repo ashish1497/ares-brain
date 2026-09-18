@@ -123,6 +123,68 @@ def test_write_transcript_frontmatter_is_valid_yaml(home):
     assert loaded["course"] == "Course #1: Frameworks"
 
 
+def test_step_transcribe_uses_shared_transcript_when_present(home, monkeypatch):
+    course = {"id": "c1", "name": "Course One", "slug": "course-one"}
+    (home / "courses" / "course-one" / "raw").mkdir(parents=True)
+    (home / "courses" / "course-one" / "raw" / "recordings.json").write_text(json.dumps(
+        [{"id": "rec1", "title": "Session 1", "videoUrl": "https://youtube.com/live/x",
+          "provider": "youtube", "recordedOn": "2026-08-20"}]))
+    import importlib, paths
+    importlib.reload(paths); importlib.reload(transcribe)
+
+    shared_content = b"---\ntype: transcript\n---\n[00:00:00] shared content\n"
+    calls = {}
+
+    def fake_read_or_none(slug, subpath):
+        calls["args"] = (slug, subpath)
+        return shared_content
+
+    def boom(*a, **k):
+        raise AssertionError("should not pull audio when a shared transcript exists")
+
+    monkeypatch.setattr(transcribe.drive_sync, "read_or_none", fake_read_or_none)
+    monkeypatch.setattr(transcribe, "_pull_audio", boom)
+
+    result = transcribe.step_transcribe([course])
+
+    assert calls["args"] == ("course-one", "transcripts/rec1.md")
+    assert "rec1" in result["transcribed"]
+    dest = home / "courses" / "course-one" / "transcripts" / "rec1.md"
+    assert dest.read_bytes() == shared_content
+
+
+def test_step_transcribe_shares_after_local_transcription(home, monkeypatch):
+    course = {"id": "c1", "name": "Course One", "slug": "course-one"}
+    (home / "courses" / "course-one" / "raw").mkdir(parents=True)
+    (home / "courses" / "course-one" / "raw" / "recordings.json").write_text(json.dumps(
+        [{"id": "rec1", "title": "Session 1", "videoUrl": "https://youtube.com/live/x",
+          "provider": "youtube", "recordedOn": "2026-08-20"}]))
+    import importlib, paths
+    importlib.reload(paths); importlib.reload(transcribe)
+
+    write_calls = []
+
+    def fake_write_if_absent(slug, subpath, content, content_hash):
+        write_calls.append((slug, subpath, content, content_hash))
+        return True
+
+    monkeypatch.setattr(transcribe.drive_sync, "read_or_none", lambda slug, subpath: None)
+    monkeypatch.setattr(transcribe.drive_sync, "write_if_absent", fake_write_if_absent)
+    monkeypatch.setattr(transcribe, "_pull_audio", lambda url, d: FIX / "sample.wav")
+    monkeypatch.setattr(transcribe, "_whisper", lambda audio: [(0.0, "hello")])
+
+    result = transcribe.step_transcribe([course])
+
+    assert "rec1" in result["transcribed"]
+    assert len(write_calls) == 1
+    slug, subpath, content, content_hash = write_calls[0]
+    assert slug == "course-one"
+    assert subpath == "transcripts/rec1.md"
+    dest = home / "courses" / "course-one" / "transcripts" / "rec1.md"
+    assert content == dest.read_bytes()
+    assert content_hash == transcribe.ingest._body_hash(content.decode())
+
+
 def test_step_transcribe_malformed_recording_entry_is_recorded(home, monkeypatch):
     course = {"id": "c1", "name": "Course One", "slug": "course-one"}
     (home / "courses" / "course-one" / "raw").mkdir(parents=True)

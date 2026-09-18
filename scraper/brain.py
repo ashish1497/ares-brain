@@ -1,6 +1,13 @@
 """Query layer over courses/<slug>/normalized/*.md: SQLite FTS5 full-text +
 frontmatter-column filters, a next-session resolver, and guide-staleness
-metadata. No embeddings, no LLM."""
+metadata. No embeddings, no LLM — but build_index() does perform a
+best-effort, network-touching Drive read (drive_sync.list_shared /
+list_shared_meta) to pull classmates' shared notes. That call is wrapped in
+try/except so a Drive failure never blocks indexing, but it is NOT
+timeout-bounded (see the comment at its call sites) — a genuinely hung
+socket on that call can stall build_index, including on the query-triggered
+lazy-rebuild path (_open()/_recover_db's force=True corruption-recovery
+path). Known follow-up, not fixed here."""
 import json
 import re
 import sqlite3
@@ -9,6 +16,8 @@ from pathlib import Path
 
 import yaml
 
+import drive_sync
+import student_identity
 from paths import course_dir, courses_root, ensure
 
 _FENCE = re.compile(r"^---\n(.*?)\n---\n(.*)\Z", re.DOTALL)
@@ -87,10 +96,16 @@ def brain_dir(slug: str) -> Path:
 
 
 def _normalized_files(slug: str) -> list[Path]:
+    """Local corpus files under normalized/. Excludes underscore-prefixed
+    manifests and materialized shared-note files (those are re-pulled and
+    re-written by build_index each time from Drive, not local source
+    material — indexing them here too would double-count them in the docs
+    table and pollute the local-file fingerprint)."""
     nd = course_dir(slug) / "normalized"
     if not nd.exists():
         return []
-    return sorted(p for p in nd.glob("*.md") if not p.name.startswith("_"))
+    return sorted(p for p in nd.glob("*.md")
+                  if not p.name.startswith("_") and not p.name.startswith("shared-note-"))
 
 
 def _meta_path(slug: str) -> Path:
@@ -125,11 +140,32 @@ def _ingest_hash_map(slug: str) -> dict:
     return out
 
 
-def _fingerprint(slug: str, files: list[Path]) -> dict:
+def _fingerprint(slug: str, files: list[Path], shared_signature=None) -> dict:
     """Content-hash per file from the ingest manifest; mtime fallback for files
-    the manifest doesn't list (e.g. a hand-added test file)."""
+    the manifest doesn't list (e.g. a hand-added test file). `shared_signature`
+    folds in a cheap signature of the shared-notes state on Drive (see
+    `_shared_notes_signature`) so a new/changed classmate note forces a
+    rebuild even when no local file changed."""
     hashes = _ingest_hash_map(slug)
-    return {p.name: hashes.get(p.name, p.stat().st_mtime) for p in files}
+    fp = {p.name: hashes.get(p.name, p.stat().st_mtime) for p in files}
+    if shared_signature is not None:
+        fp["__shared__"] = shared_signature
+    return fp
+
+
+def _shared_notes_signature(slug: str) -> str:
+    """Cheap signature over the shared notes currently on Drive for `slug`,
+    used to detect a new/changed classmate note without a local file change.
+    Best-effort: any failure yields "" (treated like "no shared notes")."""
+    try:
+        # NOTE: not timeout-bounded (see module docstring / I11 follow-up) — a
+        # hung socket here can stall the caller; try/except only guards against
+        # an exception, not a hang.
+        shared = drive_sync.list_shared_meta(slug, "notes", exclude_subfolder=student_identity.my_name())
+    except Exception:  # noqa: BLE001 — sharing is best-effort, never blocks indexing
+        return ""
+    pairs = sorted(f"{item['subfolder']}/{item['name']}" for item in shared)
+    return "|".join(pairs)
 
 
 def _manifest_hashes(slug: str) -> set[str]:
@@ -186,12 +222,17 @@ def brain_status(slug: str) -> dict:
             len(parse_frontmatter(p.read_text(errors="replace"))[1].encode())
             for p in files
         )
+    # indexFingerprint may carry a "__shared__" key (see _fingerprint) reflecting
+    # Drive state at last build; strip it for this local-only staleness check so
+    # brain_status stays a pure, network-free read.
+    stored_fp = dict(meta.get("indexFingerprint") or {})
+    stored_fp.pop("__shared__", None)
     return {
         "slug": slug,
         "corpusBytes": corpus_bytes,
         "sourceCount": len(files),
         "indexBuiltAt": meta.get("indexBuiltAt"),
-        "indexStale": meta.get("indexFingerprint") != _fingerprint(slug, files),
+        "indexStale": stored_fp != _fingerprint(slug, files),
         "guideBuiltAt": meta.get("guideBuiltAt"),
         "guideSourcesBehind": len(current - covered),
         "drillBuiltAt": meta.get("drillBuiltAt"),
@@ -199,6 +240,36 @@ def brain_status(slug: str) -> dict:
         "embeddingsRecommended": corpus_bytes > 150_000,
         "studyArtifacts": len(list_study(slug)),
     }
+
+
+def drive_checklist(slugs_to_names: dict) -> list[dict]:
+    """Local-only (no Drive API calls, no rate limits) per-course view of
+    what SHOULD end up on Drive vs. what's on disk right now: is the folder
+    even registered, and how much of the local corpus is share-eligible
+    (material/outline/announcement/transcript-typed + a built guide) so a
+    course sitting at "registered but nothing pushed yet" is visible without
+    reaching for drive-browse per course."""
+    folders = drive_sync._folders_config()
+    out = []
+    for slug, name in slugs_to_names.items():
+        registered = slug in folders
+        normalized = course_dir(slug) / "normalized"
+        shareable = 0
+        if normalized.exists():
+            for p in normalized.glob("*.md"):
+                fm, _ = parse_frontmatter(p.read_text(errors="replace"))
+                if fm.get("type") in drive_sync._NORMALIZED_TYPE_TO_PREFIX:
+                    shareable += 1
+        has_guide = (brain_dir(slug) / "GUIDE.md").exists()
+        out.append({
+            "slug": slug,
+            "name": name,
+            "registered": registered,
+            "folderId": folders.get(slug),
+            "shareableLocalFiles": shareable,
+            "hasGuide": has_guide,
+        })
+    return out
 
 
 def study_dir(slug: str) -> Path:
@@ -247,13 +318,28 @@ def list_study(slug: str) -> list[dict]:
     return out
 
 
+def read_study(slug: str, name: str) -> str | None:
+    """Body of one study/testprep artifact (frontmatter stripped) for the
+    dashboard reader. Same path-safety as write_study_artifact — a study
+    name never escapes study_dir."""
+    if not _course_root_ok(slug) or not _safe_seg(name) or name.startswith("."):
+        return None
+    base = study_dir(slug).resolve()
+    target = (base / f"{name}.md").resolve()
+    if base not in target.parents or not target.is_file():
+        return None
+    _fm, body = parse_frontmatter(target.read_text(errors="replace"))
+    return body
+
+
 def build_index(slug: str, force: bool = False) -> dict:
     files = _normalized_files(slug)
     meta = _load_meta(slug)
     if not files:
         # No corpus: do NOT destroy an existing index or overwrite _brain.json.
         return {"indexed": 0, "skipped": True, "reason": "no normalized corpus"}
-    fp = _fingerprint(slug, files)
+    shared_sig = _shared_notes_signature(slug)
+    fp = _fingerprint(slug, files, shared_sig)
     if not force and meta.get("indexFingerprint") == fp and (brain_dir(slug) / "index.sqlite").exists():
         return {"indexed": len(files), "skipped": True, "corpusBytes": meta.get("corpusBytes", 0)}
 
@@ -266,6 +352,7 @@ def build_index(slug: str, force: bool = False) -> dict:
         "CREATE VIRTUAL TABLE docs USING fts5("
         "path UNINDEXED, course UNINDEXED, type UNINDEXED, "
         "session UNINDEXED, due UNINDEXED, title, body, "
+        "sharedBy UNINDEXED, "
         "tokenize = 'porter unicode61')"
     )
     corpus_bytes = 0
@@ -274,11 +361,32 @@ def build_index(slug: str, force: bool = False) -> dict:
         fm, body = parse_frontmatter(text)
         corpus_bytes += len(body.encode())
         con.execute(
-            "INSERT INTO docs (path, course, type, session, due, title, body) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO docs (path, course, type, session, due, title, body, sharedBy) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, '')",
             (f"normalized/{p.name}", fm.get("course", ""), fm.get("type", ""),
              str(fm.get("session", "")), fm.get("due", ""),
              fm.get("title", p.stem), body),
+        )
+
+    try:
+        # NOTE: not timeout-bounded — see module docstring / I11 follow-up.
+        shared = drive_sync.list_shared(slug, "notes", exclude_subfolder=student_identity.my_name())
+    except Exception:  # noqa: BLE001 — sharing is best-effort, never blocks indexing
+        shared = []
+    if shared:
+        ensure(course_dir(slug) / "normalized")
+    for item in shared:
+        fm, body = parse_frontmatter(item["content"].decode(errors="replace"))
+        # Materialize to disk under normalized/ so the citation is actually
+        # openable via get_doc (brain_get only serves courses/<slug>/normalized/*).
+        local_name = f"shared-note-{item['subfolder']}-{item['name']}"
+        (course_dir(slug) / "normalized" / local_name).write_text(item["content"].decode(errors="replace"))
+        con.execute(
+            "INSERT INTO docs (path, course, type, session, due, title, body, sharedBy) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (f"normalized/{local_name}", fm.get("course", ""),
+             fm.get("type", "self-note"), str(fm.get("session", "")), fm.get("due", ""),
+             fm.get("title", item["name"]), body, item["subfolder"]),
         )
     con.commit()
     con.close()
@@ -319,6 +427,7 @@ def query(slug, *, type=None, session_min=None, session_max=None,
             d = dict(r)
             d["session"] = int(d["session"]) if str(d["session"]).isdigit() else None
             d["snippet"] = (d["snippet"] or "").strip()
+            d["sharedBy"] = d.get("sharedBy", "") or ""
             out.append(d)
     if text:
         out.sort(key=lambda d: d["score"])
@@ -351,7 +460,7 @@ def _query_one(s, type, session_min, session_max, due_before, text, limit,
         else:
             order = "CAST(NULLIF(session,'') AS INTEGER), due"
             sel = "substr(body, 1, 300) AS snippet, 0.0 AS score"
-        sql = (f"SELECT path, course, type, session, due, title, {sel} FROM docs"
+        sql = (f"SELECT path, course, type, session, due, title, sharedBy, {sel} FROM docs"
                + (f" WHERE {' AND '.join(where)}" if where else "")
                + f" ORDER BY {order} LIMIT ?")
         params.append(limit)

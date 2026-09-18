@@ -252,3 +252,49 @@ Controller live re-verification on a fresh production build: all six tabs render
 G2 final finding, fixed in 31b2944: C1 was INCOMPLETE. The Sync calendar button was added inside the Gaps stale panel, which only renders when scrapeStale || attendanceStale — both false on live data (scrape 1.1h old), so the capability was unreachable from the UI entirely and the README's claim stayed false for the healthy case. Spec §8 offers "the Gaps stale panel and/or Settings".
 Ruling: Sync calendar goes in SETTINGS, which is reachable from the sticky summary bar on every tab, under a "Calendar" sub-heading, variant neutral, disabled while busy — the Gaps contextual button stays. You run a calendar sync because deadlines moved, not because your scrape went stale, so it must not be hidden behind a health condition. Verified live: Settings now shows it on every tab, still 0 cta in the panel, still a proper dialog. Cost if wrong: one extra button in Settings.
 G2 branch state: 36 commits, pytest 250, web 253/31, server 41/7, root npm run check exit 0, tree clean. Whole-branch review verdict MERGE WITH FIXES -> all fixes applied and re-reviewed clean. NOT YET MERGED — awaiting the user's approval on the merge to main.
+
+## Collaborative multi-student — branch collab-multi-student off main (2026-09-15)
+Spec: docs/superpowers/specs/2026-09-12-collaborative-multi-student-design.md
+Plans: docs/superpowers/plans/2026-09-12-{1..6}-*.md
+Build order: 1 auth-foundation -> 2 onboarding-gate -> 3 shared-first-sync -> 4 notes-sharing -> 5 testprep-sharing -> 6 chatbot
+Status: starting Plan 1 Task 1.
+
+Plan 1 (auth-foundation): COMPLETE. Task1 f6ab7de, Task2 1c8db78 (do_auth hardened + 3 monkeypatch fixes beyond brief), Task3 55fe570, Task4 58b8fdf. pytest 281/281.
+Starting Plan 2 (onboarding-gate) Task 1.
+
+Plan 2 (onboarding-gate): COMPLETE. Task1 ae05f84, Task2 ad5315e, Task3 4247513 (gate-only cache added, TTL 10s, 9 test files), Task4 9a15e26 (App.test.tsx fixed forward). server 79/79, web 278/278, root npm run check clean.
+Starting Plan 3 (shared-first-sync) Task 1.
+
+Plan 3 (shared-first-sync): COMPLETE. Task1 d7ffb5f (transcripts), Task2 16ab39f (materials/outline/announcements — used `target` not `slug` for announcements per real code shape, fixed a drive_sync import-patchability bug), Task3 71501f3 (GUIDE.md CLI + skill wiring, ingest._body_hash reused instead of undefined hashlib import). pytest 296/296.
+Starting Plan 4 (notes-sharing) Task 1.
+
+Plan 4 (notes-sharing): COMPLETE. Task1 0080755 (fixed by controller 84c65df — get_media was called before exclusion check, wasting a Drive API call per excluded file), Task2 be0f278 (share-note CLI, fixed paths.course_dir import), Task3 c53bad7 (sharedBy column added to CREATE TABLE + the actual SELECT column list in _query_one, not just query()'s dict — brief under-specified this; module-level drive_sync/student_identity imports for patchability). pytest 303/303.
+Starting Plan 5 (testprep-sharing) Task 1.
+
+Plan 5 (testprep-sharing): COMPLETE. Task1 56ab337 (share-study CLI, mirrors share-note). Task2 fb9816e (skill wiring, done directly, docs-only). pytest 305/305.
+Starting Plan 6 (chatbot) Task 1.
+
+Plan 6 (chatbot): COMPLETE. Task1 3ebd135 (runClaude), Task2 b22a3d9 (chat JobKind), Task3 fa86fc2 (POST /api/jobs), Task4 30cfbd9 (ChatPanel + tab). server 86/86, web 279/279, tsc clean.
+
+ALL 6 PLANS COMPLETE (20 tasks: 19 subagent-implemented, 1 trivial config file + 1 docs-only skill edit done directly by controller). pytest 305/305, server 86/86, web 279/279, root npm run check clean (0 errors, 45 pre-existing `any` warnings).
+Ready for final whole-branch review.
+
+Whole-branch review (opus): 2 Critical (C1 path-traversal/credential-exfil in share-note/share-study, C2 write_if_absent duplicating Drive files) + 13 Important + 7 Minor. Fix subagent dispatched with C1,C2,I1,I2,I3,I5,I6,I9,I11,I12,I13 (I4 left as documented scope gap — Picker UI not built, no code bug; Minors left as follow-ups). Commits 439a168..0652e8e. Controller spot-verified C1's fix directly (containment check + self-note type gate + _safe_seg reuse — sound).
+Final: pytest 313/313, server 88/88, web 280/280, tsc clean both, root npm run check clean. 35 commits total over main.
+READY TO MERGE — awaiting user go-ahead.
+
+Pre-PR live testing (2026-09-15): "why is claude CLI not logged in" — investigated live via running dashboard. CLI itself fine; found the setup-state PROBE is genuinely flaky under load (5s timeout vs ~3s real response), and reproduced a real bug: the gate's probe spawns a concurrent `claude -p` process that collides with an actual running chat job, timing out and flipping the gate closed mid-chat — user saw a generic "overview 503" with no explanation. Fixed (3b4dda8): SetupChecklist component (extracted from SetupGate) shows pending items + exact fix command; getOverview throws typed SetupIncompleteError carrying setupState; gate skips re-probing while a job is running (trusts last known state) instead of spawning a colliding second claude process; probe timeout 5s->10s. Live-verified: sent a real chat message, gate held ready:true across 90s+ of the job running (previously would have flipped closed). server 90/90, web 282/282, tsc clean both.
+
+Activity logging (a19c8ad): one-line log for every request ([http]), job start/end ([job]), gate check ([gate]), claude spawn ([claude]/[probe]), and client tab switch ([tab] via new POST /api/client-log, placed before the gate). Exactly what would've made the earlier stuck chat job visible in real time. server 93/93, web 282/282, tsc clean, root check clean.
+38 commits total. Ready for PR.
+
+Thundering-herd fix (f4e1413): the new activity logging caught it live — 5 concurrent claude probes spawned within 3s (multiple polling intervals/tabs racing a cold gate cache), contention made one genuinely time out and flip ready:false. Fixed: getSetupState() single-flights, concurrent callers share one in-flight computation. Test proves 3 concurrent requests -> exactly 1 probe/python call. server 94/94, tsc clean, root check clean.
+40 commits total. Ready for PR.
+
+I4 close-out (3390d56, 899fce8): built the Drive folder-management UI the earlier whole-branch review flagged as missing. Server: google_auth.access_token(), drive_sync.browse()/register_folder(), 8 new dashboard routes. Web: DriveTab (course selector, connect, browse listing, share notes/testprep), Google Picker widget + manual paste-ID fallback.
+Live-tested against REAL Google APIs via the browser tool (not just unit mocks) — found 3 real things:
+1. Picker widget demands its own interactive sign-in regardless of setOAuthToken() with a server-minted token, because the token's OAuth client is Desktop-type, not Web-type with this origin authorized. Not fixable without a new GCP client. Added paste-ID/URL as the working fallback (tested end-to-end, actually registers).
+2. DriveTab's browse effect had no .catch() -> a thrown fetch error left "Loading..." forever. Fixed.
+3. drive_sync.browse() had no try/except around files().list() -> a live Drive API error crashed the CLI subprocess instead of degrading cleanly. Fixed + tested.
+ALSO SURFACED (external, not a code bug): the GCP project behind the existing Desktop OAuth client has the Drive API disabled (confirmed via real 403 accessNotConfigured) — every drive_sync call has been silently failing against real Drive all session; only mocked unit tests ever exercised the happy path. User needs to enable it once in GCP Console (link in the error text) before Drive sharing works for real, independent of all the code being correct and tested.
+pytest 330/330, server 109/109, web 294/294. 41 commits total.

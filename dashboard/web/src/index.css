@@ -22,7 +22,10 @@
   --nb-border: 3px;
   --nb-shadow: 4px 4px 0 var(--color-edge);
   --color-rule: color-mix(in srgb, var(--color-edge) 15%, transparent);
-  --color-ink-muted: color-mix(in srgb, var(--color-ink) 60%, transparent);
+  /* 60% measured at ~4.57:1 on the light theme's paper bg — technically
+     passes WCAG AA's 4.5:1 floor but with near-zero margin, and this token
+     is used everywhere at 11-13px. Bumped to a token that holds ~5.8:1. */
+  --color-ink-muted: color-mix(in srgb, var(--color-ink) 68%, transparent);
   --color-ink-faint: color-mix(in srgb, var(--color-ink) 40%, transparent);
 }
 
@@ -189,4 +192,39 @@ body {
   font:
     14px/1.5 system-ui,
     sans-serif;
+}
+
+/* Minimal typography for testprep/note markdown rendered via dangerouslySetInnerHTML. */
+.prose-nb {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.prose-nb h1,
+.prose-nb h2,
+.prose-nb h3 {
+  margin: 0.6em 0 0.3em;
+  font-weight: 700;
+}
+.prose-nb p {
+  margin: 0.5em 0;
+}
+.prose-nb ul,
+.prose-nb ol {
+  margin: 0.4em 0;
+  padding-left: 1.4em;
+}
+.prose-nb code {
+  background: color-mix(in srgb, var(--color-ink) 8%, transparent);
+  border-radius: 2px;
+  padding: 0 0.3em;
+}
+.prose-nb details {
+  margin-top: 0.5em;
+  border: 2px solid var(--color-edge);
+  border-radius: 2px;
+  padding: 0.4em 0.6em;
+}
+.prose-nb summary {
+  cursor: pointer;
+  font-weight: 700;
 }

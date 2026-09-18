@@ -10,13 +10,17 @@ import time
 from datetime import date
 from pathlib import Path
 
+import drive_sync
 from paths import course_dir, raw_dir, ensure
 from scrape_steps import _write_json, _read_or_none, global_file
 
 try:
+    import ingest
     from ingest import _yaml_scalar
 except Exception:  # pragma: no cover - defensive against import cycles
     import json as _json
+
+    ingest = None
 
     def _yaml_scalar(v) -> str:
         return _json.dumps(str(v))
@@ -335,6 +339,14 @@ def _transcribe_course(c: dict, transcribed: list, skipped: list, failed: list,
             if dest.exists():
                 skipped.append(rec["id"])
                 continue
+
+            shared = drive_sync.read_or_none(c["slug"], f"transcripts/{rec['id']}.md")
+            if shared is not None:
+                ensure(tdir)
+                dest.write_bytes(shared)
+                transcribed.append(rec["id"])
+                continue
+
             with tempfile.TemporaryDirectory() as tmp:
                 audio = _pull_audio(rec.get("videoUrl", ""), Path(tmp))
                 segs = None
@@ -350,6 +362,9 @@ def _transcribe_course(c: dict, transcribed: list, skipped: list, failed: list,
                     continue
             _write_transcript(dest, rec, c, segs)
             transcribed.append(rec["id"])
+            content = dest.read_bytes()
+            drive_sync.write_if_absent(c["slug"], f"transcripts/{rec['id']}.md",
+                                       content, ingest._body_hash(content.decode()))
         except Exception as exc:  # noqa: BLE001
             rid = rec["id"] if isinstance(rec, dict) and "id" in rec else "?"
             failed.append({"id": rid, "status": "needs-manual"})

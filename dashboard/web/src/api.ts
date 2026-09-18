@@ -266,9 +266,39 @@ export const getDrill = (course: string): Promise<DrillPack | null> =>
   fetch(`/api/drill/${encodeURIComponent(course)}`).then((r) => (r.ok ? r.json() : null));
 export const getState = (): Promise<State> => fetch("/api/state").then(j);
 
+/** Fire-and-forget: puts one line into the server's activity log, so a tab
+ * switch shows up in the same stream as requests/jobs/gate checks instead
+ * of only being visible on screen. Never throws — logging must not be able
+ * to break the UI action it's attached to. */
+export function clientLog(scope: string, message: string): void {
+  fetch("/api/client-log", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ scope, message }),
+  }).catch(() => {});
+}
+
+/** Thrown by getOverview (and any other gated call) when the server 503s
+ * because the onboarding gate flipped back to incomplete — carries the
+ * setup-state payload so the UI can show exactly what's pending instead of
+ * a bare "503". */
+export class SetupIncompleteError extends Error {
+  setupState: import("./components/SetupGate").SetupState;
+  constructor(setupState: import("./components/SetupGate").SetupState) {
+    super("setup incomplete");
+    this.setupState = setupState;
+  }
+}
+
 export const getOverview = (fresh = false): Promise<Overview> =>
-  fetch("/api/overview" + (fresh ? "?fresh=1" : "")).then((r) => {
-    if (!r.ok) throw new Error(`overview ${r.status}`);
+  fetch("/api/overview" + (fresh ? "?fresh=1" : "")).then(async (r) => {
+    if (!r.ok) {
+      if (r.status === 503) {
+        const body = await r.json().catch(() => null);
+        if (body?.setupState) throw new SetupIncompleteError(body.setupState);
+      }
+      throw new Error(`overview ${r.status}`);
+    }
     return r.json();
   });
 
@@ -284,11 +314,134 @@ export const getDailyBrief = (): Promise<DailyBrief> =>
     return r.json();
   });
 
+// ---------------------------------------------------------------------------
+// Drive — folder registration, browsing what's shared, sharing local notes/testprep.
+// ---------------------------------------------------------------------------
+
+export type DriveFolders = Record<string, string>;
+
+async function driveJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const r = await fetch(url, init);
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body?.error || `${url} ${r.status}`);
+  return body as T;
+}
+
+export const getDriveFolders = (): Promise<DriveFolders> => driveJson("/api/drive/folders");
+
+export const registerDriveFolder = (
+  course: string,
+  folderId: string,
+): Promise<{ ok: true; folders: DriveFolders }> =>
+  driveJson("/api/drive/register-folder", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ course, folderId }),
+  });
+
+export interface DriveBrowseItem {
+  name: string;
+  link: string | null;
+  modifiedTime: string | null;
+}
+export interface DriveBrowseGrouped extends DriveBrowseItem {
+  subfolder: string;
+}
+export interface DriveBrowse {
+  connected: boolean;
+  error?: string;
+  materials: DriveBrowseItem[];
+  transcripts: DriveBrowseItem[];
+  guide: DriveBrowseItem | null;
+  notes: DriveBrowseGrouped[];
+  testprep: DriveBrowseGrouped[];
+}
+
+export const browseDrive = (course: string): Promise<DriveBrowse> =>
+  driveJson(`/api/drive/browse?course=${encodeURIComponent(course)}`);
+
+export const getDriveAccessToken = (): Promise<{ token: string | null }> =>
+  driveJson("/api/drive/access-token");
+
+export interface NoteHit {
+  path: string;
+  title: string;
+  course: string;
+}
+
+export const getNotes = (course: string): Promise<{ results: NoteHit[] }> =>
+  driveJson(`/api/notes?course=${encodeURIComponent(course)}`);
+
+export interface StudyItem {
+  name: string;
+  type: string | null;
+  generatedAt: string | null;
+}
+
+export const getStudy = (course: string): Promise<{ items: StudyItem[] }> =>
+  driveJson(`/api/study?course=${encodeURIComponent(course)}`);
+
+export const getStudyContent = (
+  course: string,
+  name: string,
+): Promise<{ ok: boolean; content?: string; error?: string }> =>
+  driveJson(
+    `/api/study/content?course=${encodeURIComponent(course)}&name=${encodeURIComponent(name)}`,
+  );
+
+export interface DriveChecklistItem {
+  slug: string;
+  name: string;
+  registered: boolean;
+  folderId: string | null;
+  shareableLocalFiles: number;
+  hasGuide: boolean;
+}
+
+export const getDriveChecklist = (): Promise<{ items: DriveChecklistItem[] }> =>
+  driveJson("/api/drive/checklist");
+
+export const backfillDrive = (
+  course: string,
+): Promise<{
+  ok: boolean;
+  pushed: string[];
+  alreadyOnDrive: string[];
+  errors: string[];
+  error?: string;
+}> =>
+  driveJson("/api/drive/backfill", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ course }),
+  });
+
+export const shareNote = (
+  course: string,
+  path: string,
+): Promise<{ ok: boolean; link: string | null; error?: string }> =>
+  driveJson("/api/drive/share-note", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ course, path }),
+  });
+
+export const shareStudy = (
+  course: string,
+  name: string,
+): Promise<{ ok: boolean; link: string | null; error?: string }> =>
+  driveJson("/api/drive/share-study", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ course, name }),
+  });
+
 export async function startJob(body: {
   kind: string;
   course?: string;
   url?: string;
   title?: string;
+  message?: string;
 }): Promise<{ jobId?: string; error?: string }> {
   const r = await fetch("/api/jobs", {
     method: "POST",

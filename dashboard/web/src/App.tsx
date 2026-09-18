@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as api from "./api";
-import { getOverview, type Job, type Overview } from "./api";
+import { getOverview, SetupIncompleteError, type Job, type Overview } from "./api";
 import { Header } from "./components/Header";
 import { Tabs } from "./components/Tabs";
 import { Settings } from "./components/Settings";
@@ -14,10 +14,24 @@ import { AttendanceTab } from "./components/AttendanceTab";
 import { ExamsTab } from "./components/ExamsTab";
 import { BrainTab } from "./components/BrainTab";
 import { GapsTab } from "./components/GapsTab";
+import { ChatPanel } from "./components/ChatPanel";
+import { DriveTab } from "./components/DriveTab";
+import { TestprepTab } from "./components/TestprepTab";
 import { OutreachAgentPage } from "./components/outreach/OutreachAgentPage";
 import { RevisionPage } from "./components/revision/RevisionPage";
+import { SetupGate, SetupChecklist, type SetupState } from "./components/SetupGate";
 
-const TAB_IDS = ["today", "assignments", "attendance", "exams", "brain", "gaps"];
+const TAB_IDS = [
+  "today",
+  "assignments",
+  "attendance",
+  "exams",
+  "brain",
+  "gaps",
+  "chat",
+  "drive",
+  "testprep",
+];
 
 /** Full-page error state shown only when the very first load fails. */
 function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void }) {
@@ -49,6 +63,7 @@ function StaleBanner({ onRetry }: { onRetry: () => void }) {
 export function App() {
   const [ov, setOv] = useState<Overview | null>(null);
   const [err, setErr] = useState("");
+  const [setupPending, setSetupPending] = useState<SetupState | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [lines, setLines] = useState<string[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -60,8 +75,15 @@ export function App() {
       .then((o) => {
         setOv(o);
         setErr("");
+        setSetupPending(null);
       })
-      .catch((e: unknown) => setErr(e instanceof Error ? e.message : String(e)));
+      .catch((e: unknown) => {
+        if (e instanceof SetupIncompleteError) {
+          setSetupPending(e.setupState);
+          return;
+        }
+        setErr(e instanceof Error ? e.message : String(e));
+      });
   useEffect(() => {
     refresh();
     api.getState().then((s) => {
@@ -126,6 +148,7 @@ export function App() {
     }
   }
 
+  if (setupPending) return <SetupChecklist state={setupPending} onRetry={refresh} />;
   if (!ov && err) return <ErrorCard message={err} onRetry={refresh} />;
   if (!ov) return <div className="mx-auto max-w-[1400px] p-8">loading…</div>;
 
@@ -142,7 +165,7 @@ export function App() {
   const tabProps = { ov, onJob, busy: !!busy, go, params };
 
   return (
-    <>
+    <SetupGate>
       <Header
         ov={ov}
         busy={!!busy}
@@ -152,7 +175,14 @@ export function App() {
         onOutreach={() => go("outreach-agent")}
         onRevision={() => go("revision")}
       />
-      <Tabs active={active} counts={counts} onSelect={(t) => go(t)} />
+      <Tabs
+        active={active}
+        counts={counts}
+        onSelect={(t) => {
+          api.clientLog("tab", `switched to ${t}`);
+          go(t);
+        }}
+      />
       <div className="mx-auto max-w-[1400px] px-4 pb-8 md:px-8">
         {err && ov && <StaleBanner onRetry={refresh} />}
         <main className="py-6">
@@ -163,6 +193,9 @@ export function App() {
             {active === "exams" && <ExamsTab {...tabProps} />}
             {active === "brain" && <BrainTab {...tabProps} />}
             {active === "gaps" && <GapsTab {...tabProps} />}
+            {active === "chat" && <ChatPanel />}
+            {active === "drive" && <DriveTab />}
+            {active === "testprep" && <TestprepTab />}
           </ErrorBoundary>
         </main>
         {(job || lines.length > 0) && <JobLog job={job} lines={lines} />}
@@ -174,6 +207,6 @@ export function App() {
         onJob={onJob}
         busy={!!busy}
       />
-    </>
+    </SetupGate>
   );
 }

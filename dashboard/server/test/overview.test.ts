@@ -1,4 +1,30 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
+
+// The onboarding gate now runs in front of GET /api/overview too. Keep the real
+// runPythonJSON for the overview spawn itself (this test exercises the real
+// sidecar), but short-circuit the gate's own setup-state probe so it doesn't
+// depend on real Drive/Calendar/mesa-token state, and stub out probeClaudeCli so
+// the gate doesn't spawn a real `claude -p` subprocess (up to a 5s timeout) here.
+vi.mock("../src/lib/python.js", async () => {
+  const actual =
+    await vi.importActual<typeof import("../src/lib/python.js")>("../src/lib/python.js");
+  return {
+    ...actual,
+    runPythonJSON: (args: string[], ...rest: unknown[]) => {
+      if (args[0] === "setup-state") {
+        return Promise.resolve({
+          ok: true,
+          data: { driveConnected: true, calendarConnected: true, mesaTokenPresent: true },
+        });
+      }
+      return (actual.runPythonJSON as (...a: unknown[]) => unknown)(args, ...rest);
+    },
+  };
+});
+vi.mock("../src/lib/claudeProbe.js", () => ({
+  probeClaudeCli: vi.fn(() => Promise.resolve(true)),
+}));
+
 import { createServer } from "../src/index.js";
 import type { Server } from "node:http";
 
