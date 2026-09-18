@@ -10,7 +10,7 @@ export function Card({ className, ...props }: ComponentProps<"div">) {
     <div
       data-slot="card"
       className={cn(
-        "flex flex-col gap-4 rounded-nb border-[3px] border-edge bg-card p-4 text-inherit shadow-[var(--nb-shadow)]",
+        "flex flex-col gap-4 rounded-nb border-[length:var(--nb-border)] border-edge bg-card p-4 text-inherit shadow-[var(--nb-shadow)]",
         className,
       )}
       {...props}

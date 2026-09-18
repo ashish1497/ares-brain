@@ -85,7 +85,7 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-nb border-[3px] border-edge bg-card p-4 shadow-[var(--nb-shadow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-edge md:p-6"
+        className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-nb border-[length:var(--nb-border)] border-edge bg-card p-4 shadow-[var(--nb-shadow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-edge md:p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">

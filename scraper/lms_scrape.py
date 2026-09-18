@@ -166,6 +166,9 @@ def run(argv: list[str]) -> dict | None:
     mg = sub.add_parser("brain-mark-guide")
     mg.add_argument("--course", required=True)
     mg.add_argument("--json", action="store_true")
+    md = sub.add_parser("brain-mark-drill")
+    md.add_argument("--course", required=True)
+    md.add_argument("--json", action="store_true")
     ns = sub.add_parser("next-session")
     ns.add_argument("--course", required=True)
     ns.add_argument("--json", action="store_true")
@@ -298,6 +301,12 @@ def run(argv: list[str]) -> dict | None:
         import brain as _b
         result = _b.mark_guide(args.course)
         payload = {"ok": True, "guideBuiltAt": result["guideBuiltAt"]}
+        print(json.dumps(payload) if args.json else json.dumps(payload, indent=1))
+        return result
+    if args.cmd == "brain-mark-drill":
+        import brain as _b
+        result = _b.mark_drill(args.course)
+        payload = {"ok": True, "drillBuiltAt": result["drillBuiltAt"]}
         print(json.dumps(payload) if args.json else json.dumps(payload, indent=1))
         return result
     if args.cmd == "next-session":

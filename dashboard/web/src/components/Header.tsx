@@ -35,6 +35,7 @@ export function Header({
   onRefresh,
   onOpenSettings,
   onOutreach = () => {},
+  onRevision = () => {},
 }: {
   ov: Overview;
   busy: boolean;
@@ -42,6 +43,7 @@ export function Header({
   onRefresh: () => void;
   onOpenSettings: () => void;
   onOutreach?: () => void;
+  onRevision?: () => void;
 }) {
   const { kpis } = ov;
 
@@ -104,6 +106,9 @@ export function Header({
           </Button>
           <Button type="button" variant="neutral" size="sm" onClick={onOutreach}>
             Outreach agent
+          </Button>
+          <Button type="button" variant="neutral" size="sm" onClick={onRevision}>
+            Revision
           </Button>
           <Button
             type="button"

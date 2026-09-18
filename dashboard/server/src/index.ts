@@ -2,6 +2,7 @@ import { createServer as httpCreate, type IncomingMessage, type ServerResponse }
 import { readFile, stat } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { extname, join, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 import { match } from "./lib/router.js";
 import { readCourses } from "./lib/courses.js";
 import { receiveUpload, courseSlugOk } from "./lib/upload.js";
@@ -192,6 +193,17 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   }
 
   if (match("GET", "/api/courses", method, url)) return json(res, 200, readCourses());
+
+  const drillParams = match("GET", "/api/drill/:course", method, url);
+  if (drillParams) {
+    if (!courseAllowed(drillParams.course)) return json(res, 400, { error: "unknown course" });
+    const p = join(repoRoot(), "courses", drillParams.course, "brain", "drill.json");
+    try {
+      return json(res, 200, JSON.parse(await readFile(p, "utf8")));
+    } catch {
+      return json(res, 404, { error: "no drill pack for this course yet" });
+    }
+  }
 
   if (match("GET", "/api/state", method, url)) {
     const bad = guardOrigin(req);
@@ -482,7 +494,7 @@ export function createServer() {
   });
 }
 
-const isMain = import.meta.url === `file://${process.argv[1]}`;
+const isMain = process.argv[1] != null && fileURLToPath(import.meta.url) === process.argv[1];
 if (isMain) {
   const port = Number(process.env.ARES_BRAIN_DASHBOARD_PORT) || 4319;
   createServer().listen(port, "127.0.0.1", () =>
